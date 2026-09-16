@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Status - Echel</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Space Grotesk',sans-serif;background:#f5f0e8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.wrap{max-width:420px;width:100%}
+.card{background:#fff;border-radius:24px;padding:36px 24px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.08)}
+.icon{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 20px}
+.icon.success{background:linear-gradient(135deg,#00c853,#69f0ae)}
+.icon.pending{background:linear-gradient(135deg,#ffab00,#ffd740);animation:spin 2s linear infinite}
+.icon.failed{background:linear-gradient(135deg,#ff4d1c,#ff8c00)}
+@keyframes spin{to{transform:rotate(360deg)}}
+h2{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px}
+.sub{color:#6b6870;font-size:14px;margin-bottom:18px;line-height:1.6}
+.order-id{display:inline-block;padding:8px 18px;background:#f5f0e8;border-radius:10px;font-size:12px;font-weight:700;color:#6b6870;letter-spacing:1px;margin-bottom:20px}
+.status-box{background:#fff8e8;border-radius:14px;padding:16px;display:flex;gap:10px;align-items:center;margin-bottom:20px;text-align:left}
+.status-box.done{background:#e8f9ef}
+.s-title{font-size:13px;font-weight:700;color:#ff8f00}
+.status-box.done .s-title{color:#00c853}
+.s-sub{font-size:11px;color:#6b6870;margin-top:2px}
+.btn{width:100%;padding:14px;border-radius:14px;background:#ff4d1c;color:#fff;border:none;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;cursor:pointer}
+.logo{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#6b6870;margin-top:18px}
+.logo span{color:#ff4d1c}
+</style>
+<link rel="stylesheet" href="/echel-theme.css?v=1">
+<script src="/echel-brand.js?v=1" defer></script>
+<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<body class="echel-checkout">
+<div class="wrap">
+  <div class="card">
+    <div class="icon pending" id="statusIcon">⏳</div>
+    <h2 id="statusTitle">Checking Payment...</h2>
+    <p class="sub" id="statusSub">Please wait, we're confirming</p>
+    <div class="order-id" id="orderId">ORDER #...</div>
+    <div class="status-box" id="printStatusBox">
+      <div style="font-size:22px;">🖨️</div>
+      <div>
+        <div class="s-title" id="printTitle">Printing hasn't started yet</div>
+        <div class="s-sub">Printing starts once the payment is confirmed</div>
+      </div>
+    </div>
+    <button class="btn" onclick="goHome()">New Print</button>
+    <div class="logo">Echel</div>
+  </div>
+</div>
+<script>
+const params = new URLSearchParams(location.search);
+const jobId = params.get('jobId');
+const gateway = params.get('gateway');
+
+async function checkPaymentStatus() {
+  if (!jobId) {
+    document.getElementById('statusTitle').textContent = 'Order ID nahi mila';
+    document.getElementById('statusSub').textContent = '';
+    return;
+  }
+  document.getElementById('orderId').textContent = 'ORDER #' + jobId;
+
+  let attempts = 0;
+  const interval = setInterval(async () => {
+    attempts++;
+    try {
+      let statusCode = null;
+
+      // Cashfree se wapas aaye ho to seedha usse status pooch lo — webhook
+      // late aaye to bhi customer atakta nahi.
+      if (gateway === 'cashfree') {
+        const res = await fetch(`/api/payment/cashfree/status/${jobId}`);
+        const data = await res.json();
+        statusCode = data.status;
+      }
+
+      const jobRes = await fetch(`/api/jobs/status/${jobId}`);
+      const job = await jobRes.json();
+
+      if (job.payment_status === 'paid') {
+        document.getElementById('statusIcon').className = 'icon success';
+        document.getElementById('statusIcon').textContent = '✓';
+        document.getElementById('statusTitle').textContent = 'Payment Successful!';
+        document.getElementById('statusSub').textContent = 'Aapka document print ho raha hai';
+
+        if (job.status === 'printed') {
+          document.getElementById('printStatusBox').classList.add('done');
+          document.getElementById('printTitle').textContent = '✅ Print Complete!';
+        } else {
+          document.getElementById('printTitle').textContent = '🖨️ Print ho raha hai...';
+        }
+
+        if (job.status === 'printed') clearInterval(interval);
+      } else if (statusCode === 'EXPIRED' || statusCode === 'TERMINATED') {
+        document.getElementById('statusIcon').className = 'icon failed';
+        document.getElementById('statusIcon').textContent = '✕';
+        document.getElementById('statusTitle').textContent = 'Payment Fail Hua';
+        document.getElementById('statusSub').textContent = 'Dobara try karo ya counter pe pay karo';
+        clearInterval(interval);
+      }
+
+      if (attempts > 40) clearInterval(interval);
+    } catch(e) {}
+  }, 3000);
+}
+
+function goHome() {
+  history.back();
+}
+
+checkPaymentStatus();
+</script>
+
+
+</body>
+</html>

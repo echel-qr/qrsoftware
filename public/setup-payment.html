@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echel - Setup Payment</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<!-- Partner Cashfree par ho to yahi SDK checkout kholta hai. Razorpay
+     wala raasta jaisa tha waisa hi hai. -->
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --ink:#111114;--muted:#6b7280;--yellow:#e4e7e9;--pink:#c81e28;--orange:#ff6b35;
+  --paper:#fafafa;--tint:#f2f4f5;--line:#dfe3e6;--card:#fff;--dark:#17171b;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+body{
+  font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);
+  min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(520px circle at 12% -5%,rgba(255,210,46,.14),transparent 60%),
+                   radial-gradient(460px circle at 92% 8%,rgba(255,46,99,.10),transparent 60%);
+  background-repeat:no-repeat;
+}
+/* ── Header ── */
+nav{
+  position:sticky;top:0;z-index:20;
+  background:rgba(255,253,248,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1.5px solid var(--line);
+  padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.logo{
+  display:flex;align-items:center;gap:8px;
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:800;color:var(--ink);
+}
+.logo i{
+  font-style:normal;width:30px;height:30px;border-radius:9px;background:var(--yellow);
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+}
+.logo span{color:var(--pink)}
+.login-pill{
+  background:#fff;border:1.5px solid var(--line);border-radius:12px;
+  padding:9px 13px;font-size:13px;font-weight:700;color:var(--ink);text-decoration:none;
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease);
+}
+.login-pill:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(17,17,20,.1)}
+.wrap{max-width:520px;margin:0 auto;padding:26px 18px calc(40px + env(safe-area-inset-bottom))}
+
+/* ── Payment card ── */
+.pay-card{
+  background:var(--card);border:1.5px solid var(--line);border-radius:24px;
+  padding:30px 22px;text-align:center;box-shadow:0 18px 50px rgba(17,17,20,.08);
+}
+.pay-icon{
+  width:66px;height:66px;border-radius:20px;margin:0 auto 16px;
+  background:linear-gradient(150deg,var(--yellow),#ffb703);
+  display:flex;align-items:center;justify-content:center;font-size:30px;
+  box-shadow:0 14px 30px rgba(255,183,3,.34);
+}
+.pay-card h1,.success-card h1{
+  font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;
+  font-size:clamp(24px,6vw,31px);line-height:1.15;letter-spacing:-.5px;margin-bottom:9px;
+}
+.pay-card>p,.success-card>p{font-size:13.5px;color:var(--muted);line-height:1.65;margin-bottom:20px}
+
+/* ── Price box ── */
+.price-box{
+  position:relative;overflow:hidden;isolation:isolate;
+  background:linear-gradient(150deg,#1a1a22,#2b1f2e);
+  border-radius:20px;padding:22px 18px;margin-bottom:18px;
+  box-shadow:0 18px 40px rgba(17,17,20,.24);
+}
+.price-box::before{
+  content:'';position:absolute;inset:0;z-index:-1;
+  background:radial-gradient(260px circle at 12% 0%,rgba(255,210,46,.2),transparent 62%),
+             radial-gradient(240px circle at 92% 100%,rgba(255,46,99,.22),transparent 62%);
+}
+.price-box .label{font-size:12.5px;font-weight:700;color:#c9ccd6;letter-spacing:.4px;margin-bottom:4px}
+.price-box .amount{
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(38px,11vw,50px);
+  font-weight:800;color:var(--yellow);line-height:1.05;letter-spacing:-1.5px;
+}
+.price-box .sub{font-size:11.5px;color:#b6bac6;line-height:1.65;margin-top:7px}
+.price-box .sub b{color:#fff}
+
+/* ── Benefits ── */
+.benefits{list-style:none;text-align:left;margin-bottom:20px}
+.benefits li{
+  display:flex;gap:10px;align-items:flex-start;
+  background:var(--tint);border:1.5px solid #f0e2ba;border-radius:13px;
+  padding:11px 13px;margin-bottom:8px;font-size:13px;color:#3a3f47;line-height:1.5;
+}
+.benefits li:last-child{margin-bottom:0}
+
+/* ── Buttons ── */
+.pay-btn,.download-btn{
+  position:relative;overflow:hidden;
+  width:100%;border:none;cursor:pointer;font-family:'Inter',sans-serif;
+  font-weight:800;font-size:15.5px;padding:16px;border-radius:16px;color:#fff;
+  background:var(--pink);box-shadow:0 14px 32px rgba(255,46,99,.36);
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease);
+}
+.pay-btn:hover,.download-btn:hover{transform:translateY(-3px);box-shadow:0 20px 42px rgba(255,46,99,.45)}
+.pay-btn:active,.download-btn:active{transform:translateY(0) scale(.98)}
+.pay-btn::after{
+  content:'';position:absolute;top:-10%;bottom:-10%;left:-70%;width:44%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.42),transparent);
+  transform:skewX(-18deg);
+}
+.pay-btn:hover::after{animation:sheen .85s var(--ease)}
+@keyframes sheen{0%{left:-70%}100%{left:130%}}
+.pay-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.err-msg{
+  display:none;background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;
+  border-radius:12px;padding:11px 13px;font-size:12.5px;font-weight:600;
+  margin-top:13px;text-align:left;line-height:1.6;
+}
+
+/* ── Success card ── */
+.success-card{
+  display:none;background:var(--card);border:1.5px solid var(--line);border-radius:24px;
+  padding:30px 22px;text-align:center;box-shadow:0 18px 50px rgba(17,17,20,.08);
+}
+.success-icon{
+  width:66px;height:66px;border-radius:50%;margin:0 auto 16px;
+  background:linear-gradient(150deg,#22c55e,#15803d);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:33px;font-weight:800;
+  box-shadow:0 14px 30px rgba(34,197,94,.36);
+}
+.shop-id-box{
+  background:var(--tint);border:1.5px solid #f0e2ba;border-radius:16px;
+  padding:15px;margin-bottom:18px;
+}
+.shop-id-box h4{font-size:12px;font-weight:800;color:#8a6d1f;margin-bottom:6px;letter-spacing:.3px}
+.shop-id-val{
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:19px;font-weight:800;
+  color:var(--ink);letter-spacing:.6px;word-break:break-all;
+}
+#qrImg{
+  max-width:190px;width:100%;border:1.5px solid var(--line);border-radius:16px;
+  padding:10px;background:#fff;box-shadow:0 10px 26px rgba(17,17,20,.08);margin-bottom:14px;
+}
+.ghost-btn{
+  background:#fff;border:1.5px solid var(--line);border-radius:12px;
+  padding:10px 16px;font-size:12.5px;font-weight:700;color:var(--ink);cursor:pointer;
+  margin-bottom:16px;font-family:'Inter',sans-serif;
+  transition:transform .18s var(--ease),border-color .18s;
+}
+.ghost-btn:hover{transform:translateY(-2px);border-color:var(--yellow)}
+.download-btn{background:var(--ink);box-shadow:0 14px 32px rgba(17,17,20,.28);margin-bottom:6px}
+.download-btn:hover{box-shadow:0 20px 42px rgba(17,17,20,.34)}
+.download-btn.alt{background:#6b7280;box-shadow:0 10px 24px rgba(107,114,128,.28);font-size:13.5px;padding:13px}
+.steps-mini{
+  background:var(--tint);border:1.5px solid #f0e2ba;border-radius:16px;
+  padding:15px;text-align:left;margin-top:16px;
+}
+.steps-mini h4{font-size:13px;font-weight:800;color:#8a6d1f;margin-bottom:8px}
+.steps-mini p{font-size:12.5px;color:#6b5a2f;line-height:1.85}
+.tiny{font-size:11.5px;color:var(--muted);margin-bottom:14px;text-align:center;line-height:1.6}
+/* ── Setup video: same "How to Setup" video jo homepage par hai ── */
+.gv-mini-label{text-align:center;font-size:11.5px;font-weight:700;color:var(--muted);margin:4px 0 8px}
+.gv-mini-frame{
+  margin:0 auto 18px;max-width:340px;border-radius:18px;padding:6px;
+  background:linear-gradient(120deg,#b51c26,var(--pink) 55%,var(--orange));
+  box-shadow:0 14px 34px rgba(255,46,99,.22);
+}
+.gv-mini-inner{position:relative;width:100%;padding-top:56.25%;border-radius:13px;overflow:hidden;background:#0c0c10}
+.gv-mini-inner iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+.gv-mini-sound{
+  position:absolute;right:8px;bottom:8px;z-index:5;
+  background:rgba(17,17,20,.72);color:#fff;border:1.5px solid rgba(255,255,255,.3);
+  border-radius:16px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;
+}
+.gv-mini-sound:active{transform:scale(.96)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<link rel="stylesheet" href="/echel-theme.css?v=1">
+<script src="/echel-brand.js?v=1" defer></script>
+<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<body class="echel-checkout">
+
+<nav>
+  <a href="/" class="logo" style="text-decoration:none;"><i>🖨️</i> Echel</a>
+  <a href="/admin" class="login-pill">🔑 Shop Owner Login</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- Payment Card -->
+  <div class="pay-card" id="payCard">
+    <div class="echel-checkout-progress"><span>01 · Register ✓</span><b>02 · Activate</b><span>03 · Print</span></div><div class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></div>
+    <h1>Ek Aakhri Step!</h1>
+    <p>Complete your setup payment to download the QR code and Print Agent</p>
+
+    <div class="price-box">
+      <div class="label" id="feeLabel">Setup Fee</div>
+      <div class="amount" id="feeAmount">₹—</div>
+      <div class="sub" id="feeSub"></div>
+    </div>
+
+    <ul class="benefits">
+      <li>✅ <span>Apni shop ka unique QR Code</span></li>
+      <li>✅ <span>Print Agent software (PC ke liye)</span></li>
+      <li>✅ <span>Step-by-step setup guide</span></li>
+      <li>✅ <span>Unlimited print orders with no per-print commission</span></li>
+    </ul>
+
+    <button class="pay-btn" id="payBtn" onclick="initiatePayment()">Pay and complete setup</button>
+    <div class="err-msg" id="errMsg"></div>
+  </div>
+
+  <!-- Success / Download Card -->
+  <div class="success-card" id="successCard">
+    <div class="success-icon">✓</div>
+    <h1>Payment Successful!</h1>
+    <p>Your shop is ready. Download your files below.</p>
+
+    <div class="shop-id-box">
+      <h4>✅ Aapka Shop ID</h4>
+      <div class="shop-id-val" id="shopIdDisplay">---</div>
+    </div>
+
+    <div class="gv-mini-label">Watch the setup guide</div>
+    <div class="gv-mini-frame"><div class="gv-mini-inner">
+      <iframe id="gvMiniFramePaid" data-echel-video hidden title="How to Setup" allow="accelerate=1;autoplay;encrypted-media;picture-in-picture" allowfullscreen loading="lazy"></iframe>
+
+    </div></div>
+
+    <img id="qrImg" src="">
+    <br>
+    <button class="ghost-btn" onclick="downloadQrOnly()">🖼️ Download QR Code Only</button>
+
+    <button class="download-btn" onclick="downloadEasyInstaller()">
+      Download the Windows installer (.exe)
+    </button>
+    <p class="tiny">Python and the printing engine are included.</p>
+
+    <button class="download-btn alt" onclick="downloadPackage()">
+      📦 Advanced: Python ZIP Version
+    </button>
+
+    <div class="steps-mini">
+      <h4>📋 Easy Installer Ke Liye:</h4>
+      <p>
+        1. Open the downloaded .exe file.<br>
+        2. Follow the installation prompts.<br>
+        3. Pehli baar khulte hi Shop ID poochega — daalo<br>
+        4. Find the agent icon in the Windows system tray.<br>
+        5. Download and print your QR code from the dashboard.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const shopId = location.pathname.split('/').pop();
+let CURRENT_AMOUNT = null; // DB se aayi actual price — single source of truth
+function payLabel(){ return CURRENT_AMOUNT ? ('Pay ₹' + CURRENT_AMOUNT + ' Karke Setup Complete Karo') : 'Pay Karke Setup Complete Karo'; }
+
+// Plan-aware header — monthly par LIFETIME kabhi nahi likhna (galat promise)
+(async () => {
+  try {
+    const r = await fetch('/api/setup-status/' + shopId);
+    const d = await r.json();
+    if (d.paid) return; // paid par page khud redirect/handle karega
+    const lbl = document.getElementById('feeLabel');
+    const amt = document.getElementById('feeAmount');
+    const sub = document.getElementById('feeSub');
+    CURRENT_AMOUNT = d.amount || null;
+    amt.textContent = '₹' + (d.amount || 0);
+    const payBtn = document.getElementById('payBtn');
+    if (d.amount) payBtn.textContent = 'Pay ₹' + d.amount + ' Karke Setup Complete Karo';
+    const cycle=d.billingCycle||(d.plan==='monthly'?'monthly':'lifetime');
+    const labels={monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly',lifetime:'Lifetime'};
+    lbl.textContent=(labels[cycle]||'Lifetime')+' plan';
+    sub.textContent=cycle==='lifetime'?'One-time payment. Lifetime access.':'Renew every '+({monthly:'month',quarterly:'3 months',yearly:'year'}[cycle])+' to keep printing. No automatic debit.';
+
+  } catch(e) {}
+})();
+
+/* Cashfree se wapas aaye ho (?cf=1) — paisa kat chuka hai ya nahi, ye
+   SERVER poochh kar batata hai. Cashfree kabhi-kabhi thoda der leta hai,
+   isliye 5 baar tak (har 2 sec) poochhte hain. */
+async function checkCashfreeReturn() {
+  let cf = false;
+  try { cf = new URLSearchParams(location.search).get('cf') === '1'; } catch(e) {}
+  if (!cf) return;
+
+  const btn = document.getElementById('payBtn');
+  const errEl = document.getElementById('errMsg');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Payment check ho raha hai...'; }
+
+  for (let i = 0; i < 5; i++) {
+    try {
+      const r = await fetch('/api/setup-fee/cashfree-status/' + shopId);
+      const d = await r.json();
+      if (d && d.status === 'PAID') { showSuccess(d.qrCode || ''); return; }
+    } catch (e) {}
+    await new Promise(function(t){ setTimeout(t, 2000); });
+  }
+
+  if (errEl) {
+    errEl.textContent = '⏳ Payment abhi confirm nahi hua. Paisa kat gaya ho to ye page '
+      + 'ek minute baad refresh karo — apne aap ho jayega. Phir bhi na ho to partner se baat karo.';
+    errEl.style.display = 'block';
+  }
+  if (btn) { btn.disabled = false; btn.textContent = payLabel(); }
+}
+checkCashfreeReturn();
+
+async function loadShopId() {
+  document.getElementById('shopIdDisplay').textContent = shopId;
+  try {
+    const res = await fetch(`/api/setup-fee/amount/${shopId}`);
+    const data = await res.json();
+    if (data.amount) {
+      document.getElementById('feeAmount').textContent = '₹' + data.amount;
+      document.getElementById('payBtn').textContent = `Pay ₹${data.amount} Karke Setup Complete Karo`;
+    }
+  } catch(e) {}
+}
+
+async function initiatePayment() {
+  const btn = document.getElementById('payBtn');
+  const errEl = document.getElementById('errMsg');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '⏳ Payment shuru ho raha hai...';
+
+  try {
+    const res = await fetch('/api/setup-fee/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shopId })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      errEl.textContent = '❌ ' + (data.error || (data.details && data.details.error && data.details.error.description) || 'Payment create nahi hua');
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = payLabel();
+      return;
+    }
+
+    // ── Partner Cashfree par hai ──
+    // Yahan se page Cashfree par chala jaata hai. Payment ke baad wo
+    // wapas isi page par ?cf=1 ke saath bhejta hai, aur upar wala
+    // checkCashfreeReturn() status poochh kar QR dikha deta hai.
+    if (data.gateway === 'cashfree') {
+      if (typeof Cashfree !== 'function') {
+        errEl.textContent = '❌ Cashfree load nahi hua — page refresh karke dobara try karo';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = payLabel();
+        return;
+      }
+      if (!data.paymentSessionId) {
+        errEl.textContent = '❌ Payment session nahi mila — dobara try karo';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = payLabel();
+        return;
+      }
+      try {
+        btn.textContent = '💳 Cashfree page khul raha hai...';
+        const cashfree = Cashfree({ mode: 'production' });
+        const result = await cashfree.checkout({
+          paymentSessionId: data.paymentSessionId,
+          redirectTarget: '_self'
+        });
+        // Redirect ho gaya to yahan ka kuch chalta hi nahi. Yahan aa gaye
+        // matlab page nahi khula — khali screen ke bajaye saaf baat.
+        if (result && result.error) {
+          errEl.textContent = '❌ Cashfree: ' + (result.error.message || 'payment page nahi khula');
+        } else if (!(result && result.redirect)) {
+          errEl.textContent = '⏳ Cashfree page nahi khula — dobara Pay dabao';
+        }
+        if (errEl.textContent) errEl.style.display = 'block';
+      } catch (err) {
+        errEl.textContent = '❌ Cashfree error: ' + ((err && err.message) || 'unknown');
+        errEl.style.display = 'block';
+      }
+      btn.disabled = false; btn.textContent = payLabel();
+      return;
+    }
+
+    const options = {
+      key: data.keyId,
+      amount: data.amount,
+      currency: 'INR',
+      name: 'Echel',
+      description: 'One-Time Setup Fee',
+      order_id: data.orderId,
+      handler: async function(response) {
+        const verifyRes = await fetch('/api/setup-fee/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            shopId
+          })
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData.success) {
+          showSuccess(verifyData.qrCode);
+        } else {
+          errEl.textContent = '❌ Payment verify nahi hua. Support se contact karo.';
+          errEl.style.display = 'block';
+        }
+      },
+      modal: {
+        ondismiss: function() {
+          btn.disabled = false;
+          btn.textContent = payLabel();
+        }
+      },
+      theme: { color: '#ff4d1c' }
+    };
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', () => {
+      errEl.textContent = '❌ Payment failed! Dobara try karo.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = payLabel();
+    });
+    rzp.open();
+  } catch(e) {
+    errEl.textContent = '❌ Network error: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = payLabel();
+  }
+}
+
+function showSuccess(qrCode) {
+  document.getElementById('payCard').style.display = 'none';
+  document.getElementById('successCard').style.display = 'block';
+  document.getElementById('qrImg').src = qrCode;
+  document.getElementById('successCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+function downloadQrOnly() {
+  const img = document.getElementById('qrImg');
+  const a = document.createElement('a');
+  a.href = img.src;
+  a.download = `QR-Code-${shopId}.png`;
+  a.click();
+}
+
+function downloadEasyInstaller() {
+  window.location.href = `/api/download/easy-installer/${shopId}`;
+}
+
+function downloadPackage() {
+  window.location.href = `/api/download/agent-package/${shopId}`;
+}
+
+loadShopId();
+</script>
+
+
+</body>
+</html>

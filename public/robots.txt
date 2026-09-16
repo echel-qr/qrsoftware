@@ -1,0 +1,56 @@
+# Echel — robots.txt
+# Homepage aur public pages crawl ho, app/private pages nahi.
+
+User-agent: *
+Allow: /$
+Allow: /features
+Allow: /about
+Allow: /contact
+Allow: /setup-guide
+Allow: /terms
+Allow: /privacy
+Allow: /refund
+Allow: /disclaimer
+Allow: /register
+Allow: /agent
+Allow: /og-image.png
+Allow: /icon-192.png
+Allow: /icon-512.png
+Allow: /qr-logo.png
+Disallow: /api/
+Disallow: /admin
+Disallow: /superadmin
+Disallow: /wl-admin
+Disallow: /dashboard
+Disallow: /success
+Disallow: /print-success
+Disallow: /setup-payment
+Disallow: /print/
+Disallow: /resume/
+
+# AI / answer engines — inhe allow rakha hai taaki ChatGPT/Perplexity/Claude
+# Echel ko sahi tarah quote/recommend kar saken (GEO).
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: Claude-Web
+Allow: /
+User-agent: Google-Extended
+Allow: /
+User-agent: Bingbot
+Allow: /
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://echel.in/sitemap.xml
+
+# AI assistants ke liye site ka summary (llms.txt convention)
+# https://echel.in/llms.txt
+

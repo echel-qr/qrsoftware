@@ -1,0 +1,12 @@
+@font-face {
+  font-family:'Noto Sans Meetei Mayek';
+  src:url('/fonts/NotoSansMeeteiMayek.ttf') format('truetype');
+  font-weight:100 900;
+  font-style:normal;
+  font-display:swap;
+}
+[lang="mni-Mtei"],html[lang="mni-Mtei"] body,html[lang="mni-Mtei"] body * {
+  font-family:'Noto Sans Meetei Mayek',Inter,'Segoe UI',sans-serif!important;
+  letter-spacing:normal!important;
+  word-spacing:normal!important;
+}

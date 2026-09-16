@@ -1,0 +1,25 @@
+{
+  "name": "Echel - Connected Printing",
+  "short_name": "Echel",
+  "description": "Scan, upload and print. Connected printing software for your shop.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f5f6",
+  "theme_color": "#c81e28",
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/img/echel-logo.jpeg",
+      "sizes": "1112x1112",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

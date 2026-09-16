@@ -1,0 +1,32 @@
+# Echel
+
+Echel connects a customer's phone, a print shop and its Windows-connected printers. Customers scan a shop QR code, upload documents, choose print options and pay online or at the counter.
+
+## Product
+- QR document upload and print queue.
+- Windows print agent and shop owner dashboard.
+- Black-and-white, colour, photo and supported large-format printing.
+- English and Manipuri (Meitei Mayek) language options.
+- Starter, Pro and Premium plans, plus a free demo.
+- Prices, included features and billing cycles are shown on the current website. Paid plans can use monthly, quarterly, yearly or lifetime billing as configured by Echel.
+
+## Contact
+- Support: helpdesk@echel.co.in
+- Phone and WhatsApp: +91 7011482679
+- Facebook: https://www.facebook.com/support.echel
+- Instagram: https://www.instagram.com/echel_computer
+- YouTube: https://www.youtube.com/@echel_computer
+- Maps: https://maps.app.goo.gl/AXpG8uf3CopYu68x5
+
+## Pages
+- [Home](https://echel.in/)
+- [Features](https://echel.in/features)
+- [How to Set Up](https://echel.in/setup-guide)
+- [About Us](https://echel.in/about)
+- [Contact](https://echel.in/contact)
+- [Register](https://echel.in/register)
+- [Agent Program](https://echel.in/agent)
+- [Declaration and FAQ](https://echel.in/disclaimer)
+- [Terms](https://echel.in/terms)
+- [Privacy](https://echel.in/privacy)
+- [Refunds](https://echel.in/refund)

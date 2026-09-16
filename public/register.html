@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Register Your Shop — Echel | Free Demo, ₹399/Month or ₹999 Lifetime</title>
+<meta name="description" content="Apni cyber cafe ya print shop ko 10 minute me Echel par register karo. Free demo, ₹399/month ya ₹999 one-time lifetime plan. QR lagao, print automatic nikalo.">
+<link rel="canonical" href="https://echel.in/register">
+<link rel="icon" href="/img/echel-logo.jpeg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://echel.in/register">
+<meta property="og:title" content="Shop Register Karo — Echel">
+<meta property="og:description" content="10 minute me setup — QR lagao, customer scan kare, print automatic nikle.">
+<!-- pehle yahan poster.jpg tha (2.25 MB, A4 print-poster — shop ki
+     deewar par lagane wala, admin.html isi ko full-res me use karta hai).
+     Social share ke liye itna bada file galat hai — WhatsApp/Facebook ka
+     link-preview crawler HAR baar link share hone par ise poora fetch
+     karta hai, apni cache nahi rakhta. Isi wajah se 31 Aug ko register
+     link kaafi share hua aur bandwidth spike ho gaya.
+     og-image.png sahi size (1200x630, ~97 KB) me pehle se maujood hai —
+     usi ko yahan bhi use kar rahe hain. poster.jpg admin.html me waisa
+     hi high-res rehta hai, usse chheda nahi. -->
+<meta property="og:image" content="https://echel.in/og-image.png">
+<meta property="og:image:secure_url" content="https://echel.in/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Echel — Shop Register Karo">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#111;--muted:#6b7280;--yellow:#e4e7e9;--pink:#c81e28;--tint:#f2f4f5}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;color:var(--ink);background:#fff;min-height:100vh;overflow-x:hidden}
+
+.deco{position:fixed;border-radius:14px;pointer-events:none;z-index:0}
+.deco.sq-y{border:3px solid var(--yellow)}
+.deco.sq-p{border:3px solid #ffb3c7}
+.d1{width:110px;height:110px;top:8%;left:-44px;transform:rotate(14deg)}
+.d2{width:120px;height:120px;top:40%;right:-50px;transform:rotate(-12deg)}
+.d3{width:90px;height:90px;bottom:10%;left:-32px;transform:rotate(-16deg)}
+
+.wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:14px 20px 40px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:8px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:17px;text-decoration:none;color:var(--ink)}
+.brand-mark{width:28px;height:28px;border-radius:8px;background:var(--pink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px}
+.login-pill{border:2px solid var(--ink);color:var(--ink);text-decoration:none;padding:7px 16px;border-radius:20px;font-size:12px;font-weight:700}
+.login-pill:hover{background:var(--ink);color:#fff}
+
+h1{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(30px,8vw,40px);letter-spacing:-1.2px;line-height:1.05;text-align:center}
+h1 .mark{background:linear-gradient(transparent 62%,var(--yellow) 62%);padding:0 4px}
+.sub{text-align:center;font-size:13px;color:var(--muted);margin:8px 0 26px}
+
+.card{background:#fff;border:1.5px solid #ecedf2;border-radius:20px;padding:22px 18px;box-shadow:0 8px 30px rgba(17,17,17,.06);margin-bottom:16px}
+.card h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card h3 .n{width:24px;height:24px;border-radius:8px;background:var(--yellow);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.fg{margin-bottom:13px;text-align:left}
+.fl{display:block;font-size:12px;font-weight:700;margin-bottom:6px}
+.fl small{font-weight:500;color:var(--muted)}
+.fi{width:100%;padding:12px 14px;border:1.5px solid #e3e5ec;border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;background:#fff}
+.fi:focus{outline:none;border-color:var(--pink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.paymode{display:flex;flex-direction:column;gap:8px}
+.pm{display:flex;gap:10px;align-items:flex-start;border:1.5px solid #e3e5ec;border-radius:12px;padding:12px;cursor:pointer;transition:.12s}
+.pm.sel{border-color:var(--pink);background:#fff5f7}
+.pm input{margin-top:2px;accent-color:var(--pink)}
+.pm b{font-size:13px;display:block}
+.pm span{font-size:11px;color:var(--muted)}
+
+.plan-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.plan-card{border:2px solid #e5e0d8;border-radius:14px;padding:14px;cursor:pointer;text-align:center;background:#fff;transition:.15s}
+.plan-card.sel{border-color:#ff3b6b;background:#fff5f7;box-shadow:0 4px 14px rgba(255,59,107,.15)}
+.plan-card .pt{font-weight:800;font-size:14px;margin-bottom:4px}
+.plan-card .pp{font-size:20px;font-weight:800;color:#ff3b6b}
+.plan-card .pp .cut{font-size:12px;color:#9b9690;text-decoration:line-through;font-weight:600;margin-right:5px}
+.plan-card .pd{font-size:10.5px;color:#6b6870;margin-top:4px;line-height:1.5}
+@media(max-width:480px){.plan-row{grid-template-columns:1fr}}
+.gw-help{background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:12.5px;line-height:1.9;color:#1e3a5f}
+.gw-help b{color:#1d4ed8}
+.gw-help ol{margin:6px 0 0;padding-left:18px}
+.gw-help li{margin-bottom:4px}
+.gw-help a{color:#1d4ed8;font-weight:700;text-decoration:underline}
+.gw-help .imp{background:#fef3c7;border-radius:6px;padding:1px 6px;font-weight:700;color:#92400e}
+.gw-tabs{display:flex;gap:8px;margin-bottom:14px}
+.gw-tab{flex:1;padding:10px;border:1.5px solid #e3e5ec;border-radius:12px;font-size:13px;font-weight:700;background:#fff;cursor:pointer;font-family:'Inter',sans-serif}
+.gw-tab.sel{border-color:var(--pink);background:#fff5f7;color:var(--pink)}
+.gw-panel{display:none}
+.gw-panel.show{display:block}
+.hint{background:var(--tint);border:1.5px solid #f0e4c0;border-radius:12px;padding:11px 13px;font-size:11.5px;color:#7a5c1e;line-height:1.6;margin-top:4px}
+
+.cta{display:flex;width:100%;background:var(--pink);color:#fff;border:none;border-radius:16px;padding:17px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:16px;cursor:pointer;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 26px rgba(255,46,99,.35);transition:.15s;margin-top:4px}
+.cta:hover{transform:translateY(-2px)}
+.cta:disabled{background:#c6c9d2;box-shadow:none;transform:none;cursor:not-allowed}
+.cta:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.err{display:none;background:#fff1f1;border:1.5px solid #ffc9c9;color:#c22;border-radius:12px;padding:11px;font-size:12.5px;font-weight:600;margin-top:12px;text-align:center}
+.note{text-align:center;font-size:11px;color:var(--muted);margin-top:14px;line-height:1.7}
+/* 3 plan cards — 900px se neeche ek ke neeche ek */
+.plan-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:900px){.plan-row{grid-template-columns:1fr}}
+.plan-card{position:relative}
+.pcrown{
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border-radius:20px;
+  padding:3px 12px;font-size:10px;font-weight:800;letter-spacing:.3px;white-space:nowrap;
+}
+#planPremium.sel{border-color:#f59e0b}
+/* Pro aur Premium ka farak saaf likha — warna Pro lene wala baad me
+   shikayat karega ki "maine to poora paisa diya tha". */
+.pdiff{font-size:11px;line-height:1.6;border-radius:10px;padding:9px 10px;margin-top:10px;text-align:left}
+.pdiff-plain{background:#f8fafc;border:1px solid #e2e8f0;color:#475569}
+.pdiff-warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+.pdiff-good{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+/* ── Secure payment badge (homepage jaisa hi look) ── */
+.paysec{
+  border:1.5px solid #e8e6e1;border-radius:18px;
+  background:linear-gradient(180deg,#fff,#fbfcfe);
+  padding:18px 16px;text-align:center;margin:4px 0 16px;
+}
+.paysec-head{display:flex;align-items:center;justify-content:center;gap:8px;
+  font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:15px;color:#166534}
+.paysec-lock{font-size:15px}
+.paysec-by{font-size:11.5px;color:#6b7280;margin:7px 0 11px;line-height:1.5}
+.paysec-logos{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+/* height fix, width auto — dono logo ka aspect alag hai par height barabar rehti hai */
+.paysec-img{height:28px;width:auto;display:block;margin:0 4px}
+.paysec-sep{width:1px;height:20px;background:#e8e6e1;margin:0 4px;flex:none}
+@media(max-width:420px){.paysec-img{height:24px}.paysec-sep{display:none}}
+</style>
+<link rel="stylesheet" href="/echel-theme.css?v=1">
+<script src="/echel-brand.js?v=1" defer></script>
+<script src="/echel-plans.js" defer></script>
+<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<body class="echel-checkout">
+
+<div class="deco sq-y d1"></div>
+<div class="deco sq-p d2"></div>
+<div class="deco sq-y d3"></div>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <a href="/" class="brand"><span class="brand-mark">🖨️</span>Echel</a>
+    <a href="/admin" class="login-pill">🔑 Shop Login</a>
+  </div>
+
+  <h1>Your Shop <span class="mark">Register</span> Now</h1>
+  <p class="sub">A 2-minute form — then setup fee, then your QR Code + Print Agent is ready</p>
+
+  <!-- 1: Shop details -->
+  <div class="card">
+    <h3><span class="n">1</span> Shop Details</h3>
+    <div class="fg"><label class="fl">Shop Name *</label><input class="fi" id="f_name" placeholder="Sharma Cyber Cafe"></div>
+    <div class="fg"><label class="fl">Address</label><input class="fi" id="f_addr" placeholder="Main Road, Khowai"></div>
+    <div class="fg"><label class="fl">Phone</label><input class="fi" id="f_phone" type="tel" placeholder="98XXXXXXXX"></div>
+    <div class="fg">
+      <label class="fl">Email *</label>
+      <input class="fi" id="f_email" type="email" placeholder="you@email.com" autocomplete="email">
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">
+        📧 The payment receipt and Shop ID will be sent to this email.
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fg">
+        <label class="fl">Printer Brand</label>
+        <select class="fi" id="f_printer_brand" onchange="updatePrinterModelPlaceholder()">
+          <option value="">-- Select brand --</option>
+          <option value="HP">HP</option>
+          <option value="Epson">Epson</option>
+          <option value="Canon">Canon</option>
+          <option value="Brother">Brother</option>
+          <option value="Samsung">Samsung</option>
+          <option value="Xerox">Xerox</option>
+          <option value="Ricoh">Ricoh</option>
+          <option value="Panasonic">Panasonic</option>
+          <option value="Konica Minolta">Konica Minolta</option>
+          <option value="Kyocera">Kyocera</option>
+          <option value="Lexmark">Lexmark</option>
+          <option value="Dell">Dell</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Printer Model</label><input class="fi" id="f_printer_model" placeholder="e.g. L3210"></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Print Output Printer</label>
+      <select class="fi" id="f_printer_default" disabled
+        style="background:#f4f5f8;color:var(--muted);cursor:not-allowed;font-weight:600">
+        <option value="system_default" selected>🖨️ System Default Printer (Auto-selected)</option>
+      </select>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">
+        ✅ The Print Agent will print automatically on your PC's <b>default printer</b> — no manual setup needed.
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Login Password * <small>(at least 4 characters)</small></label><input class="fi" id="f_pass" type="password" placeholder="••••••"></div>
+  </div>
+
+  <!-- 2: Print pricing -->
+  <div class="card">
+    <h3><span class="n">2</span> Print Rate <small style="font-weight:500;color:var(--muted)">— how much you charge the customer per page</small></h3>
+    <div class="row2">
+      <div class="fg"><label class="fl">⚫ B&W (₹/page)</label><input class="fi" id="f_bw" type="number" value="5" min="1"></div>
+      <div class="fg"><label class="fl">🌈 Color (₹/page)</label><input class="fi" id="f_color" type="number" value="10" min="1"></div>
+    </div>
+  </div>
+
+  <!-- 3: Payment mode -->
+  <div class="card">
+    <h3><span class="n">3</span> How to Take Customer Payment</h3>
+    <label class="fl" style="margin-bottom:8px;display:block;">CHOOSE A PLAN</label>
+    <div class="plan-row">
+      <div class="plan-card" id="planStarter" onclick="selPlan('starter')">
+        <div class="pt">🚀 Starter</div>
+        <div class="pp"><span class="cut planCut" id="cutStarter" style="display:none;">₹0</span>₹<span id="feeStarter">599</span></div>
+        <div class="pd" style="color:#166534;font-weight:700;">Pay once — Lifetime, no renewal</div>
+        <div class="pd planFeat" id="featStarter" style="text-align:left;margin-top:8px;">✅ Auto Print Software<br>✅ Personalized QR For Shop<br>✅ Unlimited Print<br>✅ 2 Printer Connect — 1 B&W + 1 Color<br>✅ Help with Setup<br>✅ WhatsApp Assistant</div>
+        <div class="pdiff pdiff-plain" id="diffStarter">Advance Features are not included — you can unlock them later for ₹199</div>
+      </div>
+      <div class="plan-card sel" id="planPro" onclick="selPlan('pro')">
+        <div class="pt">💎 Pro</div>
+        <div class="pp"><span class="cut planCut" id="cutPro" style="display:none;">₹0</span>₹<span id="feePro">899</span></div>
+        <div class="pd" style="color:#166534;font-weight:700;">Lifetime — Advance Features already unlocked</div>
+        <div class="pd planFeat" id="featPro" style="text-align:left;margin-top:8px;">✅ Everything in Starter<br>✅ Advance Feature UNLOCKED — Duplex · 4×6 Photo · A3 · Resume Maker<br>✅ 5 Printer Connect — B&W · Color · A3 · Duplex · 4×6 Photo<br>✅ Assistant in Online Payment Gateway Setup<br>✅ Bug Fix Within 2 Hr<br>✅ AnyDesk Assistant</div>
+        <div class="pdiff pdiff-warn" id="diffPro">All of today's advance features. Any new advance feature later costs ₹49 separately</div>
+      </div>
+      <div class="plan-card" id="planPremium" onclick="selPlan('premium')">
+        <div class="pcrown">👑 BEST VALUE</div>
+        <div class="pt">👑 Premium</div>
+        <div class="pp"><span class="cut planCut" id="cutPremium" style="display:none;">₹0</span>₹<span id="feePremium">999</span></div>
+        <div class="pd" style="color:#166534;font-weight:700;">Lifetime — today's and everything to come</div>
+        <div class="pd planFeat" id="featPremium" style="text-align:left;margin-top:8px;">✅ Everything in Pro<br>✅ Advance Feature UNLOCKED — Duplex · 4×6 Photo · A3 · Resume Maker<br>✅ Smart Scanner included with Premium<br>✅ All future features included<br>✅ 5 Printer Connect — B&W · Color · A3 · Duplex · 4×6 Photo<br>✅ Future feature updates included<br>✅ Priority Support</div>
+        <div class="pdiff pdiff-good">Any new advance feature reaches you automatically — no paying again</div>
+      </div>
+    </div>
+
+      </div>
+
+  <!-- 4: Gateway (conditional) -->
+    <div class="hint">💡 <b>Payment kaise receive karna hai (Counter/Online), kaun sa printer B&W ke liye, kaun sa Color, kaun sa Duplex</b> — all these settings, after registering, are in <b>Shop Login → Settings</b> .<br><br>After registering: <b>first download the software</b>, then go to Settings and update the Printer and Payment options.</div>
+
+    <!-- ═══ SECURE PAYMENT BADGE ═══
+         Register button se THEEK PEHLE — yahi wo pal hai jab shop owner
+         paisa dene ja raha hai, to bharosa yahan sabse zyada chahiye. -->
+    <div class="paysec">
+      <div class="paysec-head">
+        <span class="paysec-lock">🔒</span>
+        <span>100% Secure Payments</span>
+      </div>
+      <div class="paysec-by">We support payments from Razorpay and Cashfree</div>
+      <div class="paysec-logos">
+        <img src="/razorpay.png" alt="Razorpay" class="paysec-img" width="128" height="28" loading="lazy">
+        <span class="paysec-sep" aria-hidden="true"></span>
+        <img src="/cashfree.png" alt="Cashfree Payments" class="paysec-img" width="96" height="28" loading="lazy">
+      </div>
+    </div>
+
+  <div class="fg" id="capRow" style="display:none;">
+    <label class="fl">Captcha</label>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <img id="capImg" alt="Captcha" width="160" height="52"
+           style="height:52px;width:160px;flex:none;border:1px solid #e5e7eb;border-radius:9px;background:#f4f6fb;">
+      <button type="button" onclick="loadCaptcha()" title="Naya captcha"
+              style="height:52px;width:44px;flex:none;border:1px solid #e5e7eb;background:#fff;
+                     border-radius:9px;font-size:18px;cursor:pointer;line-height:1;">&#8635;</button>
+      <input class="fi" id="capAns" type="text" maxlength="8" autocomplete="off" spellcheck="false"
+             autocapitalize="characters" placeholder="Upar wale akshar" style="flex:1;min-width:0;">
+    </div>
+  </div>
+
+  <button class="cta" id="regBtn" onclick="doRegister()">Register — Next Step: Setup Fee ›</button>
+  <div class="err" id="errBox"></div>
+  <p class="note">Right after registering, you get your QR Code + Print Agent instantly.</p>
+
+</div>
+
+<script>
+// NOTE: Register hamesha counter-only hota hai — payment gateway (Razorpay/
+// Cashfree) shop owner baad me Admin -> Settings se lagata hai. Pehle yahan
+// pmChange()/gwTab() aur gateway ka panel tha, par un sabke element file se
+// hat chuke the (koi caller bhi nahi tha) — isliye wo dead code hata diya.
+
+const gv = id => document.getElementById(id).value.trim();
+
+// Brand ke hisaab se model ka example placeholder badal do (helpful hint)
+function updatePrinterModelPlaceholder(){
+  const map = {
+    'HP':'e.g. LaserJet M1005','Epson':'e.g. L3210','Canon':'e.g. PIXMA G2010',
+    'Brother':'e.g. DCP-T420W','Samsung':'e.g. M2020','Xerox':'e.g. B210',
+    'Ricoh':'e.g. SP 210','Panasonic':'e.g. KX-MB2170','Konica Minolta':'e.g. Bizhub 225i',
+    'Kyocera':'e.g. ECOSYS M2040','Lexmark':'e.g. MB2236','Dell':'e.g. E310dw','Other':'Model likho'
+  };
+  const brand = gv('f_printer_brand');
+  document.getElementById('f_printer_model').placeholder = map[brand] || 'e.g. L3210';
+}
+
+// Brand + Model ko ek readable label me jodo. Ye sirf display/record ke liye hai —
+// actual printing hamesha PC ke system default printer se hoti hai (Print Agent auto-detect).
+function buildPrinterModel(){
+  const brand = gv('f_printer_brand');
+  const model = gv('f_printer_model');
+  if(brand && model) return (brand + ' ' + model).trim();
+  return (brand || model || '').trim();
+}
+
+let selectedPlan = 'pro';
+// Homepage / demo panel se ?plan= aaya to wahi pehle se selected
+try {
+  const _qp = String(new URLSearchParams(location.search).get('plan') || '').toLowerCase();
+  if (['starter','pro','premium'].includes(_qp)) selectedPlan = _qp;
+  else if (_qp === 'onetime' || _qp === 'monthly') selectedPlan = 'starter';  // purana link
+} catch (e) {}
+
+const PLAN_IDS = ['starter','pro','premium'];
+
+function selPlan(p) {
+  if (!PLAN_IDS.includes(p)) p = 'starter';
+  selectedPlan = p;
+  PLAN_IDS.forEach(k => {
+    const el = document.getElementById('plan' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (el) el.classList.toggle('sel', k === p);
+  });
+  const btn = document.getElementById('regBtn');
+  const fee = (document.getElementById('fee' + p.charAt(0).toUpperCase() + p.slice(1)) || {}).textContent;
+  if (btn) btn.textContent = 'Register Karo — Agla Step: ₹' + (fee || '') + ' ›';
+}
+
+/** Superadmin ki feature list ko card me daalo. */
+function fillPlanFeatures(id, list) {
+  const el = document.getElementById(id);
+  if (!el || !Array.isArray(list) || !list.length) return;   // khaali ho to HTML wala default rehne do
+  el.innerHTML = list.slice(0, 20).map(line =>
+    '✅ ' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  ).join('<br>');
+}
+
+(async () => {
+  try {
+    // Page ke URL ka ?ref= aur ?wl= dono API ko bhejo.
+    // ?wl= gaya to partner ka apna price aata hai, hamara nahi.
+    const _q = new URLSearchParams(location.search);
+    const _p = new URLSearchParams();
+    if (_q.get('ref')) _p.set('ref', _q.get('ref'));
+    if (_q.get('wl'))  _p.set('wl',  _q.get('wl'));
+    const r = await fetch('/api/setup-fee/current' + (_p.toString() ? '?' + _p.toString() : ''));
+    const d = await r.json();
+
+    // ── price ──
+    if (d.plans) {
+      PLAN_IDS.forEach(k => {
+        const p = d.plans[k];
+        const cap = k.charAt(0).toUpperCase() + k.slice(1);
+        const card = document.getElementById('plan' + cap);
+        // Server channel ke hisaab se filter karta hai — agent link par
+        // sirf Pro+Premium, white-label par sirf Starter. Jo nahi aaya
+        // uska card chhupa do.
+        if (!p) { if (card) card.style.display = 'none'; return; }
+        const fEl = document.getElementById('fee' + cap);
+        if (fEl) fEl.textContent = p.fee;
+        const cEl = document.getElementById('cut' + cap);
+        if (cEl) {
+          if (p.actual > 0) { cEl.textContent = '₹' + p.actual; cEl.style.display = ''; }
+          else cEl.style.display = 'none';
+        }
+      });
+      // Agar chuna hua plan is page par hai hi nahi (partner link) to
+      // pehla dikhne wala plan select kar do
+      if (!d.plans[selectedPlan]) {
+        selectedPlan = PLAN_IDS.find(k => d.plans[k]) || 'starter';
+      }
+    }
+    // Poora vaakya EK text node — warna i18n tukdon me translate
+    // karta hai aur English ka word order bigad jaata hai.
+    if (d.advancedFee) {
+      const ds = document.getElementById('diffStarter');
+      if (ds) ds.textContent = 'Advance Feature isme nahi hai — baad me ₹'
+        + d.advancedFee + ' me alag se unlock kar sakte ho';
+    }
+  } catch(e) {}
+
+  // ── features — Superadmin se ──
+  // Pehle ye list yahan HARDCODED thi, isliye Superadmin me likhe hue
+  // features is page par kabhi nahi aate the.
+  try {
+    const hr = await fetch('/api/homepage-config');
+    const hc = await hr.json();
+    const cfg = hc.config || hc || {};
+    fillPlanFeatures('featStarter', cfg.planStarter);
+    fillPlanFeatures('featPro',     cfg.planPro);
+    fillPlanFeatures('featPremium', cfg.planPremium);
+  } catch(e) {}
+
+  try { selPlan(selectedPlan); } catch(e) {}
+})();
+
+
+/* ── Funnel tracking (halka, first-party) ───────────────────
+   visitor_id wahi 'qrsp_vid' hai jo homepage use karta hai — isi se
+   pata chalta hai ki Google/Facebook se aaya banda yahan tak pahuncha.
+   Fire-and-forget hai: kabhi page ko rokta ya error nahi dikhata. */
+function qspTrack(eventType){
+  try{
+    var vid='';
+    try{
+      vid=localStorage.getItem('qrsp_vid')||'';
+      if(!vid){ vid='v_'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+                localStorage.setItem('qrsp_vid',vid); }
+    }catch(e){}
+    var qp=function(k){ try{ return new URLSearchParams(location.search).get(k)||''; }catch(e){ return ''; } };
+    var refr='';
+    try{
+      if(document.referrer){
+        var h=new URL(document.referrer).hostname;
+        if(h!==location.hostname) refr=h;
+      }
+    }catch(e){}
+    var body=JSON.stringify({
+      event_type:eventType, path:location.pathname,
+      ref:qp('ref'), utm_source:qp('utm_source'),
+      referrer:refr, visitor_id:vid, wl:qp('wl')
+    });
+    if(navigator.sendBeacon){
+      navigator.sendBeacon('/api/track', new Blob([body],{type:'application/json'}));
+    }else{
+      fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true});
+    }
+  }catch(e){}
+}
+
+/* ══ APNA CAPTCHA ══  (wahi jo login par lagta hai — server: /api/captcha)
+   Server jawab kabhi nahi bhejta, sirf signed token aur image. Captcha
+   band ho to server `enabled:false` bhejta hai aur ye box chhupa rehta
+   hai. */
+let capToken = '';
+async function loadCaptcha(){
+  const row = document.getElementById('capRow');
+  if(!row) return;
+  const img = document.getElementById('capImg');
+  const ans = document.getElementById('capAns');
+  try{
+    const r = await fetch('/api/captcha', { cache:'no-store' });
+    const d = await r.json();
+    if(!d || !d.enabled){ row.style.display='none'; capToken=''; return; }
+    capToken = d.token;
+    if(img) img.src = d.image;
+    if(ans) ans.value = '';
+    row.style.display = '';
+  }catch(e){
+    // Captcha na aa paye to register ka darwaza band mat karo — asli
+    // faisla server karta hai, wahan chalu hoga to wahi rok dega.
+    row.style.display='none'; capToken='';
+  }
+}
+function capAnswer(){ const el=document.getElementById('capAns'); return el?el.value.trim():''; }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', loadCaptcha);
+else loadCaptcha();
+
+/* ══ ASLI MOBILE NUMBER CHECK ══
+   server ke validateIndianMobile() ka mirror — bilkul wahi niyam jo
+   homepage ke demo form par lagte hain. Yahan sirf TURANT feedback ke
+   liye; asli faisla hamesha server karta hai. */
+var RG_FAKE = ['9999999999','8888888888','7777777777','6666666666','1111111111','0000000000',
+  '1234567890','9876543210','9123456789','9987654321','1234512345','9999900000',
+  '9000000000','8000000000','7000000000','6000000000','9090909090','9080706050',
+  '9999988888','9876512345','8765432109','7654321098','9998887776','9876543211',
+  '9999999998','9999999990','9111111111','8123456789','7123456789','6123456789'];
+function rgNormPhone(raw){
+  var d = String(raw||'').replace(/\D/g,'');
+  if(d.length===13 && d.indexOf('091')===0) d=d.slice(3);
+  else if(d.length===12 && d.indexOf('91')===0) d=d.slice(2);
+  else if(d.length===11 && d.charAt(0)==='0') d=d.slice(1);
+  return d.length===10 ? d : '';
+}
+function _rgSeq(d){
+  if(d.length<4) return false;
+  var asc=true, desc=true;
+  for(var i=1;i<d.length;i++){
+    var step=(Number(d[i])-Number(d[i-1])+10)%10;
+    if(step!==1) asc=false;
+    if(step!==9) desc=false;
+  }
+  return asc||desc;
+}
+function _rgBlock(d){
+  var sizes=[1,2,5];
+  for(var s=0;s<sizes.length;s++){
+    var size=sizes[s];
+    if(d.length%size!==0) continue;
+    var block=d.slice(0,size), same=true;
+    for(var i=size;i<d.length;i+=size){ if(d.slice(i,i+size)!==block){ same=false; break; } }
+    if(same) return true;
+  }
+  return false;
+}
+function _rgRun(d){
+  var best=1, run=1;
+  for(var i=1;i<d.length;i++){ run = d[i]===d[i-1] ? run+1 : 1; if(run>best) best=run; }
+  return best;
+}
+function rgValidatePhone(raw){
+  var d = rgNormPhone(raw);
+  var FAKE = 'Ye number asli nahi lag raha — apna WhatsApp number daalo.';
+  if(!d) return { ok:false, error:'Sahi 10-digit mobile number daalo.' };
+  if(!/^[6-9]/.test(d)) return { ok:false, error:'Mobile number 6, 7, 8 ya 9 se shuru hota hai — dobara check karo.' };
+  if(RG_FAKE.indexOf(d)!==-1) return { ok:false, error:'Ye test number hai — apna asli WhatsApp number daalo.' };
+  if(_rgBlock(d)) return { ok:false, error:FAKE };
+  if(_rgSeq(d) || _rgSeq(d.slice(1))) return { ok:false, error:FAKE };
+  var uniq={}, n=0;
+  for(var i=0;i<d.length;i++){ if(!uniq[d[i]]){ uniq[d[i]]=1; n++; } }
+  if(n<=2) return { ok:false, error:FAKE };
+  if(_rgRun(d)>=7) return { ok:false, error:FAKE };
+  if(/^(\d)\1(\d)\2(\d)\3(\d)\4(\d)\5$/.test(d)) return { ok:false, error:FAKE };
+  return { ok:true, phone:d, error:'' };
+}
+
+async function doRegister(){
+  const btn = document.getElementById('regBtn');
+  const err = document.getElementById('errBox');
+  err.style.display = 'none';
+
+  // Register HAMESHA counter-only — payment mode/gateway baad me
+  // Shop Login -> Settings se set hota hai (register simple rahe)
+  const paymode = 'counter_only';
+  if(!gv('f_name')) return showErr('Shop ka naam daalo');
+  if(!gv('f_email')) return showErr('Email daalo — payment ki receipt isi par aayegi');
+  if(!/^\S+@\S+\.\S+$/.test(gv('f_email'))) return showErr('Email sahi nahi lag raha — dobara check karo');
+  if(gv('f_pass').length < 4) return showErr('Password kam se kam 4 character ka rakho');
+  const _pv = rgValidatePhone(gv('f_phone'));
+  if(!_pv.ok) return showErr(_pv.error);
+
+  const body = {
+    plan: selectedPlan,
+    name: gv('f_name'), address: gv('f_addr'), phone: gv('f_phone'),
+    email: gv('f_email').toLowerCase(),
+    printer_model: buildPrinterModel(),
+    price_bw: parseInt(gv('f_bw'))||5, price_color: parseInt(gv('f_color'))||10,
+    payment_mode: paymode, password: document.getElementById('f_pass').value,
+    ref: new URLSearchParams(location.search).get('ref') || '',
+    captchaToken: capToken, captchaAnswer: capAnswer()
+  };
+
+  // Saari validation nikal gayi — ab asli payment intent hai
+  qspTrack('pay_click');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Register ho raha hai...';
+  try{
+    // ZAROORI: ?wl= yahan bhi bhejo. Iske bina server ko pata hi nahi
+    // chalta ki ye partner ki shop hai — shop platform ki ban jaati thi
+    // aur setup fee galat Razorpay account me chali jaati thi.
+    const _wl = new URLSearchParams(location.search).get('wl') || '';
+    const r = await fetch('/api/shop/register' + (_wl ? '?wl=' + encodeURIComponent(_wl) : ''), {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    // Captcha galat/expire — naya la do, warna dobara wahi fail hoga
+    if(d && d.captcha) loadCaptcha();
+    if(!d.success) throw new Error(d.error || 'Registration fail hui');
+    // Seedha setup fee page — shopId path mein
+    // ?wl= aage bhi le jao — payment page par partner ki branding/price
+    // sahi dikhe (subdomain wale case me ye apne aap bana rehta hai).
+    location.href = '/setup-payment/' + d.shopId + (_wl ? '?wl=' + encodeURIComponent(_wl) : '');
+  }catch(e){
+    showErr(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Register Karo — Agla Step: Setup Fee ›';
+  }
+}
+
+function showErr(msg){
+  const err = document.getElementById('errBox');
+  err.textContent = '❌ ' + msg;
+  err.style.display = 'block';
+  err.scrollIntoView({behavior:'smooth', block:'center'});
+  return false;
+}
+</script>
+
+
+</body>
+</html>
