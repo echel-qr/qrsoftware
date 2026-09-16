@@ -1,0 +1,14 @@
+.test-runtime/
+__pycache__/
+*.pyc
+node_modules/
+.env
+.env.*
+!.env.example
+*.pem
+deployment-credentials*
+
+shop_config.json
+agent_token*
+echel-server.json
+*.log

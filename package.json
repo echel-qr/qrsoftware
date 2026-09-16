@@ -1,0 +1,36 @@
+{
+  "name": "echel-print",
+  "version": "2.0.0",
+  "description": "Echel - connected printing and shop management",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/branding.test.js test/branding-routes.test.js test/billing.test.js test/billing-postgres.test.js test/edition.test.js test/deployment.test.js test/database-init.test.js test/i18n.test.js test/desktop.test.js test/runtime-dependencies.test.js test/server-start.test.js",
+    "check": "node --check server.js && node test/check-syntax.js",
+    "preview": "node test/preview-server.js"
+  },
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "acorn": "^8.15.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "jsdom": "^26.1.0",
+    "yaml": "^2.9.1"
+  },
+  "dependencies": {
+    "archiver": "^6.0.1",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.3.0",
+    "nodemailer": "^10.0.10",
+    "pg": "^8.11.3",
+    "qrcode": "^1.5.3",
+    "uuid": "^11.1.1"
+  }
+}
