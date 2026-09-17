@@ -3992,8 +3992,10 @@ loadPrices();
     const el = document.querySelector('.demo-strip');
     if (el && !c.enabled) el.style.display = 'none';
     if (c.enabled && c.minutes && el){
+      // 24h+ ko din me dikhao (superadmin ab 24h se zyada bhi set kar sakta hai)
+      const days = c.minutes >= 1440 ? (c.minutes/1440).toFixed(c.minutes%1440?1:0) : null;
       const hrs = c.minutes >= 60 ? (c.minutes/60).toFixed(c.minutes%60?1:0) : null;
-      const txt = hrs ? `${hrs} Ghanta FREE Demo` : `${c.minutes} Min FREE Demo`;
+      const txt = days ? `${days} Din FREE Demo` : hrs ? `${hrs} Ghanta FREE Demo` : `${c.minutes} Min FREE Demo`;
       const lbl = el.querySelector('.rs-left b');
       if (lbl) lbl.textContent = '🎯 ' + txt;
     }
@@ -4513,7 +4515,11 @@ async function createDemo(){
       // ── INSTANT ── Shop ID + password wahin, secure-looking card me.
       // Purana plain green box log ko "fake" lagta tha; isliye ab
       // sealed header + verified badge + credential vault + QR.
-      const hrs   = d.hours || Math.round((d.minutes || d.expiresInMinutes || 1440) / 60);
+      const mins  = d.minutes || d.expiresInMinutes || ((d.hours || 24) * 60);
+      const hrs   = Math.round(mins / 60);
+      // 2 din se zyada ho to hours ki jagah din dikhao
+      const validTxt = mins >= 2880 ? Math.round(mins / 1440) + ' days' : hrs + ' hours';
+      const validChip = mins >= 2880 ? Math.round(mins / 1440) + ' days' : hrs + ' hr';
       const lim   = d.printLimit || 10;
       const login = d.loginUrl || (location.origin + '/admin');
       const sid   = dmEsc(d.shopId);
@@ -4526,11 +4532,11 @@ async function createDemo(){
       +   '<div class="dmx-seal">\uD83D\uDD13</div>'
       +   '<h3>Demo Account Active Hai</h3>'
       +   '<p>Aapki shop ban gayi. Neeche wali details <b>abhi note kar lo</b>.</p>'
-      +   '<div class="dmx-verified">\u2713 Verified &amp; activated \u00B7 ' + hrs + ' hours</div>'
+      +   '<div class="dmx-verified">\u2713 Verified &amp; activated \u00B7 ' + validTxt + '</div>'
       + '</div>'
       + '<div class="dmx-body">'
       +   '<div class="dmx-meta">'
-      +     '<div class="dmx-chip"><b>' + hrs + ' hr</b><span>Valid</span></div>'
+      +     '<div class="dmx-chip"><b>' + validChip + '</b><span>Valid</span></div>'
       +     '<div class="dmx-chip"><b>' + lim + '</b><span>Free prints</span></div>'
       +     '<div class="dmx-chip"><b>\u20B90</b><span>Charge</span></div>'
       +   '</div>'

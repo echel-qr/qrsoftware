@@ -1002,7 +1002,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
       <div style="border-top:1.5px dashed #d9caf9;padding-top:12px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:8px;">⏰ Demo Time Limit</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <input type="number" id="demoMinsInput" min="15" max="1440" step="15" style="width:100px;padding:9px 12px;border:1.5px solid #d9caf9;border-radius:10px;font-weight:700;">
+          <input type="number" id="demoMinsInput" min="15" max="525600" step="15" style="width:110px;padding:9px 12px;border:1.5px solid #d9caf9;border-radius:10px;font-weight:700;">
           <span style="font-size:12px;color:#6b6870;">minutes (<span id="demoMinsHuman">—</span>)</span>
           <button onclick="saveDemoMinutes()" style="background:#b51c26;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">Save Time</button>
         </div>
@@ -1012,11 +1012,30 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
           <button onclick="setDemoMinsQuick(120)" class="demo-preset">2 hr</button>
           <button onclick="setDemoMinsQuick(240)" class="demo-preset">4 hr</button>
           <button onclick="setDemoMinsQuick(720)" class="demo-preset">12 hr</button>
-          <button onclick="setDemoMinsQuick(1440)" class="demo-preset">24 hr</button>
+          <button onclick="setDemoMinsQuick(1440)" class="demo-preset">1 day</button>
+          <button onclick="setDemoMinsQuick(4320)" class="demo-preset">3 days</button>
+          <button onclick="setDemoMinsQuick(10080)" class="demo-preset">7 days</button>
+          <button onclick="setDemoMinsQuick(43200)" class="demo-preset">30 days</button>
         </div>
         <style>.demo-preset{background:#fff;border:1.5px solid #d9caf9;color:#b51c26;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;}
         .demo-preset:hover{background:#b51c26;color:#fff;}</style>
-        <p style="font-size:11px;color:#6b6870;margin-top:8px;">Min 15 min, max 1440 min (24 hr). <b>Applies only to new demos</b> — existing active demos will expire at their original time.</p>
+        <p style="font-size:11px;color:#6b6870;margin-top:8px;">Min 15 min, max 365 days (525600 min). <b>Applies only to new demos</b> — existing active demos will expire at their original time.</p>
+      </div>
+      <div style="border-top:1.5px dashed #d9caf9;padding-top:12px;margin-top:14px;">
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px;">🖨 Demo Print Limit</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="number" id="demoPrintsInput" min="1" max="100000" step="1" style="width:110px;padding:9px 12px;border:1.5px solid #d9caf9;border-radius:10px;font-weight:700;">
+          <span style="font-size:12px;color:#6b6870;">free prints per demo shop</span>
+          <button onclick="saveDemoPrintLimit()" style="background:#b51c26;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">Save Limit</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <button onclick="setDemoPrintsQuick(10)" class="demo-preset">10</button>
+          <button onclick="setDemoPrintsQuick(25)" class="demo-preset">25</button>
+          <button onclick="setDemoPrintsQuick(50)" class="demo-preset">50</button>
+          <button onclick="setDemoPrintsQuick(100)" class="demo-preset">100</button>
+          <button onclick="setDemoPrintsQuick(500)" class="demo-preset">500</button>
+        </div>
+        <p style="font-size:11px;color:#6b6870;margin-top:8px;">Min 1, max 1,00,000. <b>Applies immediately to every demo shop</b> (old and new) — the limit is checked live on each print.</p>
       </div>
     </div>
 
@@ -1535,6 +1554,11 @@ async function doLogin() {
 
 let _demoCfg = { enabled: true, minutes: 120, instant: true };
 function humanMins(m){
+  if (m >= 1440) {
+    const d = Math.floor(m / 1440), rest = m % 1440;
+    const hr = rest >= 60 ? (rest % 60 === 0 ? (rest/60) + ' hr' : (rest/60).toFixed(1) + ' hr') : (rest ? rest + ' min' : '');
+    return d + (d === 1 ? ' day' : ' days') + (hr ? ' ' + hr : '');
+  }
   if (m >= 60 && m % 60 === 0) return (m/60) + ' hr';
   if (m >= 60) return (m/60).toFixed(1) + ' hr';
   return m + ' min';
@@ -1553,6 +1577,8 @@ function renderDemoCfg(){
   }
   document.getElementById('demoMinsInput').value = _demoCfg.minutes;
   document.getElementById('demoMinsHuman').textContent = humanMins(_demoCfg.minutes);
+  const pl = document.getElementById('demoPrintsInput');
+  if (pl && _demoCfg.printLimit) pl.value = _demoCfg.printLimit;
   renderDemoMode();
 }
 
@@ -1728,9 +1754,23 @@ async function toggleDemoEnabled(){
   }catch(e){ alert('❌ '+e.message); }
 }
 function setDemoMinsQuick(m){ document.getElementById('demoMinsInput').value = m; document.getElementById('demoMinsHuman').textContent = humanMins(m); }
+function setDemoPrintsQuick(n){ document.getElementById('demoPrintsInput').value = n; }
+async function saveDemoPrintLimit(){
+  const n = parseInt(document.getElementById('demoPrintsInput').value);
+  if (isNaN(n) || n < 1 || n > 100000) { alert('Enter a print limit between 1 and 1,00,000'); return; }
+  try{
+    const r = await fetch('/api/superadmin/demo-config', {
+      method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
+      body: JSON.stringify({ enabled: _demoCfg.enabled, minutes: _demoCfg.minutes, printLimit: n })
+    });
+    const d = await r.json();
+    if(d.success){ _demoCfg = d; renderDemoCfg(); alert('✅ Demo print limit saved: ' + n + ' prints (applies to every demo shop immediately)'); }
+    else alert('❌ '+(d.error||'Fail'));
+  }catch(e){ alert('❌ '+e.message); }
+}
 async function saveDemoMinutes(){
   const m = parseInt(document.getElementById('demoMinsInput').value);
-  if (isNaN(m) || m < 15 || m > 1440) { alert('15 se 1440 minutes ke beech daalo'); return; }
+  if (isNaN(m) || m < 15 || m > 525600) { alert('Enter between 15 minutes and 365 days (525600 minutes)'); return; }
   try{
     const r = await fetch('/api/superadmin/demo-config', {
       method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},

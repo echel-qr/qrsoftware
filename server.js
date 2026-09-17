@@ -3233,10 +3233,22 @@ app.put('/api/superadmin/demo-config', verifySuperAdmin, async (req, res) => {
   try {
     const enabled = req.body.enabled ? '1' : '0';
     let mins = parseInt(req.body.minutes);
-    if (isNaN(mins) || mins < 15 || mins > 1440)
-      return res.status(400).json({ error: 'Minutes 15 se 1440 (24 ghante) ke beech ho' });
+    if (isNaN(mins) || mins < 15 || mins > DEMO_MAX_MINUTES)
+      return res.status(400).json({ error: 'Minutes 15 se ' + DEMO_MAX_MINUTES + ' (365 din) ke beech ho' });
+    // Print limit optional hai — na bheja ho to purani value waise ki waisi.
+    let printLimit = null;
+    if (req.body.printLimit !== undefined && req.body.printLimit !== null && req.body.printLimit !== '') {
+      printLimit = parseInt(req.body.printLimit);
+      if (isNaN(printLimit) || printLimit < 1 || printLimit > DEMO_MAX_PRINTS)
+        return res.status(400).json({ error: 'Print limit 1 se ' + DEMO_MAX_PRINTS + ' ke beech ho' });
+    }
     await pool.query("UPDATE system_settings SET value=$1 WHERE key='demo_enabled'", [enabled]);
     await pool.query("UPDATE system_settings SET value=$1 WHERE key='demo_minutes'", [String(mins)]);
+    if (printLimit !== null) {
+      await pool.query(
+        `INSERT INTO system_settings (key, value) VALUES ('demo_print_limit', $1)
+         ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=NOW()`, [String(printLimit)]);
+    }
     // instant bheja hi na ho to purani setting waise ki waisi rehti hai
     if (req.body.instant !== undefined) {
       await pool.query("UPDATE system_settings SET value=$1 WHERE key='demo_auto_approve'",
@@ -3285,16 +3297,24 @@ app.post('/api/superadmin/withdrawals/:id/complete', verifySuperAdmin, async (re
 // ══════════════════ FREE DEMO (24 ghante, 10 print) ══════════════════
 // Anti-abuse: (1) ek phone = ek demo PERMANENT, (2) ek IP = 2/din,
 // (3) ek MACHINE = ek demo permanent (agent MachineGuid bhejta hai).
+// Demo settings ki upar wali seema — superadmin isse neeche kuch bhi rakh
+// sakta hai. 365 din / 1 lakh prints practically "jitna chahe" hi hai.
+const DEMO_MAX_MINUTES = 365 * 24 * 60;   // 525600
+const DEMO_MAX_PRINTS  = 100000;
+
 async function getDemoConfig() {
   try {
     const r = await pool.query(
       "SELECT key,value FROM system_settings WHERE key IN ('demo_enabled','demo_minutes','demo_print_limit','demo_auto_approve')");
     const m = Object.fromEntries(r.rows.map(x => [x.key, x.value]));
-    const mins = Math.max(15, Math.min(1440, parseInt(m.demo_minutes) || 1440)); // 15 min .. 24 hr guard
+    // Superadmin jitna chahe utna set kar sakta hai — bas 15 min se kam nahi
+    // aur DEMO_MAX_MINUTES (1 saal) se zyada nahi, taaki typo se koi demo
+    // hamesha ke liye na khul jaaye.
+    const mins = Math.max(15, Math.min(DEMO_MAX_MINUTES, parseInt(m.demo_minutes) || 1440));
     return {
       enabled: (m.demo_enabled || '1') === '1',
       minutes: mins,
-      printLimit: Math.max(1, Math.min(1000, parseInt(m.demo_print_limit) || 10)),
+      printLimit: Math.max(1, Math.min(DEMO_MAX_PRINTS, parseInt(m.demo_print_limit) || 10)),
       // instant = form submit karte hi demo ban jaata hai (default).
       // false = purana flow: pehle superadmin Accept kare tabhi bane.
       autoApprove: (m.demo_auto_approve || '1') === '1',
