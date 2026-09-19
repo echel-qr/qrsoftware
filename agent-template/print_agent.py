@@ -110,11 +110,11 @@ LP_SECONDS = 30                # server itni der line pakde
 # shop wapas aa jaye to agent khud sambhal le.
 SHOP_GONE_INTERVAL = 30 * 60
 LP_TIMEOUT = LP_SECONDS + 15   # agent ka apna timeout — hamesha zyada
-VERSION            = 2            # Internal update build number.
+VERSION            = 39           # Internal update build number.
                                   # Ye sirf badhta hai (29 → 30 → 31...). Isko kabhi
                                   # "2.0" mat banao: purane v27/v28/v29 agents integer
                                   # compare karte hain, warna woh update lena band kar denge.
-VERSION_LABEL      = "2.0"        # Display version.
+VERSION_LABEL      = "2.9"        # Display version.
 REMOTE_VERSION_LABEL = None       # Server ka latest label — update check par bhar jaata hai
 REMOTE_VERSION_INT = 0            # Server ka internal build number (integer compare ke liye)
 SUPPORT_WA         = "917011482679"  # Offline fallback; online support follows website settings.

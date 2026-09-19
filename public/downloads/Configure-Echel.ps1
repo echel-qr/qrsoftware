@@ -18,7 +18,7 @@ try {
     if ($env:ECHEL_SERVER_URL) {
         Write-Warning 'ECHEL_SERVER_URL is already set and overrides this file. Update or remove that override before starting the Agent.'
     }
-    Write-Host 'Exit the old Agent, then open Echel-Agent-V2.exe from this same folder.'
+    Write-Host 'Exit the old Agent, then open Echel-Agent-V2.9.exe from this same folder.'
     exit 0
 } catch {
     Write-Error $_ -ErrorAction Continue
