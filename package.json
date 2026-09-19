@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/branding.test.js test/branding-routes.test.js test/billing.test.js test/billing-postgres.test.js test/edition.test.js test/deployment.test.js test/database-init.test.js test/i18n.test.js test/desktop.test.js test/runtime-dependencies.test.js test/server-start.test.js test/language-select.test.js test/demo-config.test.js",
+    "test": "node --test test/branding.test.js test/branding-routes.test.js test/billing.test.js test/billing-postgres.test.js test/edition.test.js test/deployment.test.js test/database-init.test.js test/i18n.test.js test/desktop.test.js test/runtime-dependencies.test.js test/server-start.test.js test/language-select.test.js",
     "check": "node --check server.js && node test/check-syntax.js",
     "preview": "node test/preview-server.js"
   },

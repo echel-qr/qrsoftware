@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
 <meta charset="UTF-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Echel | Shop workspace</title>
+<title>Echel - Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -441,7 +441,7 @@ table th{font-family:'Inter',sans-serif !important;font-weight:700 !important}
    liye select ka apna background/color use karta hai. Pehle background
    aadha-paardarshi safed tha, isliye list khulne par safed par safed —
    kuch padha hi nahi jaata tha. Ab dono jagah pakka rang. */
-select[data-i18n-select]{background-color:#2a1c4d;color:#fff}
+select[data-i18n-select]{background-color:#2a1c4d !important;color:#fff !important;border-color:rgba(255,255,255,.18) !important}
 select[data-i18n-select] option{background-color:#2a1c4d;color:#fff}
 select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 @media (forced-colors:active){
@@ -714,55 +714,49 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <link rel="stylesheet" href="/echel-theme.css?v=1">
 <script src="/echel-brand.js?v=1" defer></script>
-<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script><link rel="stylesheet" href="/echel-owner.css?v=2"><script src="/echel-owner.js?v=2" defer></script><script src="/echel-owner-i18n.js?v=2" defer></script></head>
-<body class="echel-panel echel-owner">
+<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<body class="echel-panel">
 
-<nav class="owner-public-nav">
+<nav>
   <div class="logo">Echel</div>
   <div style="display:flex;gap:8px;">
-    <select data-i18n-select aria-label="Language"><option value="en">English</option><option value="mni-mtei">ꯃꯤꯇꯩꯂꯣꯟ</option></select><a class="nav-link" href="/">Home ↗</a>
+    <a class="nav-link" href="/">🏠 Home</a>
     <button class="nav-link hidden" id="logoutBtn" onclick="logout()">🚪 Logout</button>
   </div>
 </nav>
 
-<div class="login-wrap" id="loginScreen"><aside class="owner-login-intro">
-    <div><div class="owner-eyebrow">THE ECHEL WORKSPACE</div>
-    <h2>Your shop.<br><em>Your way.</em></h2>
-    <p class="owner-login-lead">A little less work at the counter. A little more room to grow.</p></div>
-    <div class="owner-login-details"><div><span>01 / PRINT</span><h3>Keep things moving.</h3><p>Manage orders and printers from one place.</p></div><div><span>02 / GROW</span><h3>Know your business.</h3><p>See your earnings and stay in control.</p></div></div>
-  </aside>
+<div class="login-wrap" id="loginScreen"><aside class="echel-login-story"><a href="/" class="brand" data-echel-brand><img src="/img/echel-logo.jpeg" width="42" height="42" alt=""> Echel</a><div class="echel-kicker">YOUR PRINT BUSINESS, CONNECTED</div><h2>Less at the counter.<br>More in your control.</h2><p>Print orders, payments, printers and shop settings in one workspace.</p><div class="echel-login-step">SCAN &nbsp; / &nbsp; UPLOAD &nbsp; / &nbsp; PAY &nbsp; / &nbsp; PRINT</div></aside>
   <a class="login-brand" href="/" style="text-decoration:none">Echel</a>
   <div class="login-card">
-    <div class="owner-form-heading"><div class="owner-eyebrow">SHOP OWNER ACCESS</div><h1>Welcome to your workspace.</h1><p>Sign in with your Shop ID to continue.</p></div>
+    <h1>Welcome back.</h1>
+    <p>Sign in to manage your shop.</p>
     <div class="form-group">
-      <label for="loginShopId">Shop ID</label>
-      <input autocomplete="username" spellcheck="false" id="loginShopId" placeholder="SHOP_XXXXXXXX" style="text-transform:uppercase;">
+      <label>Shop ID</label>
+      <input id="loginShopId" placeholder="SHOP_XXXXXXXX" style="text-transform:uppercase;">
     </div>
     <div class="form-group">
-      <label for="loginPassword">Password</label>
-      <input autocomplete="current-password" type="password" id="loginPassword" placeholder="••••••">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••">
     </div>
     <div class="form-group" id="capRow" style="display:none;">
       <label>Captcha</label>
       <div style="display:flex;gap:8px;align-items:center;">
         <img id="capImg" alt="Captcha" width="160" height="52"
              style="height:52px;width:160px;flex:none;border:1px solid #e5e7eb;border-radius:9px;background:#f4f6fb;">
-        <button type="button" onclick="loadCaptcha()" title="Refresh captcha"
+        <button type="button" onclick="loadCaptcha()" title="Naya captcha"
                 style="height:52px;width:44px;flex:none;border:1px solid #e5e7eb;background:#fff;
                        border-radius:9px;font-size:18px;cursor:pointer;line-height:1;">&#8635;</button>
         <input id="capAns" type="text" maxlength="8" autocomplete="off" spellcheck="false"
-               autocapitalize="characters" placeholder="Enter the characters"
+               autocapitalize="characters" placeholder="Upar wale akshar"
                onkeydown="if(event.key==='Enter')doLogin()" style="flex:1;min-width:0;">
       </div>
     </div>
-    <div class="owner-password-option"><input type="checkbox" id="ownerShowPassword"><label for="ownerShowPassword">Show password</label></div>
-    <button class="btn-primary" id="loginBtn" onclick="doLogin()">Sign in to workspace</button>
+    <button class="btn-primary" id="loginBtn" onclick="doLogin()">Login</button>
     <div class="err-msg" id="loginErr"></div>
     <div class="help-text">
       Forgot your password or setting it for the first time? <a onclick="showSetPassword()">Reset/set it here</a>
     </div>
 
-    <div class="owner-register"><span>New to Echel?</span><a href="/register">Create your shop ↗</a></div>
     <div id="setPasswordSection" class="hidden" style="margin-top:20px;border-top:1px solid #f0ebe3;padding-top:20px;">
       <div class="form-group">
         <label>Shop ID</label>
@@ -784,7 +778,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 <div class="app-shell">
   <div class="side-overlay" id="sideOverlay" onclick="closeSide()"></div>
   <aside class="side" id="sideNav">
-    <div class="side-brand"><img data-echel-logo src="/img/echel-logo.jpeg" alt="" width="36" height="36" style="border-radius:50%"> <span><span data-echel-name id="sideBrandName">Echel</span><small>OWNER WORKSPACE</small></span></div>
+    <div class="side-brand"><img data-echel-logo src="/img/echel-logo.jpeg" alt="" width="36" height="36" style="border-radius:50%"> <span><span data-echel-name id="sideBrandName">Echel</span><small>Shop Panel</small></span></div>
     <div class="side-shop"><span>Shop<b id="adminShopName">Shop Dashboard</b></span></div>
     <button class="nav-it active" data-nav="overview" onclick="navTo('overview',this)"><span class="ico">📊</span> Overview</button>
 <!-- Refer & Earn poori tarah hata diya gaya — ab sirf Agent program hai (flat ₹100). -->
@@ -812,14 +806,14 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
     <div class="app-topbar">
       <button class="hamburger" onclick="openSide()">☰</button>
       <div>
-        <div class="page-title" id="pageTitle">Shop overview</div>
+        <div class="page-title" id="pageTitle">Overview</div>
         <div class="page-crumb" id="pageCrumb">Home <i>›</i> <span>Overview</span></div>
       </div>
       <div class="top-spacer"></div>
       <div id="agentStatusChip" class="agent-pill off">
         <span class="led"></span><span class="txt">Agent status…</span>
       </div>
-      <button class="top-btn" onclick="navTo('support',document.querySelector('[data-nav=support]'))" title="Support">Support</button>
+      <button class="top-btn" onclick="navTo('support',document.querySelector('[data-nav=support]'))" title="Support">❓</button>
     </div>
     <div class="app-content"><div id="sectionHost">
 
@@ -849,8 +843,8 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <div class="dlCard-top">
         <div class="dlCard-ico">⬇️</div>
         <div class="dlCard-txt">
-          <div class="dlCard-title">Echel Print Agent <span id="verBannerNum">—</span></div>
-          <div class="dlCard-sub">Connect your shop computer to receive print orders.</div>
+          <div class="dlCard-title">Software Version <span id="verBannerNum">—</span> Available</div>
+          <div class="dlCard-sub">Always keep the latest version installed — new features + bug fixes</div>
         </div>
         <!-- Sirf tab dikhta hai jab super admin ne update notes likhe hon -->
         <button id="wiuBtn1" onclick="openWhatsNew()" class="dlCard-notes" style="display:none;">📝 What's in Update</button>
@@ -936,20 +930,20 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
     <!-- SHOP STATUS: pause + supply -->
     <div class="card" style="margin-bottom:20px;">
-      <h2>Shop availability</h2>
+      <h2>🏪 Shop Status</h2>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0;">
         <div>
-          <div style="font-weight:700;font-size:14px;" id="pauseLabel">Shop is open</div>
+          <div style="font-weight:700;font-size:14px;" id="pauseLabel">🟢 Shop Is Open</div>
           <div style="font-size:11px;color:#6b6870;margin-top:2px;">When closed, customers can't place orders</div>
         </div>
-        <button id="pauseBtn" onclick="togglePause()" style="border:none;border-radius:12px;padding:11px 20px;font-weight:800;font-size:13px;cursor:pointer;background:#fee2e2;color:#c22;">Close shop</button>
+        <button id="pauseBtn" onclick="togglePause()" style="border:none;border-radius:12px;padding:11px 20px;font-weight:800;font-size:13px;cursor:pointer;background:#fee2e2;color:#c22;">⏸️ Close Shop</button>
       </div>
       <div style="border-top:1.5px dashed #ece7f5;padding-top:12px;">
-        <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Printer supplies <span style="font-weight:500;color:#6b6870;">(shown to customers)</span></div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px;">🖨️ Ink/Paper Status <span style="font-weight:500;color:#6b6870;">(shown to customers)</span></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="supply-btn" data-w="" onclick="setSupply('')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">All good</button>
-          <button class="supply-btn" data-w="low_ink" onclick="setSupply('low_ink')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">Low ink</button>
-          <button class="supply-btn" data-w="no_paper" onclick="setSupply('no_paper')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">Out of paper</button>
+          <button class="supply-btn" data-w="" onclick="setSupply('')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">✅ All Good</button>
+          <button class="supply-btn" data-w="low_ink" onclick="setSupply('low_ink')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">🟡 Low on Ink</button>
+          <button class="supply-btn" data-w="no_paper" onclick="setSupply('no_paper')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">🔴 Out of Paper</button>
         </div>
       </div>
     </div>
@@ -974,33 +968,33 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
         <div class="stat-val" id="totalOrders">0</div>
       </div>
       <div class="stat" data-ico="💰" style="--si-bg:#fffbeb;">
-        <div class="stat-lbl">Total earnings</div>
+        <div class="stat-lbl">Overall Total Kamai</div>
         <div class="stat-val green" id="totalEarn">₹0</div>
       </div>
     </div>
 
     <!-- CUSTOMER NOTICE -->
     <div class="card" style="margin-top:20px;background:linear-gradient(180deg,#fffbeb,#fff);border:1.5px solid #fcd34d;">
-      <h2 style="margin-top:0;">Customer notice</h2>
-      <p style="font-size:12px;color:#92400e;margin-top:-4px;">Share an offer or service update on your customer page.</p>
-      <input type="text" id="noticeInput" maxlength="200" placeholder='e.g. Black and white printing only today' style="width:100%;padding:12px;border:1.5px solid #e2ddd6;border-radius:12px;font-size:14px;box-sizing:border-box;">
+      <h2 style="margin-top:0;">📢 Message to Customer</h2>
+      <p style="font-size:12px;color:#92400e;margin-top:-4px;">This shows to the customer on the QR page — an offer, "no color today", a holiday, anything</p>
+      <input type="text" id="noticeInput" maxlength="200" placeholder='e.g. "Aaj sirf B&W" ya "Holi offer: sab ₹2"' style="width:100%;padding:12px;border:1.5px solid #e2ddd6;border-radius:12px;font-size:14px;box-sizing:border-box;">
       <div style="display:flex;gap:8px;margin-top:10px;">
-        <button onclick="saveNotice()" style="flex:1;background:#f59e0b;color:#fff;border:none;border-radius:12px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;">Publish notice</button>
-        <button onclick="clearNotice()" style="background:#f4f5f8;color:#6b6870;border:none;border-radius:12px;padding:12px 16px;font-weight:700;font-size:13px;cursor:pointer;">Remove</button>
+        <button onclick="saveNotice()" style="flex:1;background:#f59e0b;color:#fff;border:none;border-radius:12px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;">💾 Show Message</button>
+        <button onclick="clearNotice()" style="background:#f4f5f8;color:#6b6870;border:none;border-radius:12px;padding:12px 16px;font-weight:700;font-size:13px;cursor:pointer;">✖️ Remove</button>
       </div>
       <div id="noticeMsg" style="font-size:12px;margin-top:8px;text-align:center;"></div>
     </div>
 
     <!-- INSIGHTS: busy time + feedback -->
     <div class="stats" style="margin-top:16px;">
-      <div class="stat"><div class="stat-lbl">Busiest time</div><div class="stat-val" id="peakHour" style="font-size:16px;">—</div></div>
-      <div class="stat"><div class="stat-lbl">Happy customers</div><div class="stat-val green" id="fbUp">—</div></div>
-      <div class="stat"><div class="stat-lbl">Complaints</div><div class="stat-val" id="fbDown" style="color:#dc2626;">—</div></div>
+      <div class="stat"><div class="stat-lbl">🕐 Busiest Time</div><div class="stat-val" id="peakHour" style="font-size:16px;">—</div></div>
+      <div class="stat"><div class="stat-lbl">😊 Happy Customers</div><div class="stat-val green" id="fbUp">—</div></div>
+      <div class="stat"><div class="stat-lbl">😐 Complaints</div><div class="stat-val" id="fbDown" style="color:#dc2626;">—</div></div>
     </div>
 
     <!-- 7-DIN EARNING -->
     <div class="card" style="margin-top:20px;">
-      <h2>Weekly performance</h2>
+      <h2>📅 Last 7 Days</h2>
       <div style="display:flex;gap:12px;margin:10px 0 14px;flex-wrap:wrap;">
         <div style="flex:1;min-width:120px;background:#f3ecff;border-radius:12px;padding:12px;">
           <div style="font-size:11px;color:#b51c26;font-weight:700;">This Week <span id="weekTrend" style="font-size:11px;"></span></div>
@@ -1035,7 +1029,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           <h2 style="margin-bottom:6px;">
             <span style="display:inline-flex;align-items:center;gap:9px;">
               <span style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#b51c26,#e0489f);display:inline-flex;align-items:center;justify-content:center;font-size:17px;">📱</span>
-              Your shop QR code
+              Aapki Shop Ka QR Code
             </span>
           </h2>
           <p style="font-size:12.5px;color:#8b8e9e;line-height:1.65;margin-bottom:15px;">
@@ -1078,7 +1072,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <div class="dl-ico">⬇️</div>
       <div class="dl-txt">
         <b>Download the latest software <span id="latestVerBtn">—</span></b>
-        <span>Install the latest features and improvements.</span>
+        <span>Naye features aur bug fixes — hamesha latest version chalao</span>
       </div>
       <div class="dl-meta"><span id="dlVerMeta">EXE</span></div>
       <button class="dl-btn" onclick="downloadEasyInstaller()">⬇️ Download Now</button>
@@ -1097,7 +1091,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <div class="dl-ico">📖</div>
       <div class="dl-txt">
         <b>Setup Guide (README)</b>
-        <span>A step-by-step guide to setting up your shop computer.</span>
+        <span>Step-by-step — software setup aur use karne ka poora tarika</span>
       </div>
       <div class="dl-meta">PDF</div>
       <button class="dl-btn" onclick="downloadReadme()">⬇️ Download Guide</button>
@@ -1106,7 +1100,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
     <div class="dl-row plum">
       <div class="dl-ico">🖼️</div>
       <div class="dl-txt">
-        <b>Shop poster with QR code</b>
+        <b>Shop Poster (QR laga hua)</b>
         <span>Print this A4 poster and display it in your shop for customers to scan.</span>
       </div>
       <div class="dl-meta">PDF · A4</div>
@@ -2217,7 +2211,7 @@ async function loadBreakdown(){
 }
 
 // ===== SIDEBAR NAV =====
-const PAGE_TITLES={account:'Delete Account', partner:'Partner Program', review:'Review Dijiye', overview:'Shop overview',qr:'QR & Downloads',orders:'Orders',payment:'Payment Setup',advance:'Print features',support:'Support',settings:'Settings',custlang:'Customer Language',agent:'Agent Dashboard'};
+const PAGE_TITLES={account:'Delete Account', partner:'Partner Program', review:'Review Dijiye', overview:'Overview',qr:'QR & Downloads',orders:'Orders',settings:'Settings',custlang:'Customer Language',agent:'Agent Dashboard'};
 /* ── Review Dijiye ─────────────────────────────────────────
    Shop apna review bhejta hai. Seedha live nahi hota — pehle
    superadmin approve karta hai. Ek shop ka ek hi review rehta hai:
@@ -2517,7 +2511,6 @@ async function saveCustLang(){
 function navTo(sect,btn){
   document.querySelectorAll('[data-sect]').forEach(el=>el.classList.toggle('show',el.getAttribute('data-sect')===sect));
   document.querySelectorAll('.nav-it[data-nav]').forEach(n=>n.classList.toggle('active',n.getAttribute('data-nav')===sect));
-  document.querySelectorAll('.nav-it[data-nav]').forEach(n=>{if(n.getAttribute('data-nav')===sect)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});
   const _nm = PAGE_TITLES[sect]||'';
   document.getElementById('pageTitle').textContent=_nm;
   const _cr = document.getElementById('pageCrumb');
@@ -2615,10 +2608,10 @@ async function doLogin() {
   const errEl = document.getElementById('loginErr');
   errEl.style.display = 'none';
 
-  if (!shopId || !password) { showLoginError('Enter your Shop ID and password.'); return; }
+  if (!shopId || !password) { showLoginError('Shop ID aur Password dono daalo'); return; }
 
   const btn = document.getElementById('loginBtn');
-  btn.disabled = true; btn.textContent = 'Signing in…';
+  btn.disabled = true; btn.textContent = '⏳ Login ho raha hai...';
 
   try {
     const res = await fetch('/api/shop/login', {
@@ -2638,18 +2631,18 @@ async function doLogin() {
       startAgentStatusPolling();
       loadAdminPanel();
     } else {
-      showLoginError(data.error || 'Unable to sign in. Check your details.');
+      showLoginError(data.error || 'Login fail hua');
       loadCaptcha();          // ek captcha sirf ek baar chalta hai
     }
   } catch(e) {
     showLoginError('Network error');
   }
-  btn.disabled = false; btn.textContent = 'Sign in to workspace';
+  btn.disabled = false; btn.textContent = 'Login Karo';
 }
 
 function showLoginError(msg) {
   const errEl = document.getElementById('loginErr');
-  errEl.textContent = msg;
+  errEl.textContent = '❌ ' + msg;
   errEl.style.display = 'block';
 }
 
