@@ -7,8 +7,8 @@
 <title>Echel - Setup Payment</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-<!-- Partner Cashfree par ho to yahi SDK checkout kholta hai. Razorpay
-     wala raasta jaisa tha waisa hi hai. -->
+<!-- When the partner uses Cashfree, this SDK opens the checkout. The Razorpay
+     path is unchanged. -->
 <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -159,7 +159,7 @@ nav{
 .steps-mini h4{font-size:13px;font-weight:800;color:#8a6d1f;margin-bottom:8px}
 .steps-mini p{font-size:12.5px;color:#6b5a2f;line-height:1.85}
 .tiny{font-size:11.5px;color:var(--muted);margin-bottom:14px;text-align:center;line-height:1.6}
-/* ── Setup video: same "How to Setup" video jo homepage par hai ── */
+/* ── Setup video: the same "How to Setup" video as on the homepage ── */
 .gv-mini-label{text-align:center;font-size:11.5px;font-weight:700;color:var(--muted);margin:4px 0 8px}
 .gv-mini-frame{
   margin:0 auto 18px;max-width:340px;border-radius:18px;padding:6px;
@@ -178,7 +178,7 @@ nav{
 </style>
 <link rel="stylesheet" href="/echel-theme.css?v=1">
 <script src="/echel-brand.js?v=1" defer></script>
-<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<script src="/i18n.js" defer></script></head>
 <body class="echel-checkout">
 
 <nav>
@@ -191,7 +191,7 @@ nav{
   <!-- Payment Card -->
   <div class="pay-card" id="payCard">
     <div class="echel-checkout-progress"><span>01 · Register ✓</span><b>02 · Activate</b><span>03 · Print</span></div><div class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></div>
-    <h1>Ek Aakhri Step!</h1>
+    <h1>One Last Step!</h1>
     <p>Complete your setup payment to download the QR code and Print Agent</p>
 
     <div class="price-box">
@@ -201,8 +201,8 @@ nav{
     </div>
 
     <ul class="benefits">
-      <li>✅ <span>Apni shop ka unique QR Code</span></li>
-      <li>✅ <span>Print Agent software (PC ke liye)</span></li>
+      <li>✅ <span>Your shop's unique QR Code</span></li>
+      <li>✅ <span>Print Agent software (for the PC)</span></li>
       <li>✅ <span>Step-by-step setup guide</span></li>
       <li>✅ <span>Unlimited print orders with no per-print commission</span></li>
     </ul>
@@ -218,7 +218,7 @@ nav{
     <p>Your shop is ready. Download your files below.</p>
 
     <div class="shop-id-box">
-      <h4>✅ Aapka Shop ID</h4>
+      <h4>✅ Your Shop ID</h4>
       <div class="shop-id-val" id="shopIdDisplay">---</div>
     </div>
 
@@ -242,11 +242,11 @@ nav{
     </button>
 
     <div class="steps-mini">
-      <h4>📋 Easy Installer Ke Liye:</h4>
+      <h4>📋 For the Easy Installer:</h4>
       <p>
         1. Open the downloaded .exe file.<br>
         2. Follow the installation prompts.<br>
-        3. Pehli baar khulte hi Shop ID poochega — daalo<br>
+        3. It asks for the Shop ID the first time it opens — enter it<br>
         4. Find the agent icon in the Windows system tray.<br>
         5. Download and print your QR code from the dashboard.
       </p>
@@ -257,22 +257,22 @@ nav{
 
 <script>
 const shopId = location.pathname.split('/').pop();
-let CURRENT_AMOUNT = null; // DB se aayi actual price — single source of truth
-function payLabel(){ return CURRENT_AMOUNT ? ('Pay ₹' + CURRENT_AMOUNT + ' Karke Setup Complete Karo') : 'Pay Karke Setup Complete Karo'; }
+let CURRENT_AMOUNT = null; // actual price from the DB — single source of truth
+function payLabel(){ return CURRENT_AMOUNT ? ('Pay ₹' + CURRENT_AMOUNT + ' and Complete Setup') : 'Pay and Complete Setup'; }
 
-// Plan-aware header — monthly par LIFETIME kabhi nahi likhna (galat promise)
+// Plan-aware header — never say LIFETIME for a monthly plan (that would be a false promise)
 (async () => {
   try {
     const r = await fetch('/api/setup-status/' + shopId);
     const d = await r.json();
-    if (d.paid) return; // paid par page khud redirect/handle karega
+    if (d.paid) return; // when paid, the page redirects/handles it itself
     const lbl = document.getElementById('feeLabel');
     const amt = document.getElementById('feeAmount');
     const sub = document.getElementById('feeSub');
     CURRENT_AMOUNT = d.amount || null;
     amt.textContent = '₹' + (d.amount || 0);
     const payBtn = document.getElementById('payBtn');
-    if (d.amount) payBtn.textContent = 'Pay ₹' + d.amount + ' Karke Setup Complete Karo';
+    if (d.amount) payBtn.textContent = 'Pay ₹' + d.amount + ' and Complete Setup';
     const cycle=d.billingCycle||(d.plan==='monthly'?'monthly':'lifetime');
     const labels={monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly',lifetime:'Lifetime'};
     lbl.textContent=(labels[cycle]||'Lifetime')+' plan';
@@ -281,9 +281,9 @@ function payLabel(){ return CURRENT_AMOUNT ? ('Pay ₹' + CURRENT_AMOUNT + ' Kar
   } catch(e) {}
 })();
 
-/* Cashfree se wapas aaye ho (?cf=1) — paisa kat chuka hai ya nahi, ye
-   SERVER poochh kar batata hai. Cashfree kabhi-kabhi thoda der leta hai,
-   isliye 5 baar tak (har 2 sec) poochhte hain. */
+/* Returning from Cashfree (?cf=1) — the SERVER checks whether the money was
+   actually debited. Cashfree sometimes takes a little while,
+   so we ask up to 5 times (every 2 seconds). */
 async function checkCashfreeReturn() {
   let cf = false;
   try { cf = new URLSearchParams(location.search).get('cf') === '1'; } catch(e) {}
@@ -291,7 +291,7 @@ async function checkCashfreeReturn() {
 
   const btn = document.getElementById('payBtn');
   const errEl = document.getElementById('errMsg');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Payment check ho raha hai...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking payment...'; }
 
   for (let i = 0; i < 5; i++) {
     try {
@@ -303,8 +303,8 @@ async function checkCashfreeReturn() {
   }
 
   if (errEl) {
-    errEl.textContent = '⏳ Payment abhi confirm nahi hua. Paisa kat gaya ho to ye page '
-      + 'ek minute baad refresh karo — apne aap ho jayega. Phir bhi na ho to partner se baat karo.';
+    errEl.textContent = '⏳ Payment is not confirmed yet. If money was deducted, '
+      + 'refresh after a minute — it completes on its own. If it still does not, contact your partner.';
     errEl.style.display = 'block';
   }
   if (btn) { btn.disabled = false; btn.textContent = payLabel(); }
@@ -318,7 +318,7 @@ async function loadShopId() {
     const data = await res.json();
     if (data.amount) {
       document.getElementById('feeAmount').textContent = '₹' + data.amount;
-      document.getElementById('payBtn').textContent = `Pay ₹${data.amount} Karke Setup Complete Karo`;
+      document.getElementById('payBtn').textContent = `Pay ₹${data.amount} and Complete Setup`;
     }
   } catch(e) {}
 }
@@ -328,7 +328,7 @@ async function initiatePayment() {
   const errEl = document.getElementById('errMsg');
   errEl.style.display = 'none';
   btn.disabled = true;
-  btn.textContent = '⏳ Payment shuru ho raha hai...';
+  btn.textContent = '⏳ Starting payment...';
 
   try {
     const res = await fetch('/api/setup-fee/create', {
@@ -338,43 +338,43 @@ async function initiatePayment() {
     });
     const data = await res.json();
     if (!data.success) {
-      errEl.textContent = '❌ ' + (data.error || (data.details && data.details.error && data.details.error.description) || 'Payment create nahi hua');
+      errEl.textContent = '❌ ' + (data.error || (data.details && data.details.error && data.details.error.description) || 'Payment could not be created');
       errEl.style.display = 'block';
       btn.disabled = false;
       btn.textContent = payLabel();
       return;
     }
 
-    // ── Partner Cashfree par hai ──
-    // Yahan se page Cashfree par chala jaata hai. Payment ke baad wo
-    // wapas isi page par ?cf=1 ke saath bhejta hai, aur upar wala
-    // checkCashfreeReturn() status poochh kar QR dikha deta hai.
+    // ── The partner uses Cashfree ──
+    // From here the page goes to Cashfree. After payment it sends the user
+    // back to this page with ?cf=1, and checkCashfreeReturn() above
+    // checks the status and shows the QR code.
     if (data.gateway === 'cashfree') {
       if (typeof Cashfree !== 'function') {
-        errEl.textContent = '❌ Cashfree load nahi hua — page refresh karke dobara try karo';
+        errEl.textContent = '❌ Cashfree did not load — refresh the page and try again';
         errEl.style.display = 'block';
         btn.disabled = false; btn.textContent = payLabel();
         return;
       }
       if (!data.paymentSessionId) {
-        errEl.textContent = '❌ Payment session nahi mila — dobara try karo';
+        errEl.textContent = '❌ Payment session not found — please try again';
         errEl.style.display = 'block';
         btn.disabled = false; btn.textContent = payLabel();
         return;
       }
       try {
-        btn.textContent = '💳 Cashfree page khul raha hai...';
+        btn.textContent = '💳 Opening the Cashfree page...';
         const cashfree = Cashfree({ mode: 'production' });
         const result = await cashfree.checkout({
           paymentSessionId: data.paymentSessionId,
           redirectTarget: '_self'
         });
-        // Redirect ho gaya to yahan ka kuch chalta hi nahi. Yahan aa gaye
-        // matlab page nahi khula — khali screen ke bajaye saaf baat.
+        // If the redirect happened, nothing here runs. Reaching this point
+        // means the page did not open — show a clear message instead of a blank screen.
         if (result && result.error) {
-          errEl.textContent = '❌ Cashfree: ' + (result.error.message || 'payment page nahi khula');
+          errEl.textContent = '❌ Cashfree: ' + (result.error.message || 'the payment page did not open');
         } else if (!(result && result.redirect)) {
-          errEl.textContent = '⏳ Cashfree page nahi khula — dobara Pay dabao';
+          errEl.textContent = '⏳ The Cashfree page did not open — press Pay again';
         }
         if (errEl.textContent) errEl.style.display = 'block';
       } catch (err) {
@@ -407,7 +407,7 @@ async function initiatePayment() {
         if (verifyData.success) {
           showSuccess(verifyData.qrCode);
         } else {
-          errEl.textContent = '❌ Payment verify nahi hua. Support se contact karo.';
+          errEl.textContent = '❌ Payment could not be verified. Please contact support.';
           errEl.style.display = 'block';
         }
       },
@@ -421,7 +421,7 @@ async function initiatePayment() {
     };
     const rzp = new Razorpay(options);
     rzp.on('payment.failed', () => {
-      errEl.textContent = '❌ Payment failed! Dobara try karo.';
+      errEl.textContent = '❌ Payment failed! Please try again.';
       errEl.style.display = 'block';
       btn.disabled = false;
       btn.textContent = payLabel();

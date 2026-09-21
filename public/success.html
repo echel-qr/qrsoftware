@@ -29,7 +29,7 @@ h2{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:8p
 </style>
 <link rel="stylesheet" href="/echel-theme.css?v=1">
 <script src="/echel-brand.js?v=1" defer></script>
-<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<script src="/i18n.js" defer></script></head>
 <body class="echel-checkout">
 <div class="wrap">
   <div class="card">
@@ -55,7 +55,7 @@ const gateway = params.get('gateway');
 
 async function checkPaymentStatus() {
   if (!jobId) {
-    document.getElementById('statusTitle').textContent = 'Order ID nahi mila';
+    document.getElementById('statusTitle').textContent = 'Order ID not found';
     document.getElementById('statusSub').textContent = '';
     return;
   }
@@ -67,8 +67,8 @@ async function checkPaymentStatus() {
     try {
       let statusCode = null;
 
-      // Cashfree se wapas aaye ho to seedha usse status pooch lo — webhook
-      // late aaye to bhi customer atakta nahi.
+      // Returning from Cashfree: ask the server for the status directly, so the
+      // customer is not stuck even if the webhook arrives late.
       if (gateway === 'cashfree') {
         const res = await fetch(`/api/payment/cashfree/status/${jobId}`);
         const data = await res.json();
@@ -82,21 +82,21 @@ async function checkPaymentStatus() {
         document.getElementById('statusIcon').className = 'icon success';
         document.getElementById('statusIcon').textContent = '✓';
         document.getElementById('statusTitle').textContent = 'Payment Successful!';
-        document.getElementById('statusSub').textContent = 'Aapka document print ho raha hai';
+        document.getElementById('statusSub').textContent = 'Your document is printing';
 
         if (job.status === 'printed') {
           document.getElementById('printStatusBox').classList.add('done');
           document.getElementById('printTitle').textContent = '✅ Print Complete!';
         } else {
-          document.getElementById('printTitle').textContent = '🖨️ Print ho raha hai...';
+          document.getElementById('printTitle').textContent = '🖨️ Printing...';
         }
 
         if (job.status === 'printed') clearInterval(interval);
       } else if (statusCode === 'EXPIRED' || statusCode === 'TERMINATED') {
         document.getElementById('statusIcon').className = 'icon failed';
         document.getElementById('statusIcon').textContent = '✕';
-        document.getElementById('statusTitle').textContent = 'Payment Fail Hua';
-        document.getElementById('statusSub').textContent = 'Dobara try karo ya counter pe pay karo';
+        document.getElementById('statusTitle').textContent = 'Payment Failed';
+        document.getElementById('statusSub').textContent = 'Try again or pay at the counter';
         clearInterval(interval);
       }
 

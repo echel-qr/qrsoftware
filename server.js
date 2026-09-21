@@ -6,26 +6,26 @@ const express = require('express');
 const cors = require('cors');
 const { Pool, types: pgTypes } = require('pg');
 
-// ⚠️ ZAROORI: price columns ab NUMERIC(10,2) hain (decimal rate ke liye).
-// node-postgres NUMERIC ko by-default STRING deta hai (precision na tootey
-// isliye). Uske kaaran price se hone wala har calculation aur comparison
-// silently galat ho gaya tha — superadmin me shops "offline" dikhne lagi
-// aur print ke baad error aane laga. Yahan parser lagakar NUMERIC ko wapas
-// number bana dete hain, taaki baaki poora code pehle jaisa hi chale.
+// ⚠️ IMPORTANT: price columns are now NUMERIC(10,2) (for decimal rates).
+// node-postgres returns NUMERIC as a STRING by default (so precision is not
+// lost). Because of that, every calculation and comparison involving a price
+// silently went wrong — shops started showing as "offline" in superadmin
+// and errors appeared after printing. A parser here turns NUMERIC back into a
+// number, so the rest of the code keeps working exactly as before.
 pgTypes.setTypeParser(1700, (v) => (v === null ? null : parseFloat(v)));   // NUMERIC / DECIMAL
 
-// ⚠️ ZAROORI: demo ka time se pehle khatam ho jaana — asli wajah yahi thi.
+// ⚠️ IMPORTANT: demos ending before their time — this was the real cause.
 //
-// Hamare saare TIMESTAMP columns "without time zone" hain aur database ka
-// timezone UTC hai. Par node-postgres aise column ko SERVER PROCESS ke
-// local timezone me padhta hai. Agar Render/PC ka TZ IST ho, to
-// "2026-08-15 07:50" ko wo IST maan leta hai = 02:20 UTC — yaani asli
-// waqt se 5.5 GHANTE PEHLE. Demo, agent online/offline, stuck job — sab
-// isi se galat ho jaate hain.
+// All our TIMESTAMP columns are "without time zone" and the database
+// timezone is UTC. But node-postgres reads such a column in the SERVER
+// PROCESS's local timezone. If the Render/PC TZ is IST, it treats
+// "2026-08-15 07:50" as IST = 02:20 UTC — i.e. 5.5 HOURS EARLIER
+// than the real time. Demo, agent online/offline, stuck jobs — all of
+// them go wrong because of this.
 //
-// Yahan parser lagakar bata dete hain ki ye value UTC hai. DB ka timezone
-// UTC hi hai, isliye ye 100% sahi hai — aur server ka TZ kuch bhi ho,
-// hisaab kabhi nahi bigdega.
+// The parser here declares that the value is UTC. The DB timezone really
+// is UTC, so this is 100% correct — and whatever the server TZ is, the
+// calculation never breaks.
 pgTypes.setTypeParser(1114, (v) => (v === null ? null : new Date(v + 'Z')));   // TIMESTAMP without tz
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
@@ -39,12 +39,12 @@ const archiver = require('archiver');
 const nodemailer = require('nodemailer');
 const compression = require('compression');
 
-// ── KAUN SA PRINT JOB "GINTI" ME AAYEGA ──
-// Pehle sirf payment_status='paid' dekha jaata tha. Uska matlab tha ki
-// jo job cancel ho gaya, abandon ho gaya ya printer par fail ho gaya
-// wo bhi shop owner ki earning aur print count me jud jaata tha.
-// Ab wo teeno status ginti se bahar hain — earning aur count dono me.
-// (Yahan sabse upar rakha hai taaki niche ki har query ise use kar sake.)
+// ── WHICH PRINT JOBS ARE "COUNTED" ──
+// Only payment_status='paid' used to be checked. That meant a job that was
+// cancelled, abandoned or failed on the printer was still added to the shop
+// owner's earnings and print count.
+// Now those three statuses are excluded — from both earnings and count.
+// (It sits at the very top so every query below can use it.)
 const JOB_NOT_COUNTED = "('cancelled','abandoned','failed')";
 const JOB_COUNTS = `payment_status='paid' AND COALESCE(status,'') NOT IN ${JOB_NOT_COUNTED}`;
 
@@ -54,15 +54,15 @@ const PORT = process.env.PORT || 3000;
 const BASE_URL = deployment.baseUrl;
 
 // ── White-label homepage settings ──
-// Monthly plan ka minimum — partner isse neeche price nahi rakh sakta.
+// The monthly plan minimum — a partner cannot set a price below this.
 const WL_MIN_MONTHLY = 399;
 
-// Price decimal me bhi ho sakta hai (2.5, 1.5) — 2 decimal tak round karo.
-// Galat/negative aaye to null lautao taaki purana price waisa hi rahe.
+// A price can be a decimal too (2.5, 1.5) — round to 2 decimals.
+// If it is invalid/negative, return null so the old price stays.
 // ── BIG SIZE (A3/A2/A1) PRICING ──────────────────────────────
-// Customer bada kagaz chunta hai to per-page rate alag hota hai.
-// Owner ne set nahi kiya (0/blank) to normal B&W/Color rate hi lagta
-// hai — isliye purani shops ka billing bilkul waisa ka waisa rehta hai.
+// When the customer picks large paper, the per-page rate is different.
+// If the owner has not set it (0/blank), the normal B&W/Color rate
+// applies — so billing for old shops stays exactly the same.
 const BIG_SIZE_PRICE_COLS = {
   a3: ['price_a3_bw', 'price_a3_color'],
   a2: ['price_a2_bw', 'price_a2_color'],
@@ -71,7 +71,7 @@ const BIG_SIZE_PRICE_COLS = {
 const BIG_SIZE_PRICE_SELECT =
   's.price_a3_bw, s.price_a3_color, s.price_a2_bw, s.price_a2_color, s.price_a1_bw, s.price_a1_color';
 
-/** row me se paper size + color mode ka big-size rate. Set na ho to 0. */
+/** The big-size rate for the row's paper size + colour mode. 0 when not set. */
 function bigSizeRate(row, paperSize, colorMode) {
   if (!row) return 0;
   const cols = BIG_SIZE_PRICE_COLS[String(paperSize || '').toLowerCase()];
@@ -79,7 +79,7 @@ function bigSizeRate(row, paperSize, colorMode) {
   const v = parseFloat(row[colorMode === 'color' ? cols[1] : cols[0]]);
   return (!isNaN(v) && v > 0) ? v : 0;
 }
-/** Paisa hamesha 2 decimal — float dust gateway par reject ho jaati hai. */
+/** Money always to 2 decimals — floating-point dust gets rejected by the gateway. */
 function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 
 function parsePrice(v) {
@@ -88,7 +88,7 @@ function parsePrice(v) {
   if (isNaN(n) || n < 0 || n > 100000) return null;
   return Math.round(n * 100) / 100;
 }
-// Homepage ke jo button/section partner on-off kar sakta hai.
+// The homepage buttons/sections a partner can turn on or off.
 const WL_HP_BUTTON_KEYS = ['contact','partner','agent','features','setupGuide',
                            'pricing','reviews','faq','demo','register','shopLogin'];
 
@@ -98,10 +98,10 @@ const CLD_API_SECRET = process.env.CLOUDINARY_API_SECRET || '';
 
 // (Global RAZORPAY_KEY_ID/SECRET removed — each shop now stores its own gateway credentials)
 
-// JWT_SECRET hamesha environment variable se aana chahiye production mein.
-// Agar set nahi hai to random secret generate karte hain runtime pe (sirf is
-// process ke chalte rehne tak valid — restart pe sab logged out ho jayenge).
-// Yeh hardcoded secret se kahin zyada safe hai.
+// In production JWT_SECRET must always come from an environment variable.
+// If it is not set, a random secret is generated at runtime (valid only while
+// this process keeps running — a restart logs everyone out).
+// This is far safer than a hardcoded secret.
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
 // ═══════════════════════════════════════════════════════════════════
@@ -109,12 +109,12 @@ const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('he
 // ═══════════════════════════════════════════════════════════════════
 
 // ── PASSWORD ──
-// Pehle plain SHA-256 tha (bina salt). SHA-256 itna tez hai ki ek normal
-// GPU crore hash per second try karta hai — DB leak hone par 4-character
-// password minute bhar me khul jaata. Ab Node ka BUILT-IN scrypt use
-// karte hain: har password ka apna salt, aur jaan-bujh ke slow.
-// Koi naya npm package nahi chahiye (crypto Node me pehle se hai).
-const PASSWORD_MAX = 200;            // isse lamba password lena hi nahi
+// This used to be plain SHA-256 (no salt). SHA-256 is so fast that an ordinary
+// GPU tries tens of millions of hashes per second — after a DB leak a 4-character
+// password would crack within a minute. Now Node's BUILT-IN scrypt is
+// used: every password gets its own salt, and it is deliberately slow.
+// No new npm package is needed (crypto is already part of Node).
+const PASSWORD_MAX = 200;            // never accept a longer password than this
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };   // ~16MB, ~100ms per hash
 
 function scryptDerive(password, salt) {
@@ -131,14 +131,14 @@ async function hashPassword(password) {
   return 'scrypt$' + salt.toString('base64') + '$' + dk.toString('base64');
 }
 
-// Length barabar na ho to timingSafeEqual throw karta hai — isliye wrapper
+// timingSafeEqual throws when the lengths differ — hence the wrapper
 function safeEq(a, b) {
   const x = Buffer.from(String(a)), y = Buffer.from(String(b));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 
-// PURANE (sha256) aur NAYE (scrypt) dono hash chalte hain — isi wajah se
-// migration me kisi ka login nahi tootega.
+// Both OLD (sha256) and NEW (scrypt) hashes work — that is why the
+// migration does not break anyone's login.
 async function verifyPassword(password, stored) {
   try {
     if (!stored) return false;
@@ -160,8 +160,8 @@ function isLegacyHash(stored) {
   return !!stored && !String(stored).startsWith('scrypt$');
 }
 
-// Login sahi hua aur hash abhi purana hai — chupchaap scrypt me badal do.
-// User ko kuch pata nahi chalta; dheere-dheere sab migrate ho jaate hain.
+// The login succeeded and the hash is still old — quietly convert it to scrypt.
+// The user notices nothing; gradually everyone migrates.
 async function upgradeHashIfLegacy(table, idCol, idVal, storedHash, plainPassword) {
   try {
     if (!isLegacyHash(storedHash)) return;
@@ -172,13 +172,13 @@ async function upgradeHashIfLegacy(table, idCol, idVal, storedHash, plainPasswor
 }
 
 // ── LOGIN RATE LIMIT ──
-// Bina iske koi bhi ek Shop ID par unlimited password try kar sakta hai.
-// In-memory hai (Render par ek hi instance chalta hai) — koi package nahi.
+// Without this anyone could try unlimited passwords on a Shop ID.
+// It is in-memory (only one instance runs on Render) — no package.
 const loginHits = new Map();
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX = 8;
 
-setInterval(() => {                    // purane entries hata do (memory leak na ho)
+setInterval(() => {                    // remove old entries (so memory does not leak)
   const now = Date.now();
   for (const [k, v] of loginHits) if (now > v.resetAt) loginHits.delete(k);
 }, 5 * 60 * 1000).unref();
@@ -193,12 +193,12 @@ function loginLimiter(req, res, next) {
   e.count++;
   if (e.count > LOGIN_MAX) {
     const mins = Math.ceil((e.resetAt - now) / 60000);
-    return res.status(429).json({ error: `Bahut zyada galat koshish. ${mins} minute baad try karo.` });
+    return res.status(429).json({ error: `Too many failed attempts. Try again in ${mins} minutes.` });
   }
   next();
 }
 
-// Login sahi ho gaya to counter reset — asli user ko dikkat na ho
+// Reset the counter after a successful login — so the real user is not affected
 function clearLoginHits(req) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
           || req.socket.remoteAddress || 'unknown';
@@ -206,84 +206,82 @@ function clearLoginHits(req) {
 }
 
 if (!process.env.JWT_SECRET) {
-  console.warn('⚠️  JWT_SECRET environment variable set nahi hai! Random secret generate kiya gaya — Render restart hone par sab logged out ho jayenge. Render mein JWT_SECRET add karo.');
+  console.warn('⚠️  The JWT_SECRET environment variable is not set! A random secret was generated — everyone will be logged out when Render restarts. Add JWT_SECRET in Render.');
 }
 
-// Setup Fee collect karne ke liye system owner (Rupesh) ki Razorpay keys.
-// Yeh per-shop gateway keys se ALAG hai — yeh sirf ₹499 registration fee ke liye hai.
+// The platform owner's Razorpay keys for collecting the Setup Fee.
+// These are SEPARATE from the per-shop gateway keys — they are only for the registration fee.
 const SETUP_FEE_AMOUNT = parseInt(process.env.SETUP_FEE_AMOUNT || '499');
 const SETUP_ACTUAL_PRICE = parseInt(process.env.SETUP_ACTUAL_PRICE || '999');
 const OWNER_RAZORPAY_KEY_ID = process.env.OWNER_RAZORPAY_KEY_ID || '';
 const OWNER_RAZORPAY_KEY_SECRET = process.env.OWNER_RAZORPAY_KEY_SECRET || '';
 
-// Super Admin login (Rupesh ka khud ka panel — sabhi shops dekhne ke liye)
+// Super Admin login (the platform owner's own panel — to see all shops)
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_ID || '';
 const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || '';
 
 if (!OWNER_RAZORPAY_KEY_ID || !OWNER_RAZORPAY_KEY_SECRET) {
-  console.warn('⚠️  OWNER_RAZORPAY_KEY_ID/SECRET set nahi hai — Setup Fee payment kaam nahi karega jab tak Render mein add na karo.');
+  console.warn('⚠️  OWNER_RAZORPAY_KEY_ID/SECRET is not set — Setup Fee payments will not work until it is added in Render.');
 }
 if (!SUPER_ADMIN_ID || !SUPER_ADMIN_PASSWORD) {
-  console.warn('⚠️  SUPER_ADMIN_ID/PASSWORD set nahi hai — Super Admin login kaam nahi karega jab tak Render mein add na karo.');
+  console.warn('⚠️  SUPER_ADMIN_ID/PASSWORD is not set — Super Admin login will not work until it is added in Render.');
 }
 
 const pool = new Pool(databaseOptions());
 
 // ══════════════════════════════════════════════════════════════
-//  ASLI CRASH BUG — 31 Aug ko yahi teen baar server girne ki wajah thi
+//  THE REAL CRASH BUG — this was why the server went down three times on 31 Aug
 //
-//  node-postgres ka rule: Pool ke andar koi IDLE client (jo abhi kisi
-//  query me busy nahi) agar apni socket par error paaye (jaise Supabase
-//  ka pooler use recycle kar de, ya beech me connection reset ho jaye —
-//  ECONNABORTED), to Pool us error ko khud handle nahi karta, sirf
-//  'error' EVENT emit karta hai.
+//  The node-postgres rule: if an IDLE client inside the Pool (one not busy
+//  with a query) gets an error on its socket (for example when the Supabase
+//  pooler recycles it, or the connection resets midway —
+//  ECONNABORTED), the Pool does not handle that error itself; it only
+//  emits an 'error' EVENT.
 //
-//  Is Pool par pehle KOI listener nahi tha. Node ka EventEmitter jab
-//  'error' event ke liye koi listener nahi paata, to use seedha THROW
-//  kar deta hai — jo ek uncaught exception ban kar POORA process crash
-//  kar deta hai. Isi se "throw er; // Unhandled 'error' event" wala
-//  crash aata tha, teeno baar.
+//  This Pool used to have NO listener. When Node's EventEmitter finds no
+//  listener for an 'error' event, it THROWS it directly — which becomes an
+//  uncaught exception and crashes the WHOLE process. That produced the
+//  "throw er; // Unhandled 'error' event" crash, all three times.
 //
-//  Fix seedha hai: listener laga do. Idle connection ka reset hona
-//  bilkul normal hai (network blip, pooler recycle) — bas use LOG karo
-//  aur aage badho. pg khud us mare hue client ko pool se nikaal kar
-//  agli query ke liye naya bana leta hai; kuch aur karne ki zaroorat
-//  nahi hai.
+//  The fix is simple: attach a listener. An idle connection being reset is
+//  perfectly normal (network blip, pooler recycle) — just LOG it and move
+//  on. pg removes the dead client from the pool itself and creates a new one
+//  for the next query; nothing else needs to be done.
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════════
-//  EGRESS OPTIMIZATION — polling ko Supabase se door rakhna
+//  EGRESS OPTIMIZATION — keeping polling away from Supabase
 //
 //  Agent  →  Render  →  Supabase
-//                       ↑ Supabase egress SIRF yahan se lagta hai.
+//                       ↑ Supabase egress is charged ONLY here.
 //
-//  Agent ka Render se baat karna free hai. Paisa tab lagta hai jab Render
-//  Supabase se poochta hai. Isliye maqsad ye NAHI hai ki agent kam poll
-//  kare — maqsad ye hai ki Render har poll par Supabase na jaye.
+//  The agent talking to Render is free. Money is spent when Render
+//  asks Supabase. So the goal is NOT that the agent polls less —
+//  the goal is that Render does not go to Supabase on every poll.
 // ══════════════════════════════════════════════════════════════════════
 
-/** Kis shop ka koi job print hone ka intezaar kar raha hai. */
+/** Shops that have a job waiting to be printed. */
 const shopsWithWork = new Set();
 
-/** Demo jo khatam ho chuke — inhe DB tak jaane hi nahi dena. */
+/** Demos that have already expired — do not even let them reach the DB. */
 const expiredDemoShops = new Set();
 
 /**
- * Shop ki basic info ka cache — { demo, demoExpiresAt, at }.
- * demo_expires_at ek TIMESTAMP hai, isliye expiry memory me hi check ho
- * jaati hai; iske liye baar-baar DB poochne ki zaroorat nahi.
+ * Cache of a shop's basic info — { demo, demoExpiresAt, at }.
+ * demo_expires_at is a TIMESTAMP, so the expiry can be checked in memory;
+ * there is no need to ask the DB again and again for it.
  */
 const shopInfoCache = new Map();
 const SHOP_INFO_TTL_MS = 10 * 60 * 1000;
 
-/** agent_last_seen — memory me jama karo, DB me batch me likho. */
+/** agent_last_seen — collect it in memory and write it to the DB in batches. */
 const pendingHeartbeats = new Map();   // shopId -> { at, version, label }
 const HEARTBEAT_FLUSH_MS = 2 * 60 * 1000;
 const WORK_SWEEP_MS      = 20 * 1000;
 
 // ══════════════════════════════════════════════════════════════════════
-//  LONG POLLING — khuli line par intezaar
-//  jobWaiters: shopId -> Set of ruki hui request. Job ready hote hi
-//  markShopHasWork() inhe turant jaga deta hai.
+//  LONG POLLING — waiting on an open line
+//  jobWaiters: shopId -> Set of waiting requests. As soon as a job is ready,
+//  markShopHasWork() wakes them up immediately.
 // ══════════════════════════════════════════════════════════════════════
 const jobWaiters = new Map();
 const LP_MAX_SEC     = 60;
@@ -299,7 +297,7 @@ function wakeJobWaiters(shopId) {
 function totalWaiters() {
   let n = 0; jobWaiters.forEach(function (s) { n += s.size; }); return n;
 }
-/** true = job aa gaya | false = time khatam ya line kat gayi */
+/** true = a job arrived | false = timed out or the line dropped */
 function waitForWork(shopId, sec, req) {
   return new Promise(function (resolve) {
     if (totalWaiters() >= LP_MAX_WAITERS) return resolve(false);
@@ -321,18 +319,18 @@ function waitForWork(shopId, sec, req) {
     set.add(entry);
   });
 }
-/** Job ready hote hi registry me daal do — agla poll turant utha lega. */
+/** As soon as a job is ready, put it in the registry — the next poll picks it up at once. */
 function markShopHasWork(shopId) {
   if (!shopId) return;
   shopsWithWork.add(String(shopId));
-  wakeJobWaiters(shopId);   // ruki hui request ko TURANT jagao
+  wakeJobWaiters(shopId);   // wake the waiting requests IMMEDIATELY
 }
 
 /**
- * SAFETY SWEEP — har 20 sec me EK query (sabhi shops ke liye ek hi).
- * Ye registry ko DB se milaa deti hai, taaki koi bhi job chhoot na jaye
- * chahe wo kisi bhi raaste se 'paid' bana ho, ya server restart hua ho,
- * ya ek se zyada instance chal rahe hon.
+ * SAFETY SWEEP — ONE query every 20 sec (a single one for all shops).
+ * It reconciles the registry with the DB so no job is ever missed,
+ * whichever path made it 'paid', or if the server restarted,
+ * or if more than one instance is running.
  */
 async function sweepShopsWithWork() {
   try {
@@ -343,20 +341,20 @@ async function sweepShopsWithWork() {
           AND COALESCE(j.status,'') IN ('queued','printing')
           AND s.setup_paid = true`);
     const fresh = new Set(r.rows.map(x => String(x.shop_id)));
-    // Poori list badal do — jo yahan nahi hai uska kaam khatam ho chuka hai
+    // Replace the whole list — anything not here is already done
     shopsWithWork.clear();
     fresh.forEach(id => shopsWithWork.add(id));
-    // Sweep se naya kaam mila to ruki hui requests bhi jagao
+    // If the sweep found new work, wake the waiting requests too
     fresh.forEach(id => wakeJobWaiters(id));
   } catch (e) {
-    // Sweep fail ho to registry ko haath mat lagao. Purani list par chalte
-    // rehna surakshit hai: zyada se zyada ek extra query lagegi, job
-    // atkega nahi.
-    console.error('Work sweep fail (purani list par chal rahe hain):', e.message);
+    // If the sweep fails, do not touch the registry. Carrying on with the old list
+    // is safe: at worst it costs one extra query; no job gets
+    // stuck.
+    console.error('Work sweep failed (continuing with the old list):', e.message);
   }
 }
 
-/** Jama kiye hue heartbeats ek saath DB me likho. */
+/** Write the collected heartbeats to the DB in one go. */
 async function flushHeartbeats() {
   if (!pendingHeartbeats.size) return;
   const batch = [...pendingHeartbeats.entries()];
@@ -381,27 +379,27 @@ async function flushHeartbeats() {
 }
 
 /**
- * verifyAgent ka token cache. Ye middleware HAR poll par chalta tha aur
- * har baar `SELECT agent_token FROM shops` karta tha — 72 agents x har
- * 5-12 sec. Token kabhi-kabhaar hi badalta hai (disconnect par), aur
- * disconnect ke waqt hum cache khud saaf karte hain — isliye surakshit hai.
+ * Token cache for verifyAgent. This middleware ran on EVERY poll and
+ * ran `SELECT agent_token FROM shops` every time — 72 agents x every
+ * 5-12 sec. The token changes only rarely (on disconnect), and on
+ * disconnect we clear the cache ourselves — so this is safe.
  */
 const agentTokenCache = new Map();   // shopId -> { token, at, missing? }
 const AGENT_TOKEN_TTL_MS = 5 * 60 * 1000;
 
-// "Shop hai hi nahi" wala jawab bhi cache hota hai — warna deleted demo
-// shop ka agent (jo hamesha poll karta rehta hai) har baar DB tak pahunch
-// jaata tha. 2026-09-08 par yahi kul database traffic ka 79% tha, aur
-// usme se 99% jawab khaali aate the.
+// The "shop does not exist" answer is cached too — otherwise the agent of a
+// deleted demo shop (which keeps polling forever) reached the DB every time.
+// On 2026-09-08 that was 79% of all database traffic, and 99% of those
+// answers were empty.
 //
-// Gayab shop lagbhag hamesha gayab hi rehta hai, isliye 10 minute kaafi
-// hai — aur agar kabhi koi anokha maamla ho to system khud theek ho
-// jaayega. Disconnect par invalidateAgentToken() cache saaf karta hi hai.
+// A missing shop almost always stays missing, so 10 minutes is plenty —
+// and if some unusual case ever happens, the system corrects itself.
+// invalidateAgentToken() clears the cache on disconnect anyway.
 const AGENT_MISS_TTL_MS = 10 * 60 * 1000;
 
-// Map par upar ki seema. Koi random shopId spray kare to har naya id ek
-// entry banata aur memory chupchaap badhti rehti. Map insertion ka kram
-// rakhta hai, isliye sabse purani entry pehle nikal jaati hai.
+// An upper bound on the Map. If someone sprayed random shopIds, each new id
+// would create an entry and memory would quietly keep growing. A Map keeps
+// insertion order, so the oldest entry is evicted first.
 const AGENT_CACHE_MAX = 5000;
 
 function setAgentTokenCache(shopId, entry) {
@@ -419,7 +417,7 @@ function invalidateAgentToken(shopId) {
   }
 }
 
-/** Shop ki demo info — cache se, warna ek baar DB se. */
+/** The shop's demo info — from the cache, otherwise once from the DB. */
 async function getShopInfoCached(shopId) {
   const hit = shopInfoCache.get(shopId);
   if (hit && (Date.now() - hit.at) < SHOP_INFO_TTL_MS) return hit;
@@ -434,39 +432,39 @@ async function getShopInfoCached(shopId) {
   return info;
 }
 
-// Server chalu hote hi ek baar registry bhar lo, phir chalti rehne do
+// Fill the registry once when the server starts, then keep it running
 setTimeout(sweepShopsWithWork, 3000);
 setInterval(sweepShopsWithWork, WORK_SWEEP_MS);
 setInterval(flushHeartbeats, HEARTBEAT_FLUSH_MS);
 
 pool.on('error', (err) => {
-  console.error('DB pool idle-client error (server crash NAHI hoga):', err.message);
+  console.error('DB pool idle-client error (the server will NOT crash):', err.message);
 });
 
 app.use(cors());
 app.disable('x-powered-by');
 
-// ── Dynamic response par ETag band ──
-// Express har res.json() ka hash bana kar ETag lagata hai. Poll ka data
-// har baar badal sakta hai, isliye agent ko 304 kabhi milta hi nahi —
-// hash ka CPU aur ~35 B/response dono bekaar. Static files par ASAR NAHI:
-// express.static apna alag ETag banata hai (uske options me etag:true).
-app.set('etag', false); // Express ka "X-Powered-By: Express" header hata do — tech-stack fingerprint kam
-// verify: raw body stash — Razorpay webhook ka signature RAW body par
-// HMAC hota hai, parsed JSON par nahi
-// Security headers — helmet package ki zaroorat nahi, ye headers hi kaafi hain
+// ── ETag disabled on dynamic responses ──
+// Express hashes every res.json() and adds an ETag. Poll data can change
+// every time, so the agent never gets a 304 anyway —
+// the hashing CPU and ~35 B/response are both wasted. NO effect on static files:
+// express.static creates its own ETag (etag:true in its options).
+app.set('etag', false); // remove Express's "X-Powered-By: Express" header — less tech-stack fingerprinting
+// verify: stash the raw body — the Razorpay webhook signature is an HMAC over
+// the RAW body, not the parsed JSON
+// Security headers — no need for the helmet package; these headers are enough
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
 
-  // ── API par browser-only headers mat bhejo ──
-  // CSP, X-Frame-Options, Permissions-Policy sirf tab kaam karte hain jab
-  // BROWSER HTML render kare. JSON API response par bekaar hain — khaas
-  // kar print agent ke liye, jo Python hai aur inhe padhta tak nahi.
+  // ── Do not send browser-only headers on the API ──
+  // CSP, X-Frame-Options and Permissions-Policy only matter when a
+  // BROWSER renders HTML. They are useless on JSON API responses — especially
+  // for the print agent, which is Python and never even reads them.
   //
-  // Ye ~900 bytes PER RESPONSE the (akela CSP 868 B). 11 lakh request/din
-  // par ~1 GB/din ja raha tha, bina kisi faayde ke.
+  // That was ~900 bytes PER RESPONSE (the CSP alone was 868 B). At 1.1 million
+  // requests/day that came to ~1 GB/day, for no benefit at all.
   //
-  // nosniff aur HSTS phir bhi bhejte hain — wo API par bhi matlab rakhte hain.
+  // nosniff and HSTS are still sent — they matter for the API too.
   if (req.path.startsWith('/api/')) {
     if (req.headers['x-forwarded-proto'] === 'https')
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
@@ -475,21 +473,21 @@ app.use((req, res, next) => {
 
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  // ⚠️ camera=() ka matlab hai "camera KISI ko nahi" — khud is site ko
-  // bhi nahi. Ye header browser ki site-setting se UPAR hota hai, isliye
-  // Chrome me Camera "Ask first" dikhne par bhi getUserMedia turant
-  // NotAllowedError deti thi aur ijazat ka popup aa hi nahi sakta tha.
-  // Naye browser (Brave) me bhi wahi — kyunki rok browser me thi hi nahi.
-  // Smart Scanner se pehle camera ki zaroorat nahi thi, tab ye theek tha.
-  // Ab camera=(self) chahiye: sirf apni site ko ijazat, koi bhi iframe/
-  // third-party ko nahi. mic aur location pehle jaise poori tarah band.
+  // ⚠️ camera=() means "camera for NOBODY" — not even this site
+  // itself. This header ranks ABOVE the browser's site setting, so even when
+  // Chrome showed Camera as "Ask first", getUserMedia immediately returned
+  // NotAllowedError and the permission popup could never appear.
+  // The same in a fresh browser (Brave) — because the block was never in the browser.
+  // Before the Smart Scanner no camera was needed, so this was fine then.
+  // Now camera=(self) is needed: permission for our own site only, never for any
+  // iframe/third party. Microphone and location stay completely off as before.
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-  // CSP — site abhi inline <script>/onclick/style bahut use karta hai (poori
-  // codebase isi pattern par bani hai), isliye 'unsafe-inline' rakhna padega
-  // varna sab tootega. Fir bhi ye asli faayda deta hai: koi attacker agar
-  // kabhi HTML me <script src="..."> ya <iframe> ghusa de, to sirf yahi
-  // listed domains se load hoga — baaki sab (jaise evil.com) block ho jayega.
+  // CSP — the site still uses a lot of inline <script>/onclick/style (the whole
+  // codebase is built on this pattern), so 'unsafe-inline' has to stay,
+  // otherwise everything breaks. It still gives a real benefit: if an attacker
+  // ever injects <script src="..."> or an <iframe> into the HTML, it can only
+  // load from these listed domains — everything else (such as evil.com) is blocked.
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://cdnjs.cloudflare.com https://*.cashfree.com",
@@ -508,14 +506,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// JSON body 50mb -> 2mb. File upload MULTER se hota hai (uski apni 50mb limit
-// alag hai) — isliye upload par koi asar nahi. Pehle koi bhi 50mb ka JSON
-// baar-baar bhej ke Render ki 512MB RAM bhar sakta tha.
+// JSON body 50mb -> 2mb. File uploads go through MULTER (which has its own
+// separate 50mb limit) — so uploads are unaffected. Previously anyone could
+// keep sending a 50mb JSON and fill Render's 512MB of RAM.
 app.use(express.json({ limit: '2mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
-// HTML pages HAMESHA fresh — bina iske phone Chrome purani HTML ghanton
-// tak cache se dikhata hai (har push ke baad "fix nahi hua" ka asli karan).
-// Sirf pages (extension-less routes + .html) — images/assets cache rehte hain.
+// HTML pages are ALWAYS fresh — without this, Chrome on phones shows old HTML
+// from the cache for hours (the real reason behind "it is not fixed" after every push).
+// Only pages (extension-less routes + .html) — images/assets stay cached.
 app.use((req, res, next) => {
   const p = req.path.toLowerCase();
   if (!p.startsWith('/api/') && (p.endsWith('.html') || !p.slice(1).includes('.'))) {
@@ -524,16 +522,16 @@ app.use((req, res, next) => {
   next();
 });
 // ══════════════════════════════════════════════════════════════
-// BANDWIDTH — sabse bada kharcha yahi tha
+// BANDWIDTH — this was the biggest cost
 //
-// 1) gzip/brotli: HTML ~182 KB se ~30 KB ho jaata hai (6x kam).
-//    Ek visitor = 182 KB tha, ab ~30 KB.
-// 2) Cache headers: dobara aane wale visitor ko file dobara nahi
-//    bhejni padti — server sirf "304 Not Modified" bhejta hai (0 bytes).
+// 1) gzip/brotli: HTML drops from ~182 KB to ~30 KB (6x less).
+//    One visitor used to cost 182 KB, now ~30 KB.
+// 2) Cache headers: returning visitors do not need the file sent
+//    again — the server only sends "304 Not Modified" (0 bytes).
 // ══════════════════════════════════════════════════════════════
 app.use(compression({
-  level: 6,                       // speed aur size ka balance
-  threshold: 1024,                // 1 KB se chhoti cheez compress karna faaltu hai
+  level: 6,                       // balance between speed and size
+  threshold: 1024,                // compressing anything smaller than 1 KB is pointless
   filter: (req, res) => {
     if (req.headers['x-no-compression']) return false;
     return compression.filter(req, res);
@@ -549,43 +547,43 @@ app.use(express.static('public', {
   lastModified: true,
   setHeaders: (res, filePath) => {
     if (/\.(js|css)$/i.test(filePath)) {
-      // ⚠️ Pehle yahan 7 din (max-age=604800) tha, aur us comment me likha
-      // tha ki "badal jaye to etag se pata chal jaata hai" — wo GALAT hai.
-      // Plain max-age ke andar browser server se POOCHTA HI NAHI, seedha
-      // apni cache se deta hai. Etag tabhi kaam aata hai jab request jaaye.
-      // Nateeja: naya JS deploy karne ke baad bhi purane customer ko 7 din
-      // tak PURANI file milti thi — code chala hi nahi tha.
-      // Ab har baar poochhega; file na badli ho to server 304 bhejta hai
-      // (0 byte), badli ho to nayi turant mil jaati hai.
+      // ⚠️ This used to be 7 days (max-age=604800), and that comment said
+      // "if it changes, the etag will tell" — that is WRONG.
+      // Within a plain max-age the browser DOES NOT ASK the server at all; it serves
+      // straight from its cache. An etag only helps when a request is actually made.
+      // Result: even after deploying new JS, returning customers got the OLD file
+      // for 7 days — the new code never ran.
+      // Now it asks every time; if the file has not changed the server sends 304
+      // (0 bytes), and if it has, the new one arrives immediately.
       res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     } else if (/\.(png|jpg|jpeg|svg|ico|woff2?)$/i.test(filePath)) {
-      // Image/font kabhi-kabhaar hi badalte hain — inka 7 din cache theek hai
+      // Images/fonts change only rarely — a 7-day cache is fine for them
       res.setHeader('Cache-Control', 'public, max-age=604800');
     } else if (/\.html$/i.test(filePath)) {
-      // HTML — har baar check karo par badla na ho to 304 (0 bytes)
+      // HTML — check every time, but send 304 (0 bytes) if unchanged
       res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     }
   }
 }));
 
 // ─── Canonical host redirect ───
-// Purane customers ka QR / bookmark / WhatsApp me shared link
-// qr-se-print.onrender.com pe hi hai. Unko naye domain par bhejo — path,
-// query string, sab as-is. Jab tak PRIMARY_HOST env na set ho, redirect
-// band (staging/local pe fasne se bachne ke liye).
+// Old customers' QR codes / bookmarks / links shared on WhatsApp still point to
+// qr-se-print.onrender.com. Send them to the new domain — path,
+// query string, everything as-is. Until the PRIMARY_HOST env is set, the redirect
+// stays off (to avoid getting stuck on staging/local).
 const PRIMARY_HOST = process.env.PRIMARY_HOST || '';
 if (PRIMARY_HOST) {
   app.use((req, res, next) => {
-    // API calls ko KABHI redirect nahi — 301 par POST body gir jaati hai
-    // (clients POST ko GET bana dete hain) aur field ke saare agents
-    // 404 khane lagte hain (printer list, complete/failed reports sab).
+    // NEVER redirect API calls — on a 301 the POST body is dropped
+    // (clients turn POST into GET) and every agent in the field
+    // starts getting 404s (printer list, complete/failed reports, all of them).
     if (req.path.startsWith('/api/')) return next();
     const host = (req.headers.host || '').toLowerCase().split(':')[0];
-    // www.echel.in, onrender.com — sab canonical par (SEO: ek hi domain
-    // rank kare, duplicate content na bane)
-    // White-label subdomain (abc.echel.in) ko redirect NAHI karna —
-    // warna reseller ka brand khulte hi main site par phenk deta hai.
-    // www aur baaki hosts (onrender.com waghairah) pehle jaise hi redirect.
+    // www.echel.in, onrender.com — everything goes to the canonical host (SEO: a single
+    // domain ranks, no duplicate content)
+    // Do NOT redirect a white-label subdomain (abc.echel.in) —
+    // otherwise the reseller's brand gets thrown onto the main site as soon as it opens.
+    // www and the other hosts (onrender.com etc.) redirect as before.
     const isWlSubdomain = PRIMARY_HOST && host.endsWith('.' + PRIMARY_HOST) && host !== 'www.' + PRIMARY_HOST;
     if (host && host !== PRIMARY_HOST && !isWlSubdomain && host !== 'localhost' && host !== '127.0.0.1') {
       return res.redirect(301, 'https://' + PRIMARY_HOST + req.originalUrl);
@@ -596,43 +594,42 @@ if (PRIMARY_HOST) {
 
 // ═══════════════════════════════════════════════
 // ANTI-ABUSE / SECURITY LAYER
-// Maqsad: koi bot Demo Creation ya Upload endpoint ko loop me maar ke
-// Cloudinary uploads aur Render bandwidth na jala sake.
-// Sabse zaroori rule: ye saare checks EXPENSIVE kaam (PDF processing,
-// Cloudinary call) se PEHLE chalte hain — baad me nahi.
+// Goal: no bot should be able to hammer the Demo Creation or Upload endpoint in a
+// loop and burn Cloudinary uploads and Render bandwidth.
+// The most important rule: all these checks run BEFORE the EXPENSIVE work (PDF
+// processing, the Cloudinary call) — never after.
 //
-// Genuine customer kabhi block nahi hona chahiye. Isliye:
-//   - limits udaar (generous) hain aur env se badli ja sakti hain
-//   - IP akela pehchaan nahi maana jaata (mobile network ek IP share karta hai)
-//   - block hamesha TEMPORARY hai, permanent ban kabhi nahi
-// ═══════════════════════════════════════════════
+// A genuine customer must never be blocked. Therefore:
+//   - the limits are generous and can be changed through env
+//   - an IP alone is not treated as an identity (mobile networks share one IP)
+//   - a block is always TEMPORARY, never a permanent ban
 const SEC = {
   demoIpMax:      parseInt(process.env.DEMO_RATE_LIMIT      || '3', 10),
   demoWindowMin:  parseInt(process.env.DEMO_RATE_WINDOW     || '15', 10),
-  // Ek IP se 24 ghante me kitne demo. Mobile users aksar carrier NAT ke
-  // peeche hote hain (ek hi public IP, hazaron log) — wahan ye limit sabko
-  // rok deti hai. Isliye ab env se badla ja sakta hai, code chhede bina.
+  // How many demos per IP in 24 hours. Mobile users are often behind carrier NAT
+  // (one public IP, thousands of people) — there this limit would stop everyone.
+  // So it can now be changed through env, without touching the code.
   demoDailyPerIp: parseInt(process.env.DEMO_DAILY_PER_IP    || '2', 10),
-  // Itni hits (safal + fail) ke baad hi spam maan kar temporary block.
-  // Honest user 3-4 baar retry karta hai — ye usse bahut upar hai.
+  // Only after this many hits (successful + failed) is it treated as spam and
+  // temporarily blocked. An honest user retries 3-4 times — this is far above that.
   demoAbuseHits:  parseInt(process.env.DEMO_ABUSE_HITS      || '40', 10),
   uploadsPerDemo: parseInt(process.env.MAX_UPLOADS_PER_DEMO || '10', 10),
   uploadsPerMin:  parseInt(process.env.MAX_UPLOADS_PER_MINUTE || '12', 10),
   burstMin:       parseInt(process.env.MIN_UPLOAD_GAP_MS    || '1500', 10),
   burstStrikes:   parseInt(process.env.BURST_STRIKES        || '5', 10),
   blockMin:       parseInt(process.env.ABUSE_BLOCK_DURATION || '15', 10),
-  // ── CUSTOMER (jo QR scan karta hai) ──
-  // Ye SHOP wali limit se bilkul alag hain. Ek badmash customer se poori
-  // dukaan band nahi honi chahiye — isliye block sirf usi customer par
-  // lagta hai, shop par kabhi nahi.
+  // ── CUSTOMER (the person who scans the QR) ──
+  // These are completely separate from the SHOP limits. One bad customer must not
+  // shut down the whole shop — so a block applies only to that customer,
+  // never to the shop.
   //
-  // Ginti udaar hai: ek aadmi 3-4 alag file print karwa sakta hai, wo
-  // aam baat hai. 6 se upar 5 minute me = koi khel raha hai.
+  // The count is generous: one person may print 3-4 different files, which is
+  // normal. More than 6 within 5 minutes = someone is playing around.
   custJobsMax:    parseInt(process.env.CUST_JOBS_MAX     || '6', 10),
   custWindowMin:  parseInt(process.env.CUST_WINDOW_MIN   || '5', 10),
-  // Device id localStorage se aati hai — incognito me har baar nayi ban
-  // jaati hai. Isliye IP ka bhi ek chaura jaal, par KHOOB udaar: cyber
-  // cafe ki WiFi par sab customer ek hi IP par hote hain.
+  // The device id comes from localStorage — in incognito a new one is created
+  // every time. So there is also a broader IP-based net, but a VERY generous one:
+  // on a cyber cafe's WiFi all customers share the same IP.
   custIpMax:      parseInt(process.env.CUST_IP_MAX       || '25', 10),
   cldMaxRetries:  parseInt(process.env.MAX_CLOUDINARY_RETRIES || '3', 10),
   globalPerMin:   parseInt(process.env.GLOBAL_UPLOADS_PER_MINUTE || '120', 10),
@@ -646,8 +643,8 @@ function clientIp(req) {
 }
 
 // ── SECURITY EVENT LOG ────────────────────────────────────────────
-// DB me likhte hain taaki superadmin dekh sake, par best-effort:
-// log fail ho to request kabhi fail nahi hoti.
+// Written to the DB so the superadmin can see it, but best-effort:
+// if logging fails, the request never fails.
 async function logSecurityEvent(ev) {
   const line = `SECURITY EVENT | ${ev.action} | ip=${ev.ip || '-'} | demo=${ev.shopId || '-'}`
              + ` | ${ev.endpoint || '-'} | reason=${ev.reason || '-'}`
@@ -669,9 +666,9 @@ async function logSecurityEvent(ev) {
 }
 
 // ── IN-MEMORY COUNTERS ────────────────────────────────────────────
-// Render par ek hi instance chalta hai, isliye in-memory kaafi hai aur
-// har request par DB hit nahi hoti. Multi-instance par shift karo to
-// inhe Redis/Upstash me le jaana — logic wahi rahega.
+// Only one instance runs on Render, so in-memory is enough and the DB
+// is not hit on every request. When moving to multiple instances, move
+// these to Redis/Upstash — the logic stays the same.
 const demoIpHits   = new Map();   // ip        -> {count, resetAt}
 const uploadHits   = new Map();   // shopId    -> {count, resetAt, last, strikes}
 const abuseBlocks  = new Map();   // key       -> unblockAt (epoch ms)
@@ -690,16 +687,16 @@ setInterval(() => {
   for (const [k, v] of custIpHits)   if (now > v.resetAt) custIpHits.delete(k);
 }, 5 * 60 * 1000).unref();
 
-// ── PAKKA BLOCKLIST ──
-// Neeche wala abuseBlocks 15 minute ka hai aur restart par mit jaata hai.
-// Ye alag hai: DB me rehta hai, superadmin lagata hai, aur tab tak rehta
-// hai jab tak hataya na jaye.
+// ── PERMANENT BLOCKLIST ──
+// The abuseBlocks below last 15 minutes and are wiped on restart.
+// This one is different: it lives in the DB, the superadmin sets it, and it
+// stays until it is removed.
 //
-// Sirf NAYI SHOP banane aur DEMO lene par lagta hai — poori site par nahi.
-// Wajah file ke sar par likhi hai (CGNAT).
+// It applies only to creating a NEW SHOP and requesting a DEMO — not to the whole site.
+// The reason is written at the top of the file (CGNAT).
 //
-// DB par har baar na jaana pade isliye 60 second ka cache. Block lagane/
-// hatane par cache turant saaf hota hai, to superadmin ko intezaar nahi.
+// A 60-second cache avoids going to the DB every time. Adding/removing a
+// block clears the cache immediately, so the superadmin never has to wait.
 let _ipBanCache = { at: 0, set: new Set() };
 const IP_BAN_TTL_MS = 60 * 1000;
 
@@ -709,8 +706,8 @@ async function bannedIps() {
     const r = await pool.query('SELECT ip FROM blocked_ips');
     _ipBanCache = { at: Date.now(), set: new Set(r.rows.map(x => x.ip)) };
   } catch (e) {
-    // DB na mile to purana cache hi chalne do — register band nahi karna.
-    console.warn('blocked_ips padhi nahi ja saki:', e.message);
+    // If the DB is unavailable, keep using the old cache — do not shut down registration.
+    console.warn('Could not read blocked_ips:', e.message);
     _ipBanCache.at = Date.now();
   }
   return _ipBanCache.set;
@@ -718,7 +715,7 @@ async function bannedIps() {
 
 function clearIpBanCache() { _ipBanCache = { at: 0, set: _ipBanCache.set }; }
 
-// Customer ka pakka block — wahi tarika jo IP ke liye upar hai.
+// The permanent customer block — the same approach as the IP block above.
 let _custBanCache = { at: 0, set: new Set() };
 
 async function bannedCustomers() {
@@ -727,8 +724,8 @@ async function bannedCustomers() {
     const r = await pool.query('SELECT cid FROM blocked_customers');
     _custBanCache = { at: Date.now(), set: new Set(r.rows.map(x => x.cid)) };
   } catch (e) {
-    // DB na mile to purana cache chalne do — printing band nahi karni.
-    console.warn('blocked_customers padhi nahi ja saki:', e.message);
+    // If the DB is unavailable, keep using the old cache — do not stop printing.
+    console.warn('Could not read blocked_customers:', e.message);
     _custBanCache.at = Date.now();
   }
   return _custBanCache.set;
@@ -747,21 +744,21 @@ async function isIpBanned(ip) {
 }
 
 /**
- * Upload SERVER ki galti se fail hua — us shop ka burst strike wapas.
+ * The upload failed because of a SERVER error — give that shop its burst strike back.
  *
- * 9 Sept ko theek yahi hua tha: amount decimal tha aur column INTEGER,
- * isliye har upload 500 deta tha. Customer baar-baar try karta raha
- * (aur karta bhi kya), aur burst detector ne use "abuse" samajh kar
- * POORI DUKAAN block kar di.
+ * This is exactly what happened on 9 Sept: the amount was a decimal and the column
+ * INTEGER, so every upload returned 500. The customer kept retrying
+ * (what else could they do), and the burst detector took it for "abuse" and
+ * blocked the WHOLE SHOP.
  *
- * Yaani hamari apni galti ki saza dukaan ko mili — 15 minute band.
- * Ab hamari galti par strike wapas, aur `last` bhi sifar taaki agli
- * koshish "bahut jaldi aayi" me na gine.
+ * In other words the shop was punished for our own mistake — 15 minutes closed.
+ * Now our mistake refunds the strike, and `last` is zeroed too so the next
+ * attempt is not counted as "too soon".
  *
- * Dhyaan: ye ginti KAM karta hai, block hatata nahi. Zaroorat bhi nahi —
- * shop pehle se blocked hoti to request yahan tak pahunchti hi nahi
- * (block sabse shuru me dekha jaata hai). Isliye asli flood ab bhi
- * per-minute aur quota wali limit se pakda jaata hai.
+ * Note: this LOWERS the count; it does not lift a block. It does not need to —
+ * if the shop were already blocked, the request would never get this far
+ * (the block is checked at the very start). So a real flood is still caught
+ * by the per-minute and quota limits.
  */
 function pardonUploadFailure(shopId) {
   const e = uploadHits.get(shopId);
@@ -771,7 +768,7 @@ function pardonUploadFailure(shopId) {
   uploadHits.set(shopId, e);
 }
 
-/** Temporary block — escalating, kabhi permanent nahi. */
+/** Temporary block — escalating, never permanent. */
 function blockFor(key, minutes, reason) {
   const until = Date.now() + minutes * 60 * 1000;
   const prev = abuseBlocks.get(key) || 0;
@@ -785,17 +782,17 @@ function isBlocked(key) {
   return Math.ceil((until - Date.now()) / 60000);   // minutes remaining
 }
 
-/** Demo creation: ek IP se DEMO_RATE_LIMIT per DEMO_RATE_WINDOW minutes. */
+/** Demo creation: DEMO_RATE_LIMIT per DEMO_RATE_WINDOW minutes from one IP. */
 function demoRateLimit(req, res, next) {
   const ip = clientIp(req);
-  // Pakka blocklist demo par bhi. Async hai isliye ek chhota wrapper —
-  // baaki jaanch pehle jaisi hi chalti hai.
+  // The permanent blocklist applies to demos too. It is async, hence a small wrapper —
+  // the rest of the checks run as before.
   isIpBanned(ip).then(banned => {
     if (!banned) return _demoRateLimitRest(req, res, next, ip);
     logSecurityEvent({ ip, endpoint: req.path, method: req.method,
                        action: 'DEMO_REQUEST', reason: 'IP_BANNED',
                        userAgent: req.headers['user-agent'] });
-    res.status(403).json({ error: 'Is connection se demo band hai. Support se baat kariye.' });
+    res.status(403).json({ error: 'Demos are disabled from this connection. Please contact support.' });
   }).catch(() => _demoRateLimitRest(req, res, next, ip));
 }
 
@@ -813,11 +810,11 @@ function _demoRateLimitRest(req, res, next, ip) {
     demoIpHits.set(ip, e);
   }
 
-  // ── Sirf bhaari spam par hi temporary block ──
-  // Pehle yahan count (safal + fail sab) ke hisaab se block lagta tha, aur
-  // block lagne ke baad bhi count badhta rehta tha — matlab user jitni baar
-  // retry karta, block utna hi lamba hota jaata. Ab total hits ki alag ginti
-  // hai aur limit itni upar hai ki honest user (3-4 retry) kabhi na chhue.
+  // ── A temporary block only for heavy spam ──
+  // This used to block based on the count (every success + failure), and the
+  // count kept rising even after the block — so the more a user retried, the
+  // longer the block became. Now total hits are counted separately and the limit
+  // is so high that an honest user (3-4 retries) never reaches it.
   e.hits++;
   if (e.hits > SEC.demoAbuseHits) {
     blockFor('ip:' + ip, SEC.blockMin, 'demo endpoint spam');
@@ -827,19 +824,19 @@ function _demoRateLimitRest(req, res, next, ip) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
 
-  // ── Asli limit: kitne demo BANE, koshishein nahi ──
-  // Ye sabse bada bug tha. Ginti har POST par badhti thi — chahe request
-  // validation me fail ho, phone pehle se registered ho, ya captcha fail ho.
-  // Matlab form 3 baar galat bharne wala aadmi 15 minute ke liye block ho
-  // jaata tha, bina ek bhi demo bane. Ab ginti tabhi badhti hai jab demo
-  // sach me ban jaye — handler success par req.countDemoRequest() bulata hai.
+  // ── The real limit: how many demos were CREATED, not attempts ──
+  // This was the biggest bug. The count went up on every POST — even when the request
+  // failed validation, the phone was already registered, or the captcha failed.
+  // So someone who filled in the form wrongly 3 times got blocked for 15 minutes
+  // without a single demo being created. Now the count goes up only when a demo
+  // is really created — the handler calls req.countDemoRequest() on success.
   if (e.count >= SEC.demoIpMax) {
     const wait = Math.max(1, Math.ceil((e.resetAt - now) / 60000));
     logSecurityEvent({ ip, endpoint: req.path, method: req.method, action: 'DEMO_REQUEST',
                        reason: 'IP_RATE_LIMIT', uploadCount: e.count,
                        userAgent: req.headers['user-agent'] });
     return res.status(429).json({
-      error: `Is network se ${SEC.demoIpMax} demo ho chuke hain. ${wait} minute baad try karo, ya seedha register kar lo.`
+      error: `This network has already used ${SEC.demoIpMax} demos. Try again in ${wait} minutes, or register directly.`
     });
   }
 
@@ -850,9 +847,9 @@ function _demoRateLimitRest(req, res, next, ip) {
   next();
 }
 
-/** Cloudflare Turnstile — sirf tab enforce hota hai jab secret set ho. */
+/** Cloudflare Turnstile — enforced only when the secret is set. */
 async function verifyTurnstile(token, ip) {
-  if (!SEC.turnstileSecret) return { ok: true, skipped: true };   // configure nahi hai
+  if (!SEC.turnstileSecret) return { ok: true, skipped: true };   // not configured
   if (!token) return { ok: false, reason: 'missing token' };
   try {
     const body = new URLSearchParams({ secret: SEC.turnstileSecret, response: token, remoteip: ip || '' }).toString();
@@ -870,45 +867,45 @@ async function verifyTurnstile(token, ip) {
     });
     return { ok: !!out.success, reason: (out['error-codes'] || []).join(',') };
   } catch (e) {
-    // Cloudflare down ho to genuine users ko block mat karo — fail-open,
-    // baaki saari layers (rate limit, quota, burst) waise hi lagi hain.
+    // If Cloudflare is down, do not block genuine users — fail open;
+    // all the other layers (rate limit, quota, burst) still apply.
     console.warn('Turnstile verify failed (fail-open):', e.message);
     return { ok: true, degraded: true };
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  APNA CAPTCHA  — koi third party nahi (na Google, na Cloudflare)
+//  OUR OWN CAPTCHA  — no third party (neither Google nor Cloudflare)
 // ═══════════════════════════════════════════════════════════════════
 //
-// KAAM KAISE KARTA HAI (koi table nahi banti, koi memory nahi bharti):
+// HOW IT WORKS (no table is created, no memory fills up):
 //
-//   1. Browser /api/captcha maangta hai
-//   2. Server 5 akshar chunta hai, unka tedha-medha SVG banata hai,
-//      aur ek TOKEN deta hai:   nonce . expiry . HMAC(nonce|expiry|jawab)
-//   3. Browser image dikhata hai; user jawab type karta hai
-//   4. Login ke saath token + jawab wapas aata hai. Server usi jawab se
-//      HMAC dobara banata hai aur milata hai.
+//   1. The browser requests /api/captcha
+//   2. The server picks 5 characters, draws them as a distorted SVG,
+//      and returns a TOKEN:   nonce . expiry . HMAC(nonce|expiry|answer)
+//   3. The browser shows the image; the user types the answer
+//   4. The token + answer come back with the login. The server rebuilds the
+//      HMAC from that answer and compares.
 //
-// Jawab kabhi bheja hi nahi jaata, isliye kahin store karne ki zaroorat
-// nahi — na DB me, na memory me. Server restart ho ya do instance chal
-// rahe hon, dono jagah kaam karta hai.
+// The answer is never sent, so it never needs to be stored anywhere —
+// neither in the DB nor in memory. Whether the server restarts or two instances
+// are running, it works in both places.
 //
-// Ek hi captcha do baar na chale, iske liye chhoti si used-nonce list
-// memory me rakhi hai (khud saaf hoti rehti hai).
+// To stop one captcha from being used twice, a small used-nonce list is kept
+// in memory (it cleans itself up).
 //
-// BAND KARNE KE DO RAASTE (dono me koi deploy nahi):
-//   Render env var :  CAPTCHA_OFF=1          <- turant, DB ki zaroorat nahi
+// TWO WAYS TO TURN IT OFF (neither needs a deploy):
+//   Render env var :  CAPTCHA_OFF=1          <- immediate, no DB needed
 //   DB             :  UPDATE system_settings SET value='0' WHERE key='captcha_enabled';
 //
-// SACH: ye script/bot ko rokta hai. Insaan baith kar solve kare to nahi
-// rukega — isliye loginLimiter (rate limit) hi asli bachaav rehta hai,
-// captcha uske upar ek aur parat hai.
+// THE TRUTH: this stops scripts/bots. A human sitting down to solve it will not
+// be stopped — so loginLimiter (the rate limit) remains the real protection,
+// and the captcha is one more layer on top of it.
 
 const CAPTCHA_TTL_MS = 3 * 60 * 1000;          // 3 minute me expire
 const CAPTCHA_LEN    = 5;
-// I, l, 1, O, 0 hata diye — screen par ye ek jaise dikhte hain aur
-// genuine user hi galti karta hai.
+// I, l, 1, O, 0 were removed — they look alike on screen and it is the
+// genuine user who makes the mistake.
 const CAPTCHA_CHARS  = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const _captchaUsed = new Map();                 // nonce -> expiry
@@ -923,15 +920,15 @@ function captchaSign(nonce, exp, answer) {
                .digest('base64url');
 }
 
-// Captcha chalu hai ya nahi. DB na chale to FALSE — warna DB ki dikkat
-// me sab log login se hi bahar ho jaate.
+// Whether the captcha is enabled. If the DB fails, FALSE — otherwise a DB
+// problem would lock everyone out of login.
 async function captchaEnabled() {
   if (process.env.CAPTCHA_OFF === '1') return false;
   try {
     const r = await pool.query("SELECT value FROM system_settings WHERE key='captcha_enabled'");
     return !r.rows.length || r.rows[0].value !== '0';
   } catch (e) {
-    console.warn('captchaEnabled check fail (skip kar rahe hain):', e.message);
+    console.warn('captchaEnabled check failed (skipping):', e.message);
     return false;
   }
 }
@@ -943,7 +940,7 @@ function captchaSvg(text) {
   let o = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H +
           '" viewBox="0 0 ' + W + ' ' + H + '">';
   o += '<rect width="' + W + '" height="' + H + '" fill="#f4f6fb"/>';
-  // tedhi lakeeren — OCR ko atkati hain
+  // wavy lines — they trip up OCR
   for (let i = 0; i < 5; i++) {
     o += '<path d="M' + n(rnd(-5, 15)) + ',' + n(rnd(0, H)) +
          ' Q' + n(rnd(45, 115)) + ',' + n(rnd(-8, H + 8)) +
@@ -955,7 +952,7 @@ function captchaSvg(text) {
     o += '<circle cx="' + n(rnd(0, W)) + '" cy="' + n(rnd(0, H)) + '" r="' +
          n(rnd(0.6, 1.7)) + '" fill="hsl(' + Math.floor(rnd(0, 360)) + ',45%,72%)"/>';
   }
-  // har akshar apni jagah, apne kone par, apne size me
+  // each character in its own place, at its own angle, in its own size
   const step = W / (text.length + 1);
   for (let i = 0; i < text.length; i++) {
     const x = step * (i + 1) + rnd(-4, 4);
@@ -976,33 +973,33 @@ function makeCaptcha() {
   const exp = Date.now() + CAPTCHA_TTL_MS;
   return {
     token: nonce + '.' + exp + '.' + captchaSign(nonce, exp, ans),
-    // data URI me bhejte hain aur <img> me lagta hai — page ke andar
-    // koi markup inject hone ka sawaal hi nahi rehta.
+    // Sent as a data URI and placed in an <img> — so there is no way
+    // for any markup to be injected into the page.
     image: 'data:image/svg+xml;base64,' + Buffer.from(captchaSvg(ans), 'utf8').toString('base64')
   };
 }
 
 function verifyCaptchaToken(token, answer) {
-  if (!token || !answer) return { ok: false, why: 'Captcha bharo' };
+  if (!token || !answer) return { ok: false, why: 'Fill in the captcha' };
   const p = String(token).split('.');
-  if (p.length !== 3) return { ok: false, why: 'Captcha galat hai — naya lo' };
+  if (p.length !== 3) return { ok: false, why: 'The captcha is invalid — get a new one' };
   const nonce = p[0], exp = parseInt(p[1], 10), sig = p[2];
-  if (!exp || Date.now() > exp) return { ok: false, why: 'Captcha expire ho gaya — naya lo' };
+  if (!exp || Date.now() > exp) return { ok: false, why: 'The captcha has expired — get a new one' };
 
   const want = captchaSign(nonce, exp, answer);
   const a = Buffer.from(sig), b = Buffer.from(want);
-  // Lambai alag ho to timingSafeEqual phenk deta hai — pehle wahi check
+  // timingSafeEqual throws when the lengths differ — check that first
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b))
-    return { ok: false, why: 'Captcha galat hai' };
+    return { ok: false, why: 'Wrong captcha' };
 
-  // Ek captcha sirf ek baar
-  if (_captchaUsed.has(nonce)) return { ok: false, why: 'Ye captcha use ho chuka — naya lo' };
+  // Each captcha works only once
+  if (_captchaUsed.has(nonce)) return { ok: false, why: 'This captcha has already been used — get a new one' };
   _captchaUsed.set(nonce, exp);
   return { ok: true };
 }
 
-// Har login route ke shuru me: `if (!(await captchaGuard(req, res))) return;`
-// `captcha: true` isliye bhejte hain taaki page turant naya captcha maang le.
+// At the start of every login route: `if (!(await captchaGuard(req, res))) return;`
+// `captcha: true` is sent so the page immediately requests a new captcha.
 async function captchaGuard(req, res) {
   if (!(await captchaEnabled())) return true;
   const b = req.body || {};
@@ -1014,8 +1011,8 @@ async function captchaGuard(req, res) {
   return true;
 }
 
-// Naya captcha. Banane me na DB lagti hai na disk — sirf CPU, isliye
-// ise rate-limit karne ki zaroorat nahi padti.
+// A new captcha. Creating one needs neither the DB nor the disk — only CPU, so
+// it does not need to be rate-limited.
 app.get('/api/captcha', async (req, res) => {
   try {
     if (!(await captchaEnabled())) return res.json({ enabled: false });
@@ -1023,8 +1020,8 @@ app.get('/api/captcha', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json({ enabled: true, token: c.token, image: c.image });
   } catch (e) {
-    // Captcha na ban paye to login band mat karo
-    console.error('captcha banane me dikkat:', e.message);
+    // If the captcha cannot be generated, do not block login
+    console.error('Failed to generate the captcha:', e.message);
     res.json({ enabled: false });
   }
 });
@@ -1033,55 +1030,61 @@ app.get('/api/captcha', async (req, res) => {
 //  LANGUAGES / TRANSLATIONS
 // ═══════════════════════════════════════════════════════════════════
 //
-// `translations` table pehle se thi (lang, source, text) — par uske API
-// route KAHIN THE HI NAHI. Isi wajah se:
+// The `translations` table already existed (lang, source, text) — but its API
+// routes did NOT EXIST ANYWHERE. Because of that:
 //
-//   • Superadmin ka "🌐 Languages" tab /api/i18n maangta tha, 404 ka
-//     HTML page milta tha, aur `.json()` `<` par phat jaata tha —
-//     screen par "Unexpected token '<'".
+//   • Superadmin's "🌐 Languages" tab requested /api/i18n, got the 404
+//     HTML page, and `.json()` choked on `<` —
+//     showing "Unexpected token '<'" on screen.
 //
-//   • Public i18n.js /api/i18n/dict maangta hai. Wo 404 ko chup-chaap
-//     sambhal leta hai (r.ok check karta hai), isliye website TOOTI
-//     NAHI — par panel se ki gayi koi bhi translation website tak
-//     kabhi pahunchti hi nahi thi.
+//   • The public i18n.js requests /api/i18n/dict. It handles a 404
+//     silently (it checks r.ok), so the website did NOT
+//     BREAK — but no translation made in the panel ever
+//     reached the website.
 //
-// Language list public i18n.js ke apne LANGS se HU-BA-HU milni chahiye,
-// warna panel me dikhegi ek language aur website par chalegi doosri.
+// The language list must match the public i18n.js's own LANGS EXACTLY,
+// otherwise the panel would show one language while the website runs another.
+//
+// English is the SOURCE language: every page is written in English, so it has
+// no dictionary and nothing is stored for it. The `translations` table holds
+// only the corrections an admin makes to the other languages; they are merged
+// on top of the bundled public/i18n/<lang>.js file.
 const I18N_LANGS = { en: 'English', 'mni-mtei': 'Manipuri (Meitei Mayek)' };
-// Object me seedha `I18N_LANGS[lang]` mat dekhna — 'constructor' jaise
-// naam bhi truthy aa jaate hain aur validation nikal jaata.
+// Do not look up `I18N_LANGS[lang]` directly on an object — names like
+// 'constructor' come back truthy and slip past the validation.
 function isKnownLang(l) {
   return Object.prototype.hasOwnProperty.call(I18N_LANGS, l);
 }
 
-// Kaun si language available hai (superadmin ka dropdown isi se bharta hai)
+// Which languages are available (Superadmin's dropdown is filled from this)
 app.get('/api/i18n', (req, res) => {
   res.json({ langs: I18N_LANGS, source: 'en' });
 });
 
-// Public pages ke liye dictionary. i18n.js ise bundled dictionary ke
-// UPAR merge karta hai.
+// The dictionary for public pages. i18n.js merges it ON TOP OF the
+// bundled dictionary.
 app.get('/api/i18n/dict', async (req, res) => {
   try {
     const lang = String(req.query.lang || '').slice(0, 8);
-    if (!lang || lang === 'hin' || !isKnownLang(lang)) return res.json({ lang, dict: {} });
+    // English needs no dictionary — the website's own text is already English.
+    if (!lang || lang === 'en' || !isKnownLang(lang)) return res.json({ lang, dict: {} });
     const r = await pool.query('SELECT source, text FROM translations WHERE lang=$1', [lang]);
     const dict = {};
     r.rows.forEach(x => { if (x.text) dict[x.source] = x.text; });
     res.set('Cache-Control', 'public, max-age=300');
     res.json({ lang, dict });
   } catch (e) {
-    // Yahan kabhi 500 mat do — website ka page isi par tika hai
+    // Never return a 500 here — the website page depends on this
     console.error('i18n dict error:', e.message);
     res.json({ dict: {} });
   }
 });
 
-// Superadmin: ek language ki poori list + har language ki ginti
+// Superadmin: the full list of one language + the count for each language
 app.get('/api/superadmin/translations', verifySuperAdmin, async (req, res) => {
   try {
     const lang = String(req.query.lang || 'en').slice(0, 8);
-    if (!isKnownLang(lang)) return res.status(400).json({ error: 'Ye language nahi hai' });
+    if (!isKnownLang(lang)) return res.status(400).json({ error: 'Unknown language' });
     const r = await pool.query(
       'SELECT id, source, text FROM translations WHERE lang=$1 ORDER BY updated_at DESC, id DESC',
       [lang]);
@@ -1092,14 +1095,15 @@ app.get('/api/superadmin/translations', verifySuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Superadmin: poori list ek saath save. Khaali text = us line ko hata do
-// (missing hone par source hi dikhta hai, isliye kuch tootta nahi).
+// Superadmin: save the whole list at once. Empty text = remove that line
+// (when it is missing the source text shows, so nothing breaks).
 app.put('/api/superadmin/translations', verifySuperAdmin, async (req, res) => {
   try {
     const b = req.body || {};
     const lang = String(b.lang || '').slice(0, 8);
-    if (!isKnownLang(lang) || lang === 'hin')
-      return res.status(400).json({ error: 'Select English or Manipuri (Meitei Mayek)' });
+    // English is the source language, so there is nothing to save into it.
+    if (!isKnownLang(lang) || lang === 'en')
+      return res.status(400).json({ error: 'Choose the language to translate into (Manipuri / Meitei Mayek)' });
 
     const items = Array.isArray(b.items) ? b.items.slice(0, 5000) : [];
     let saved = 0, removed = 0;
@@ -1126,13 +1130,13 @@ app.put('/api/superadmin/translations', verifySuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/** Demo upload quota ki ginti kitni der me taazi ho — 1 ghanta. */
+/** How often the demo upload quota count is refreshed — 1 hour. */
 const QUOTA_WINDOW_MS = 60 * 60 * 1000;
 
 /**
  * Upload quota + burst detection, per demo/shop.
- * Ye CIRCUIT BREAKER hai: trip hote hi PDF processing aur Cloudinary
- * dono ruk jaate hain.
+ * This is a CIRCUIT BREAKER: once it trips, both PDF processing and
+ * Cloudinary stop.
  */
 function checkUploadAbuse(shopId, isDemo) {
   const key = 'shop:' + shopId;
@@ -1150,16 +1154,16 @@ function checkUploadAbuse(shopId, isDemo) {
   e.total = (e.total || 0);
 
   // ── ROLLING QUOTA WINDOW ──
-  // Pehle `total` KABHI reset nahi hota tha. Quota chhoote hi 15 min ka
-  // block lagta, aur block khatam hone par agle upload par `total` phir
-  // bhi limit se upar hota — to TURANT dobara block. Yaani shop hamesha
-  // ke liye atak jaati thi (asli customer par hua: 3 print, 16 block).
+  // `total` used to NEVER reset. Hitting the quota caused a 15-min
+  // block, and when the block ended `total` was still above the limit on the
+  // next upload — so it was IMMEDIATELY blocked again. The shop stayed stuck
+  // forever (this happened to a real customer: 3 prints, 16 blocks).
   if (!e.totalResetAt || now > e.totalResetAt) {
     e.total = 0;
     e.totalResetAt = now + QUOTA_WINDOW_MS;
   }
 
-  // Burst: lagatar bahut kam gap me uploads
+  // Burst: uploads in quick succession with very short gaps
   if (e.last && (now - e.last) < SEC.burstMin) {
     e.strikes++;
     if (e.strikes >= SEC.burstStrikes) {
@@ -1169,7 +1173,7 @@ function checkUploadAbuse(shopId, isDemo) {
                error: 'Uploads are coming in too fast. Please wait a moment and try again.' };
     }
   } else if (e.strikes > 0 && (now - e.last) > 10000) {
-    e.strikes--;                       // shaant raha to strike maaf
+    e.strikes--;                       // if it stayed calm, forgive the strike
   }
 
   e.count++; e.last = now; e.total++;
@@ -1180,24 +1184,24 @@ function checkUploadAbuse(shopId, isDemo) {
     return { ok: false, reason: 'UPLOAD_RATE',
              error: 'Too many uploads in a short time. Please try again in a few minutes.' };
   }
-  // Demo par total upload quota bhi (print limit se alag — ye attempts hain)
-  // Dhyan: ye PRINT limit nahi, upload ATTEMPTS ki ginti hai. Ek print me
-  // customer aksar 2-3 attempt karta hai — file badalta, page chunta,
-  // refresh karta. Pehle multiplier 3 tha, matlab 10-print wali demo sirf
-  // 30 attempts me khatam. Ab 8 (rolling 1-ghanta window ke saath).
+  // A total upload quota for demos too (separate from the print limit — these are attempts)
+  // Note: this is not the PRINT limit, it counts upload ATTEMPTS. For one print
+  // a customer often makes 2-3 attempts — changing the file, picking pages,
+  // refreshing. The multiplier used to be 3, so a 10-print demo ran out after
+  // only 30 attempts. Now it is 8 (with a rolling 1-hour window).
   if (isDemo && e.total > SEC.uploadsPerDemo * 8) {
     blockFor(key, SEC.blockMin, 'demo upload quota exceeded');
     return { ok: false, reason: 'DEMO_UPLOAD_QUOTA',
-             error: `Bahut zyada upload koshish. ${SEC.blockMin} minute baad dobara try karo.` };
+             error: `Too many upload attempts. Try again in ${SEC.blockMin} minutes.` };
   }
   return { ok: true, count: e.count, total: e.total };
 }
 
 /**
- * GLOBAL EMERGENCY BRAKE — agar poore server par upload rate achanak
- * threshold se upar chala jaye (koi loop / bug / attack), naye uploads
- * temporarily band. Threshold jaan-boojh kar udaar rakha hai taaki
- * normal busy din par kabhi trip na ho.
+ * GLOBAL EMERGENCY BRAKE — if the upload rate across the whole server suddenly
+ * goes above the threshold (some loop / bug / attack), new uploads are
+ * temporarily disabled. The threshold is deliberately generous so it
+ * never trips on a normal busy day.
  */
 function globalBrake() {
   const now = Date.now();
@@ -1219,36 +1223,36 @@ function globalBrake() {
 }
 
 // ═══════════════════════════════════════════════
-// UPLOAD GUARDRAILS — sab limits ek jagah, env se configurable
+// UPLOAD GUARDRAILS — all limits in one place, configurable through env
 // ═══════════════════════════════════════════════
 const MAX_UPLOAD_MB        = parseInt(process.env.MAX_UPLOAD_MB || '20', 10);
 const MAX_UPLOAD_BYTES     = MAX_UPLOAD_MB * 1024 * 1024;
 const MAX_PDF_PAGES        = parseInt(process.env.MAX_PDF_PAGES || '20', 10);
-// Ek job me kitne KAGAZ — page x copies.
+// How many SHEETS per job — pages x copies.
 //
-// 20 page ka limit pehle se tha, par copies par koi rok nahi thi: page
-// 50 tak chun leta tha aur server maan leta tha. Yaani 20 x 50 = 1000
-// kagaz ek hi QR scan se. Ab kul ginti par rok hai, isliye 20-page ki
-// 1 copy, 5-page ki 4 copy, 1-page ki 20 copy — teeno theek hain.
+// The 20-page limit already existed, but copies had no cap: the page
+// allowed choosing up to 50 and the server accepted it. That meant 20 x 50 = 1000
+// sheets from a single QR scan. Now the total count is capped, so 1 copy of
+// 20 pages, 4 copies of 5 pages and 20 copies of 1 page are all fine.
 const MAX_JOB_SHEETS       = parseInt(process.env.MAX_JOB_SHEETS || '20', 10);
 const DUP_UPLOAD_LIMIT     = parseInt(process.env.DUP_UPLOAD_LIMIT || '5', 10);
 const DUP_UPLOAD_WINDOW_MIN= parseInt(process.env.DUP_UPLOAD_WINDOW_MIN || '60', 10);
-// Job kitni der 'printing' me atka rahe uske baad fail + delete
+// How long a job may stay stuck in 'printing' before it is failed + deleted
 const STUCK_JOB_TIMEOUT_SEC = parseInt(process.env.STUCK_JOB_TIMEOUT_SEC || '120', 10);
-// Job 'printing' me itne second se zyada atka to agent ko DOBARA de do.
-// Sweeper 120s par delete karta hai — 45s rakhne se beech me 2-3 baar
-// dobara dene ka mauka mil jaata hai.
+// If a job is stuck in 'printing' for more than this many seconds, hand it to the agent AGAIN.
+// The sweeper deletes at 120s — keeping this at 45s allows 2-3 re-handouts
+// in between.
 const ORPHAN_RECLAIM_SEC    = parseInt(process.env.ORPHAN_RECLAIM_SEC || '45', 10);
-// 0 = seedha fail (spec ke hisab se). 1 = ek baar dobara try. Slow printer
-// wali shops complain karein to isko 1 kar dena.
+// 0 = fail immediately (per the spec). 1 = retry once. If shops with slow
+// printers complain, set this to 1.
 const STUCK_JOB_RETRIES     = parseInt(process.env.STUCK_JOB_RETRIES || '0', 10);
 
 const LIMIT_MSG = {
   size:  `File too large. Maximum ${MAX_UPLOAD_MB} MB is allowed.`,
   pages: `Maximum ${MAX_PDF_PAGES} page PDF is allowed.`,
   dup:   `You cannot upload the same file again and again. Please try after some time.`,
-  sheets: `Ek baar me zyada se zyada ${MAX_JOB_SHEETS} kagaz print ho sakte hain. `
-        + `Copies kam karo, ya baaki print counter par karwa lo.`
+  sheets: `At most ${MAX_JOB_SHEETS} sheets can be printed at once. `
+        + `Reduce the copies, or have the rest printed at the counter.`
 };
 
 const upload = multer({
@@ -1261,8 +1265,8 @@ const upload = multer({
   }
 });
 
-// Multer ki limit toote to default Express 500 deta hai — customer ko
-// samajh nahi aata. Saaf message + sahi status code do.
+// When a Multer limit is exceeded, Express returns a default 500 — the customer
+// does not understand it. Return a clear message + the correct status code.
 function handleUploadErrors(err, req, res, next) {
   if (err && err.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({ error: LIMIT_MSG.size });
@@ -1327,10 +1331,10 @@ function isPng(buf) {
     buf[4]===0x0D && buf[5]===0x0A && buf[6]===0x1A && buf[7]===0x0A;
 }
 
-// PNG me transparency hai? IHDR color type padho (offset 25):
-//  type 4 = grayscale+alpha, 6 = RGBA -> alpha channel hai.
-//  type 3 (palette) me tRNS chunk ho to bhi transparent ho sakta hai.
-// JPEG hai? (magic bytes FF D8 FF ... aur end me FF D9)
+// Does the PNG have transparency? Read the IHDR color type (offset 25):
+//  type 4 = grayscale+alpha, 6 = RGBA -> there is an alpha channel.
+//  type 3 (palette) can also be transparent if it has a tRNS chunk.
+// Is it a JPEG? (magic bytes FF D8 FF ... and FF D9 at the end)
 function isJpeg(buf) {
   return buf && buf.length > 3 &&
     buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF;
@@ -1342,7 +1346,7 @@ function pngHasAlpha(buf) {
     const colorType = buf[25];   // IHDR: width(4)+height(4)+bitdepth(1)+colortype(1) => index 25
     if (colorType === 4 || colorType === 6) return true;   // alpha channel present
     if (colorType === 3) {
-      // palette PNG: tRNS chunk dhundo
+      // palette PNG: look for the tRNS chunk
       const s = buf.toString('latin1');
       return s.includes('tRNS');
     }
@@ -1351,7 +1355,7 @@ function pngHasAlpha(buf) {
 }
 
 async function uploadImageToCloudinary(fileBuffer, mimeType) {
-  if (!CLOUD_NAME || !CLD_API_KEY || !CLD_API_SECRET) return Promise.reject(new Error('Cloudinary configured nahi'));
+  if (!CLOUD_NAME || !CLD_API_KEY || !CLD_API_SECRET) return Promise.reject(new Error('Cloudinary is not configured'));
   return new Promise((resolve, reject) => {
     const timestamp = Math.round(Date.now() / 1000);
     const publicId = BRAND_PREFIX + uuidv4();
@@ -1375,9 +1379,9 @@ async function uploadImageToCloudinary(fileBuffer, mimeType) {
 
 /**
  * Cloudinary upload with BOUNDED retry.
- * Infinite retry loop bilkul nahi: max MAX_CLOUDINARY_RETRIES attempts,
- * exponential backoff, phir final failure. Ek bug ya network flap ghanton
- * tak Cloudinary/Render bandwidth nahi jala sakta.
+ * Absolutely no infinite retry loop: at most MAX_CLOUDINARY_RETRIES attempts,
+ * exponential backoff, then a final failure. A bug or a network flap cannot
+ * burn Cloudinary/Render bandwidth for hours.
  */
 async function uploadToCloudinaryWithRetry(fileBuffer, fileType) {
   const max = Math.max(1, Math.min(5, SEC.cldMaxRetries));
@@ -1387,7 +1391,7 @@ async function uploadToCloudinaryWithRetry(fileBuffer, fileType) {
       return await uploadToCloudinary(fileBuffer, fileType);
     } catch (err) {
       lastErr = err;
-      // 4xx = hamari galti (bad signature/file) — retry se theek nahi hoga
+      // 4xx = our mistake (bad signature/file) — retrying will not fix it
       if (/\b4\d\d\b/.test(err.message || '') || /Invalid|signature/i.test(err.message || '')) {
         console.warn(`Cloudinary upload attempt ${attempt}: permanent error, not retrying — ${err.message}`);
         break;
@@ -1405,7 +1409,7 @@ async function uploadToCloudinaryWithRetry(fileBuffer, fileType) {
 
 async function uploadToCloudinary(fileBuffer, fileType) {
   if (!CLOUD_NAME || !CLD_API_KEY || !CLD_API_SECRET) {
-    return Promise.reject(new Error('Cloudinary configured nahi hai — Render environment variables check karo (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)'));
+    return Promise.reject(new Error('Cloudinary is not configured — check the Render environment variables (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)'));
   }
   return new Promise((resolve, reject) => {
     const timestamp = Math.round(Date.now() / 1000);
@@ -1444,22 +1448,22 @@ async function uploadToCloudinary(fileBuffer, fileType) {
   });
 }
 
-// Cloudinary par ASLI me kya pada hai — Admin API se list.
-// DB ki nazar se orphan files (jinka job row hi nahi) sirf isse dikhti hain.
+// What is ACTUALLY stored on Cloudinary — listed through the Admin API.
+// Orphan files from the DB's point of view (with no job row) only show up here.
 let _sweepTick = 0;
 
-// Cloudinary par file 3 alag "resource type" me ho sakti hai:
-//   raw   -> PDF / DOC (jo hum upload karte hain)
-//   image -> JPG / PNG (customer ki photo, passport photo, canvas editor output)
-//   video -> almost never, par safety ke liye
-// Pehle sirf `raw` list hota tha, isliye superadmin panel me hamesha 0 dikhta
-// tha jabki Cloudinary me files padi rehti thi. Ab teeno type dekhte hain.
-// Error ab chupaya nahi jaata — warna auth fail hone par bhi "0 files" dikhta hai.
+// A file on Cloudinary can be one of 3 "resource types":
+//   raw   -> PDF / DOC (what we upload)
+//   image -> JPG / PNG (customer photo, passport photo, canvas editor output)
+//   video -> almost never, but included for safety
+// Only `raw` used to be listed, so the superadmin panel always showed 0
+// while files were sitting on Cloudinary. Now all three types are checked.
+// Errors are no longer hidden — otherwise even an auth failure showed "0 files".
 async function listCloudinaryFilesOfType(resourceType, nextCursor = '', prefix = UPLOAD_PREFIX) {
   if (prefix !== UPLOAD_PREFIX) throw new Error('Only Echel print uploads may be listed.');
   return new Promise((resolve) => {
     if (!CLOUD_NAME || !CLD_API_KEY || !CLD_API_SECRET) {
-      return resolve({ resources: [], error: 'Cloudinary keys set nahi hain' });
+      return resolve({ resources: [], error: 'Cloudinary keys are not set' });
     }
     const auth = Buffer.from(`${CLD_API_KEY}:${CLD_API_SECRET}`).toString('base64');
     let path = `/v1_1/${CLOUD_NAME}/resources/${resourceType}?max_results=100`;
@@ -1490,7 +1494,7 @@ async function listCloudinaryFilesOfType(resourceType, nextCursor = '', prefix =
   });
 }
 
-// Teeno type ki saari files ek list me (pages ke saath)
+// All files of all three types in one list (with pages)
 async function listAllCloudinaryFiles(prefix = UPLOAD_PREFIX) {
   const out = [];
   const errors = [];
@@ -1507,14 +1511,14 @@ async function listAllCloudinaryFiles(prefix = UPLOAD_PREFIX) {
   return { files: out, errors };
 }
 
-// Purana naam chalta rahe (baaki code isko use karta hai)
+// Keep the old name working (other code uses it)
 async function listCloudinaryFiles(nextCursor = '') {
   return listCloudinaryFilesOfType('raw', nextCursor, UPLOAD_PREFIX);
 }
 
 
-// resourceType zaroori hai: image file ko 'raw' bolkar delete karne ki koshish
-// karoge to Cloudinary "not found" bolta hai aur file wahin padi reh jaati hai.
+// resourceType is required: if you try to delete an image file as 'raw',
+// Cloudinary says "not found" and the file stays where it is.
 async function deleteFromCloudinary(publicId, resourceType = 'raw') {
   if (!isJobAsset(publicId)) throw new Error('Refusing to delete an asset outside Echel print uploads.');
   return new Promise((resolve) => {
@@ -1544,19 +1548,19 @@ async function deleteFromCloudinary(publicId, resourceType = 'raw') {
 
 async function initDB() {
   try {
-  // ── SABSE PEHLE: saari table bana lo ──
+  // ── FIRST OF ALL: create every table ──
   //
-  // Neeche ka SQL kram me nahi hai: kuch ALTER apni table BANNE SE
-  // PEHLE aate hain (jaise whitelabels ka ALTER 3000 par, uska
-  // CREATE 24000 par). Supabase par ye kabhi nahi pakda gaya kyunki
-  // wahan table pehle se thi. Bilkul khaali DB par wo ALTER phenkta
-  // hai — aur pool.query() me kai statement EK transaction me chalte
-  // hain, isliye POORA block wapas chala jaata hai. Aaj live par
-  // yahi hua: 14 table bani hi nahi aur shops ke 68 column gayab.
+  // The SQL below is not in order: some ALTERs come BEFORE their table
+  // is CREATED (for example the whitelabels ALTER at 3000 and its
+  // CREATE at 24000). This was never caught on Supabase because the
+  // table already existed there. On a completely empty DB that ALTER throws —
+  // and pool.query() runs multiple statements in ONE transaction,
+  // so the WHOLE block rolls back. That is exactly what happened live today:
+  // 14 tables were never created and 68 shop columns went missing.
   //
-  // Isliye sabse pehle sirf CREATE — har ALTER ko apni table mil
-  // jaaye, kram chahe jo ho. Neeche ke purane CREATE waise hi hain;
-  // IF NOT EXISTS hai, dobara chalne se kuch nahi bigadta.
+  // So CREATE runs first, on its own — every ALTER then finds its table,
+  // whatever the order. The old CREATEs below are unchanged;
+  // they use IF NOT EXISTS, so running them again breaks nothing.
   await pool.query(`
     CREATE TABLE IF NOT EXISTS shops (
           id VARCHAR(50) PRIMARY KEY,
@@ -1748,15 +1752,15 @@ async function initDB() {
         );
   `);
 
-  // ── PHIR: saare column bana lo ──
+  // ── THEN: create every column ──
   //
-  // Isi wajah se: kuch "ALTER COLUMN ... TYPE" apne column ke
-  // BANNE SE PEHLE aate hain (price_color_duplex ka TYPE 18659
-  // par, uska ADD 19642 par). Khaali DB par wo phenkta hai aur
-  // poora block wapas chala jaata hai.
+  // For the same reason: some "ALTER COLUMN ... TYPE" statements come BEFORE
+  // their column is CREATED (price_color_duplex's TYPE at 18659,
+  // its ADD at 19642). On an empty DB that throws and
+  // the whole block rolls back.
   //
-  // Yahan sirf ADD — TYPE badalna aur index neeche apni jagah
-  // hi rehte hain, ab unhe apna column hamesha mil jaata hai.
+  // Only ADD happens here — type changes and indexes stay in their places
+  // below, and now they always find their column.
   await pool.query(`
     ALTER TABLE shops ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(20) DEFAULT 'both';
     ALTER TABLE shops ADD COLUMN IF NOT EXISTS agent_last_seen TIMESTAMP;
@@ -1945,12 +1949,12 @@ async function initDB() {
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS agent_version INT;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS agent_version_label VARCHAR(20);
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS whitelabel_id VARCHAR(50) DEFAULT '';
-      -- Customer Language: shop owner apne customer ke liye bhasha chunta hai.
-      -- Khali = kuch nahi chuna = customer ko English dikhega.
+      -- Customer Language: the shop owner chooses the language for their customers.
+      -- Empty = nothing chosen = customers see English.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS default_lang VARCHAR(16) DEFAULT '';
 
-      -- WhatsApp To Print: homepage par jinhone interest register kiya.
-      -- Sirf mobile number — aur kuch nahi maangte.
+      -- WhatsApp To Print: people who registered interest on the homepage.
+      -- Only a mobile number — nothing else is asked.
       CREATE TABLE IF NOT EXISTS whatsapp_interest (
         phone      VARCHAR(15) PRIMARY KEY,
         hits       INT DEFAULT 1,
@@ -1971,8 +1975,8 @@ async function initDB() {
       ALTER TABLE whitelabels ADD COLUMN IF NOT EXISTS social_facebook VARCHAR(300) DEFAULT '';
       ALTER TABLE whitelabels ADD COLUMN IF NOT EXISTS hp_buttons TEXT DEFAULT '';
       ALTER TABLE whitelabels ADD COLUMN IF NOT EXISTS monthly_price INTEGER DEFAULT 0;
-      -- Partner ka apna domain (jaise https://sharmadigital.in). Set hai to
-      -- uski shops ke mail me yahi link jaata hai — mera domain nahi dikhta.
+      -- The partner's own domain (such as https://sharmadigital.in). When set,
+      -- this link goes into the emails of their shops — our domain is not shown.
       ALTER TABLE whitelabels ADD COLUMN IF NOT EXISTS site_url VARCHAR(200) DEFAULT '';
       CREATE INDEX IF NOT EXISTS idx_shops_wl ON shops(whitelabel_id);
       -- ══ AGENT PROGRAM ══
@@ -1989,9 +1993,9 @@ async function initDB() {
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS agent_credited BOOLEAN DEFAULT false;
       CREATE UNIQUE INDEX IF NOT EXISTS idx_shops_agent_code ON shops(agent_code) WHERE agent_code IS NOT NULL;
       ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS printing_at TIMESTAMP;
-      -- Ek hi file baar-baar upload hone se rokne ke liye. Hash client se
-      -- aata hai (SHA-256). Rolling window ke bahar ke rows apne aap saaf
-      -- ho jaate hain, isliye table chhota rehta hai.
+      -- Prevents the same file from being uploaded again and again. The hash comes
+      -- from the client (SHA-256). Rows outside the rolling window are removed
+      -- automatically, so the table stays small.
       CREATE TABLE IF NOT EXISTS upload_fingerprints (
         shop_id    VARCHAR(50)  NOT NULL,
         file_hash  VARCHAR(64)  NOT NULL,
@@ -2001,8 +2005,8 @@ async function initDB() {
         PRIMARY KEY (shop_id, file_hash)
       );
       CREATE INDEX IF NOT EXISTS idx_upload_fp_last_seen ON upload_fingerprints(last_seen);
-      -- Har block/abuse event ka record. Superadmin isi se dekhta hai ki
-      -- kaun, kab, kyun block hua. 7 din se purane rows apne aap saaf.
+      -- A record of every block/abuse event. The superadmin uses it to see
+      -- who was blocked, when and why. Rows older than 7 days are removed automatically.
       CREATE TABLE IF NOT EXISTS security_events (
         id           BIGSERIAL PRIMARY KEY,
         created_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
@@ -2025,10 +2029,10 @@ async function initDB() {
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS razorpay_key_secret VARCHAR(200) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS cashfree_app_id VARCHAR(200) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS cashfree_secret_key VARCHAR(300) DEFAULT '';
-      -- Shop owner ka email — payment confirmation mail isi par jaata hai
+      -- The shop owner's email — the payment confirmation email goes here
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS email VARCHAR(160) DEFAULT '';
-      -- PhonePe ab support nahi hai. Columns JAAN-BUJH KAR rakhe hain: data
-      -- delete karna wapas nahi aata. Code inhe ab kahin use nahi karta.
+      -- PhonePe is no longer supported. The columns are kept ON PURPOSE: deleted
+      -- data cannot be brought back. The code no longer uses them anywhere.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS phonepe_merchant_id VARCHAR(200) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS phonepe_salt_key VARCHAR(200) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS phonepe_salt_index VARCHAR(10) DEFAULT '1';
@@ -2047,13 +2051,13 @@ async function initDB() {
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS demo_expires_at TIMESTAMP;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS duplex_mode VARCHAR(10) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_bw_duplex INTEGER DEFAULT 0;
-      -- Agent ka apna secret. NULL = purana agent (chalta rahega).
+      -- The agent's own secret. NULL = an old agent (it keeps working).
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS agent_token VARCHAR(64);
-      -- Kaunse PC par juda hai (sirf dikhane ke liye — asli lock agent_token hai)
+      -- Which PC it is bound to (for display only — the real lock is agent_token)
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS agent_machine VARCHAR(120);
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS agent_bound_at TIMESTAMP;
-      -- ── Decimal price support (₹2.50 / ₹1.50 jaise rate) ──
-      -- INTEGER me 2.5 nahi ban sakta, isliye NUMERIC(10,2) kar rahe hain.
+      -- ── Decimal price support (rates like ₹2.50 / ₹1.50) ──
+      -- INTEGER cannot hold 2.5, so these become NUMERIC(10,2).
       ALTER TABLE shops ALTER COLUMN price_bw            TYPE NUMERIC(10,2);
       ALTER TABLE shops ALTER COLUMN price_color         TYPE NUMERIC(10,2);
       ALTER TABLE shops ALTER COLUMN price_bw_duplex     TYPE NUMERIC(10,2);
@@ -2063,24 +2067,24 @@ async function initDB() {
       ALTER TABLE shops ALTER COLUMN price_4x6_10        TYPE NUMERIC(10,2);
       ALTER TABLE shops ALTER COLUMN price_resume_color  TYPE NUMERIC(10,2);
       ALTER TABLE shops ALTER COLUMN price_resume_bw     TYPE NUMERIC(10,2);
-      -- Aur yahi cheez print_jobs.amount par bhi. Upar ke saare rate
-      -- NUMERIC ho gaye the, par jahan wo rate GUNA hokar girta hai wo
-      -- column INTEGER hi reh gaya tha.
+      -- The same applies to print_jobs.amount. All the rates above
+      -- had become NUMERIC, but the column where the rate lands after being
+      -- MULTIPLIED was still INTEGER.
       --
-      -- Nateeja: jis shop ka rate poora rupya nahi tha (jaise ₹1.5),
-      -- uske har upload par Postgres phenk deta tha —
+      -- Result: for a shop whose rate was not a whole rupee (such as ₹1.5),
+      -- Postgres threw an error on every upload —
       --     invalid input syntax for type integer: "10.5"
-      -- — aur customer ko sirf "Upload fail (500)" dikhta tha.
+      -- — and the customer only saw "Upload failed (500)".
       ALTER TABLE print_jobs ALTER COLUMN amount TYPE NUMERIC(10,2);
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_color_duplex INTEGER DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS printer_name_4x6 VARCHAR(300) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS printer_name_a3 VARCHAR(300) DEFAULT '';
-      -- ---- DUPLEX: apna printer + per-mode on/off ----
-      -- Bahut shops me duplex sirf EK printer kar paata hai (ya sirf B&W
-      -- wala). Pehle duplex hamesha B&W/Color wale printer par jaata tha
-      -- aur customer ko dono mode par dikhta tha -- jis printer me duplex
-      -- tha hi nahi, wahan order aakar phans jaata tha.
-      -- Default TRUE hai, isliye purani shops ka behaviour bilkul nahi badalta.
+      -- ---- DUPLEX: its own printer + per-mode on/off ----
+      -- In many shops only ONE printer can do duplex (or only the B&W
+      -- one). Duplex used to always go to the B&W/Color printer
+      -- and customers saw it in both modes -- so on a printer without duplex
+      -- the order arrived and got stuck.
+      -- The default is TRUE, so the behaviour of old shops does not change at all.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS printer_name_duplex VARCHAR(300) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS duplex_bw_enabled BOOLEAN DEFAULT true;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS duplex_color_enabled BOOLEAN DEFAULT true;
@@ -2091,37 +2095,37 @@ async function initDB() {
     ALTER TABLE shops ADD COLUMN IF NOT EXISTS renewal_months INTEGER DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS renewal_order_id VARCHAR(200) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS advanced_unlocked BOOLEAN DEFAULT false;
-      -- Kaun se advance feature is shop ne liye hain (feature id ki list).
-      -- advanced_unlocked ab bhi rehta hai (purana code use karta hai),
-      -- par asli sach yahi column hai. Premium walon ki list dekhi nahi
-      -- jaati — unhe poora catalog milta hai.
+      -- Which advance features this shop has bought (a list of feature ids).
+      -- advanced_unlocked still exists (old code uses it),
+      -- but this column is the real source of truth. The list of Premium shops is not
+      -- checked — they get the full catalog.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS owned_features TEXT[] DEFAULT '{}';
-      -- Agent ab do plan bechta hai (Pro + Premium). agent_price Pro ka
-      -- hai; Premium ka apna alag, warna agent Premium Pro ke rate par
-      -- bech deta.
+      -- Agents now sell two plans (Pro + Premium). agent_price is for Pro;
+      -- Premium has its own, otherwise an agent would sell Premium at the
+      -- Pro rate.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS agent_premium_price INTEGER DEFAULT 0;
-      -- ₹49 wale single-feature order ke liye. Verify ke waqt client ke
-      -- bheje featureId par bharosa nahi karte — order banate waqt jo
-      -- maanga tha, yahin se padhte hain.
+      -- For the ₹49 single-feature order. At verify time we do not trust the
+      -- featureId sent by the client — whatever was requested when the order
+      -- was created is read from here.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS feature_order_id  VARCHAR(64) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS feature_order_fid VARCHAR(40) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS advanced_order_id VARCHAR(200) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_4x6_4 INTEGER DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_4x6_6 INTEGER DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_4x6_10 INTEGER DEFAULT 0;
-      -- 8-photo sheet ka rate. Ye column JAAN-BUJH KAR seedha NUMERIC me
-      -- banaya hai — upar wale ALTER COLUMN TYPE group me daalte to naye
-      -- DB par wo line column banne se pehle chalti aur poora migration
-      -- block rollback ho jata.
+      -- The 8-photo sheet rate. This column is DELIBERATELY created directly as NUMERIC
+      -- — placing it in the ALTER COLUMN TYPE group above would, on a new
+      -- DB, run that line before the column exists and the whole migration
+      -- block would roll back.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_4x6_8 NUMERIC(10,2) DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_4x6_12 NUMERIC(10,2) DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS adv_scan_active BOOLEAN DEFAULT true;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS page_slabs TEXT DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_resume_color INTEGER DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_resume_bw INTEGER DEFAULT 0;
-      -- ── BIG SIZE (A3 / A2 / A1) ka apna per-page rate ──
-      -- 0 / blank = purana behaviour (normal B&W/Color rate hi lagega),
-      -- isliye purani shops par kuch nahi badalta.
+      -- ── BIG SIZE (A3 / A2 / A1) has its own per-page rate ──
+      -- 0 / blank = the old behaviour (the normal B&W/Color rate applies),
+      -- so nothing changes for old shops.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_a3_bw    NUMERIC(10,2) DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_a3_color NUMERIC(10,2) DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_a2_bw    NUMERIC(10,2) DEFAULT 0;
@@ -2130,24 +2134,24 @@ async function initDB() {
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS price_a1_color NUMERIC(10,2) DEFAULT 0;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS shop_notice VARCHAR(200) DEFAULT '';
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS advanced_active BOOLEAN DEFAULT true;
-      -- Advance ke andar 4 alag-alag module. Har ek ka apna switch, taki
-      -- owner sirf wahi feature customer ko dikhaye jo uski shop me chalta hai.
-      -- Default true = purani shops ka behaviour bilkul waisa hi rehta hai.
+      -- 4 separate modules inside Advance. Each has its own switch, so the
+      -- owner shows customers only the features that work in their shop.
+      -- Default true = old shops behave exactly as before.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS adv_legal_active  BOOLEAN DEFAULT true;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS adv_resume_active BOOLEAN DEFAULT true;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS adv_4x6_active    BOOLEAN DEFAULT true;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS adv_a3_active     BOOLEAN DEFAULT true;
-      -- Mini Print: ek A4 sheet par 2/4/6/8/9/12/16 pages (kagaz bachta hai)
+      -- Mini Print: 2/4/6/8/9/12/16 pages on one A4 sheet (saves paper)
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS adv_mini_active   BOOLEAN DEFAULT true;
-      -- Purane demo accounts ko bhi advanced features de do. Sirf demo par —
-      -- paid shops ka paywall bilkul waise ka waisa rehta hai.
+      -- Give old demo accounts the advanced features too. Only for demos —
+      -- the paywall for paid shops stays exactly as it was.
       UPDATE shops SET advanced_unlocked = true
        WHERE demo = true AND advanced_unlocked = false;
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS shop_logo VARCHAR(400) DEFAULT '';
-      -- ── PhonePe hataya gaya ── jo shops PhonePe par thi unka online payment
-      -- ab kaam nahi karega, isliye unhe counter-cash par daal rahe hain.
-      -- Owner apne panel se Razorpay/Cashfree lagate hi online wapas chalu.
-      -- Dobara chale to kuch nahi hota — pehli baar ke baad koi row match hi nahi karti.
+      -- ── PhonePe was removed ── online payment for shops that used PhonePe
+      -- no longer works, so they are switched to counter cash.
+      -- As soon as the owner adds Razorpay/Cashfree in their panel, online payment is back.
+      -- Running it again does nothing — after the first run no row matches.
       UPDATE shops SET payment_mode='counter_only', payment_gateway=''
         WHERE payment_gateway='phonepe';
       ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS feedback SMALLINT DEFAULT 0;
@@ -2166,8 +2170,8 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT NOW()
       );
       -- ── Demo approval workflow (Phase 3) ──
-      -- Purane rows ka status 'approved' rahega (DEFAULT), isliye pehle se
-      -- bane demos par koi asar nahi padta.
+      -- Old rows keep the status 'approved' (DEFAULT), so demos that were
+      -- already created are not affected.
       ALTER TABLE demo_registrations ADD COLUMN IF NOT EXISTS name          VARCHAR(120) DEFAULT '';
       ALTER TABLE demo_registrations ADD COLUMN IF NOT EXISTS email         VARCHAR(160) DEFAULT '';
       ALTER TABLE demo_registrations ADD COLUMN IF NOT EXISTS shop_name     VARCHAR(200) DEFAULT '';
@@ -2181,27 +2185,27 @@ async function initDB() {
         shop_id VARCHAR(50),
         created_at TIMESTAMP DEFAULT NOW()
       );
-      -- Shop banane wale ka IP. Pehle ye kahin save hi nahi hota tha,
-      -- isliye "kis IP ne banaya" ka jawab nikalna namumkin tha.
+      -- The IP of whoever created the shop. It used to not be saved anywhere,
+      -- so "which IP created it" could never be answered.
       ALTER TABLE shops ADD COLUMN IF NOT EXISTS created_ip VARCHAR(60) DEFAULT '';
       CREATE INDEX IF NOT EXISTS idx_shops_created_ip ON shops(created_ip);
-      -- Pakka blocklist. abuseBlocks wala Map sirf 15 minute ka hai aur
-      -- har restart par mit jaata hai — baar-baar wale bande ke liye wo
-      -- kaafi nahi.
+      -- The permanent blocklist. The abuseBlocks Map lasts only 15 minutes and
+      -- is wiped on every restart — for a repeat offender that is
+      -- not enough.
       CREATE TABLE IF NOT EXISTS blocked_ips (
         ip         VARCHAR(60) PRIMARY KEY,
         reason     VARCHAR(200) DEFAULT '',
         created_at TIMESTAMP DEFAULT NOW()
       );
-      -- Job kis CUSTOMER ne bheji. Pehle ye kahin save hi nahi hota tha,
-      -- isliye "ye banda baar-baar kar raha hai" ya "iska job baar-baar
-      -- deny ho raha hai" — dono sawal ka jawab nikalna namumkin tha.
-      -- Purani job me khali rahega; aage se bharta rahega.
+      -- Which CUSTOMER submitted the job. It used to not be saved anywhere,
+      -- so "this person keeps doing it" or "this person's job keeps
+      -- being denied" — neither question could be answered.
+      -- It stays empty on old jobs; it fills in from now on.
       ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS customer_id VARCHAR(48) DEFAULT '';
       CREATE INDEX IF NOT EXISTS idx_jobs_customer ON print_jobs(customer_id);
-      -- Customer ka PAKKA block. Upar wala abuseBlocks 15 minute ka hai
-      -- aur restart par mit jaata hai — baar-baar wale bande ke liye wo
-      -- kaafi nahi. Ye tab tak rehta hai jab tak superadmin na hataye.
+      -- The PERMANENT customer block. The abuseBlocks above last 15 minutes
+      -- and are wiped on restart — for a repeat offender that is
+      -- not enough. This one stays until the superadmin removes it.
       CREATE TABLE IF NOT EXISTS blocked_customers (
         cid        VARCHAR(48) PRIMARY KEY,
         shop_id    VARCHAR(50)  DEFAULT '',
@@ -2222,13 +2226,13 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
-      -- ══ PLATFORM PAYMENTS — har wo paisa jo HUMARE account me aaya ══
-      -- Pehle sirf shops.setup_paid flag tha; advanced unlock (₹199) aur
-      -- renewal ka koi record hi nahi banta tha — isliye superadmin me
-      -- kuch dikhta hi nahi tha. Ab har payment ki ek row banti hai.
+      -- ══ PLATFORM PAYMENTS — every rupee that reached OUR account ══
+      -- There used to be only the shops.setup_paid flag; advanced unlocks (₹199) and
+      -- renewals were never recorded at all — so nothing showed up in
+      -- superadmin. Now every payment gets a row.
       --   kind: 'setup' | 'advanced' | 'renewal' | 'wl_license'
-      -- payment_id par UNIQUE index hai → webhook + verify + reconcile
-      -- teeno fire ho jayen to bhi ek hi row banegi (double count nahi).
+      -- payment_id has a UNIQUE index → even if webhook + verify + reconcile
+      -- all fire, only one row is created (no double counting).
       CREATE TABLE IF NOT EXISTS platform_payments (
         id SERIAL PRIMARY KEY,
         kind VARCHAR(20) NOT NULL,
@@ -2249,9 +2253,9 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_pp_created ON platform_payments(created_at DESC);
 
       -- ══ TRANSLATIONS ══
-      -- source = Hinglish text jo HTML me likha hai (yahi "key" hai).
-      -- Har language ke liye ek row. Missing ho to source hi dikhta hai —
-      -- isliye adhoori translation se bhi kuch tootta nahi.
+      -- source = the English source text written in the HTML (this is the "key").
+      -- One row per language. When one is missing, the source text shows —
+      -- so an incomplete translation breaks nothing.
       CREATE TABLE IF NOT EXISTS translations (
         id SERIAL PRIMARY KEY,
         lang VARCHAR(8) NOT NULL,
@@ -2262,7 +2266,7 @@ async function initDB() {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_tr_lang_src ON translations(lang, md5(source));
       CREATE INDEX IF NOT EXISTS idx_tr_lang ON translations(lang);
 
-      -- ══ REVIEWS — homepage par dikhne wale customer reviews ══
+      -- ══ REVIEWS — customer reviews shown on the homepage ══
       CREATE TABLE IF NOT EXISTS reviews (
         id SERIAL PRIMARY KEY,
         name VARCHAR(120) NOT NULL,
@@ -2274,10 +2278,10 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
-      -- ══ WHITE LABEL — reseller apne brand se bechta hai ══
-      -- Reseller apna Razorpay lagata hai, isliye uski shops ka setup fee
-      -- SEEDHA usi ke account me jaata hai (hamare paas nahi aata).
-      -- Hamein sirf ek baar ka license fee milta hai.
+      -- ══ WHITE LABEL — a reseller sells under their own brand ══
+      -- The reseller uses their own Razorpay, so the setup fee of their shops goes
+      -- STRAIGHT to their account (it does not come to us).
+      -- We only receive a one-time license fee.
       CREATE TABLE IF NOT EXISTS whitelabels (
         id VARCHAR(50) PRIMARY KEY,
         slug VARCHAR(40) UNIQUE,
@@ -2307,9 +2311,9 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_wl_slug ON whitelabels(slug);
 
       -- ══ ANALYTICS — homepage funnel (pageviews + CTA clicks) ══
-      -- Demo-create aur paid-conversion ka asli data 'shops' table me
-      -- pehle se hai; ye table sirf TOP-of-funnel capture karti hai jo
-      -- kahin aur record nahi hoti.
+      -- The real demo-creation and paid-conversion data already lives in the
+      -- 'shops' table; this table only captures the TOP of the funnel, which
+      -- is not recorded anywhere else.
       CREATE TABLE IF NOT EXISTS analytics_events (
         id SERIAL PRIMARY KEY,
         event_type VARCHAR(40) NOT NULL,
@@ -2321,16 +2325,16 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT NOW()
       );
       ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS wl VARCHAR(40) DEFAULT '';
-      -- Shop khud review bhej sake, par homepage par tabhi dikhe jab
-      -- superadmin approve kare. Purane reviews (jo superadmin ne khud
-      -- daale the) DEFAULT 'approved' se apne aap live rehte hain.
+      -- A shop can submit its own review, but it shows on the homepage only when
+      -- the superadmin approves it. Old reviews (added by the superadmin
+      -- directly) stay live automatically through DEFAULT 'approved'.
       ALTER TABLE reviews ADD COLUMN IF NOT EXISTS status VARCHAR(12) DEFAULT 'approved';
       ALTER TABLE reviews ADD COLUMN IF NOT EXISTS shop_id VARCHAR(50) DEFAULT '';
       ALTER TABLE reviews ADD COLUMN IF NOT EXISTS state VARCHAR(80) DEFAULT '';
       ALTER TABLE reviews ADD COLUMN IF NOT EXISTS edited BOOLEAN DEFAULT false;
       CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status);
-      -- 'ref' me agent ka referral code jaata hai. Visitor kahan se aaya
-      -- (google/facebook/instagram) uske liye alag column chahiye.
+      -- 'ref' holds the agent's referral code. Where the visitor came from
+      -- (google/facebook/instagram) needs a separate column.
       ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS referrer VARCHAR(160) DEFAULT '';
       CREATE INDEX IF NOT EXISTS idx_analytics_wl ON analytics_events(wl);
       CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at);
@@ -2347,18 +2351,18 @@ async function initDB() {
       );
     `);
 
-    // GRANDFATHER MIGRATION: Purani shops jo setup-fee feature se PEHLE bani thi,
-    // unka setup_paid abhi false hai (default) lekin unhone kabhi setup fee dene
-    // ka option dekha hi nahi tha. Unhe lock out karna unfair hoga, isliye
-    // ek baar ke liye unhe auto-activate kar dete hain. Yeh column sirf ek baar
-    // chalta hai — jin shops ka qr_code already generated hai (purana flow se)
-    // unhi ko activate karta hai, future naye registrations is condition mein nahi aayenge.
+    // GRANDFATHER MIGRATION: old shops created BEFORE the setup-fee feature
+    // still have setup_paid = false (the default), but they never saw an option
+    // to pay a setup fee. Locking them out would be unfair, so they are
+    // auto-activated once. This runs only once — it activates only the shops
+    // whose qr_code was already generated (by the old flow);
+    // future registrations will never match this condition.
     await pool.query(`
       UPDATE shops SET setup_paid = true
       WHERE setup_paid = false AND qr_code IS NOT NULL AND qr_code != '' AND setup_payment_id = ''
     `);
 
-    // Default setup fee (offer + actual price) seed karo agar database mein abhi tak set nahi hai
+    // Seed the default setup fee (offer + actual price) if the database does not have it yet
     await pool.query(`
       INSERT INTO system_settings (key, value)
       VALUES ('setup_fee_amount', $1)
@@ -2371,52 +2375,52 @@ async function initDB() {
       ON CONFLICT (key) DO NOTHING
     `, [SETUP_ACTUAL_PRICE.toString()]);
 
-    // Agent version seed karo — agar pehle se set nahi hai. Yeh version number
-    // har baar badhana hoga jab print_agent.py ka naya code daalo, taaki
-    // sab customers ke PC pe Auto-Update trigger ho jaye.
+    // Seed the agent version — if it is not set yet. This version number
+    // must be raised every time new print_agent.py code is released, so that
+    // Auto-Update triggers on every customer's PC.
     await pool.query(`
       INSERT INTO system_settings (key, value)
       VALUES ('agent_version', '1')
       ON CONFLICT (key) DO NOTHING
     `);
     // ── Display version label (2.0, 2.1, 2.2 ... 2.10, then 3.0) ──
-    // 'agent_version' ek INTERNAL counter hai jo sirf badhta hai (29, 30, 31...).
-    // Purane agents (v27/v28/v29) isi integer ko compare karke auto-update
-    // karte hain — isliye ise kabhi "2.0" mat banao, warna woh sab agents
-    // hamesha ke liye update lena band kar denge.
-    // Customer ko dikhne wala version yeh label hai.
+    // 'agent_version' is an INTERNAL counter that only goes up (29, 30, 31...).
+    // Old agents (v27/v28/v29) compare this integer to auto-update —
+    // so never turn it into "2.0", otherwise all of those agents would
+    // stop taking updates forever.
+    // The version customers see is this label.
     await pool.query(`
       INSERT INTO system_settings (key, value)
       VALUES ('agent_version_label', '')
       ON CONFLICT (key) DO NOTHING
     `);
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('demo_enabled','1') ON CONFLICT DO NOTHING");
-    // Demo ki umar — 1440 minute = 24 ghante.
+    // Demo lifetime — 1440 minutes = 24 hours.
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('demo_minutes','1440') ON CONFLICT DO NOTHING");
-    // Purane DB me ye 120 (2 ghante) pada hai. Sirf tab badlo jab abhi bhi
-    // wahi purana default ho — agar superadmin ne jaan-bujh ke koi aur value
-    // set ki hai to usse chhedna galat hoga.
+    // Old DBs still hold 120 (2 hours) here. Change it only while it is still
+    // that old default — if the superadmin deliberately set another value,
+    // touching it would be wrong.
     await pool.query("UPDATE system_settings SET value='1440' WHERE key='demo_minutes' AND value='120'");
-    // Demo me kitne free print milenge (spec: 10)
+    // How many free prints a demo gets (spec: 10)
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('demo_print_limit','10') ON CONFLICT DO NOTHING");
-    // '1' = demo turant ban jaaye (purana behaviour). '0' = superadmin approve kare.
-    // Demo ab INSTANT hai — form submit karte hi Shop ID + password mil
-    // jaata hai. Superadmin chahe to 'Manual approval' wapas on kar sakta
-    // hai (Demo Control card se).
+    // '1' = the demo is created instantly (the old behaviour). '0' = the superadmin approves it.
+    // Demos are INSTANT now — the Shop ID + password arrive as soon as the form
+    // is submitted. The superadmin can switch 'Manual approval' back on if needed
+    // (from the Demo Control card).
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('demo_auto_approve','1') ON CONFLICT DO NOTHING");
-    // Naye plan (Starter / Pro / Premium) ke default price. ON CONFLICT
-    // DO NOTHING — matlab superadmin ne badal diya ho to restart par
-    // wapas default nahi hoga.
+    // Default prices of the new plans (Starter / Pro / Premium). ON CONFLICT
+    // DO NOTHING — so if the superadmin changed them, a restart does not
+    // reset them to the defaults.
     await pool.query(`INSERT INTO system_settings (key,value) VALUES
       ('plan_starter_fee','599'), ('plan_starter_actual','2999'),
       ('plan_pro_fee','899'),     ('plan_pro_actual','2999'),
       ('plan_premium_fee','999'), ('plan_premium_actual','2999'),
-      -- Naye (non-core) advance feature ka default price
+      -- Default price of a new (non-core) advance feature
       ('addon_feature_fee','49')
       ON CONFLICT DO NOTHING`);
-    // One-time flip: jo installs pehle se chal rahe hain unme ye key '0'
-    // padi hai. Ise EK BAAR '1' karo, phir kabhi mat chhedo — warna
-    // superadmin ka manual-mode har restart par ud jaata.
+    // One-time flip: existing installs have this key set to '0'.
+    // Set it to '1' ONCE, then never touch it again — otherwise the
+    // superadmin's manual mode would be wiped on every restart.
     {
       const flipped = await pool.query("SELECT 1 FROM system_settings WHERE key='demo_instant_migrated'");
       if (!flipped.rows.length) {
@@ -2427,44 +2431,44 @@ async function initDB() {
     }
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('monthly_fee','399') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('advanced_fee','199') ON CONFLICT DO NOTHING");
-    // Agent Base Price (0 = abhi tak set nahi — tab tak agent ka floor = public
-    // Offer Price hi rahega). Monthly/Advanced Actual Price bhi 0 = strikethrough
-    // hide rahega jab tak superadmin explicitly na daale.
+    // Agent Base Price (0 = not set yet — until then the agent floor = the public
+    // Offer Price). Monthly/Advanced Actual Price 0 also means the strikethrough stays
+    // hidden until the superadmin explicitly enters one.
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('agent_base_price','0') ON CONFLICT DO NOTHING");
-    // White Label — license fee (ek baar) aur reseller ka minimum shop price
-    // Naye shop ka EMAIL alert. SMTP sirf ek baar superadmin set karta hai;
-    // partners ko kuch setup nahi karna — wo sirf apna email daalte hain.
+    // White Label — the license fee (one-time) and the reseller's minimum shop price
+    // New-shop EMAIL alert. The superadmin sets up SMTP only once;
+    // partners do not set anything up — they only enter their email.
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('smtp_host','smtp.gmail.com') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('smtp_port','587') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('smtp_user','') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('smtp_pass','') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('notify_email','') ON CONFLICT DO NOTHING");
-    // Demo banne par bhi alert jaye ya nahi. Default ON.
-    // Band karna ho to: UPDATE system_settings SET value='0' WHERE key='demo_alert';
+    // Whether an alert is sent when a demo is created too. Default ON.
+    // To turn it off: UPDATE system_settings SET value='0' WHERE key='demo_alert';
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('demo_alert','1') ON CONFLICT DO NOTHING");
-    // Login par apna captcha. Default ON.
-    // Band: UPDATE system_settings SET value='0' WHERE key='captcha_enabled';
-    // Ya Render me env var CAPTCHA_OFF=1 (turant, DB chhue bina).
+    // Our own captcha on login. Default ON.
+    // Off: UPDATE system_settings SET value='0' WHERE key='captcha_enabled';
+    // Or the CAPTCHA_OFF=1 env var on Render (immediate, without touching the DB).
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('captcha_enabled','1') ON CONFLICT DO NOTHING");
-    // Brevo HTTPS API — Render jaise hosts SMTP ports block karte hain,
-    // isliye default yahi hai (port 443 kabhi block nahi hota).
+    // Brevo HTTPS API — hosts like Render block SMTP ports,
+    // so this is the default (port 443 is never blocked).
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('brevo_api_key','') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('brevo_sender','') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('wl_license_fee','25000') ON CONFLICT DO NOTHING");
-    // License ka "kata hua" price — 0 = dikhega hi nahi
+    // The license's "struck-through" price — 0 = not shown at all
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('wl_license_actual','0') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('wl_base_price','0') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('monthly_actual_price','0') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('advanced_actual_price','0') ON CONFLICT DO NOTHING");
-    // Festival Offer — homepage One-Time price ke saath banner + countdown.
-    // OFF by default; superadmin Setup Fee page se ON karega naam/date/time ke saath.
+    // Festival Offer — a banner + countdown next to the homepage One-Time price.
+    // OFF by default; the superadmin turns it ON from the Setup Fee page with a name/date/time.
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('festival_offer_enabled','0') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('festival_offer_name','') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('festival_offer_end','') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('homepage_config', $1) ON CONFLICT DO NOTHING", [JSON.stringify(BRAND_DEFAULTS)]);
 
-    // Broken demo logins repair (bcrypt hash galti se gaya tha; login sha256
-    // expect karta hai). Idempotent — sirf $2 (bcrypt) wale demo shops.
+    // Repair broken demo logins (a bcrypt hash was stored by mistake; login
+    // expects sha256). Idempotent — only demo shops with $2 (bcrypt) hashes.
     const brokenDemos = await pool.query(
       "SELECT id, phone FROM shops WHERE demo=true AND password_hash LIKE '$2%'");
     for (const d of brokenDemos.rows) {
@@ -2501,9 +2505,9 @@ async function getSetupPricing() {
   }
 }
 
-// Festival Offer — banner + countdown timer jo One-Time price ke saath
-// homepage par dikhta hai. endAt ek ISO datetime string hai (jaise
-// "2026-08-15T23:59"); front-end isi se ulta countdown chalata hai.
+// Festival Offer — a banner + countdown timer shown on the homepage next to
+// the One-Time price. endAt is an ISO datetime string (such as
+// "2026-08-15T23:59"); the front end runs the countdown from it.
 async function getFestivalOffer() {
   try {
     const r = await pool.query(
@@ -2558,29 +2562,29 @@ app.post('/api/shop/supply-warning', verifyToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── 7-din earning breakdown (sirf paid) ──
-// Owner: customer ko dikhne wala notice set/clear
-// Owner: advance feature khud on/off (sirf unlocked shop)
-// Owner: apni shop ka logo upload (customer QR page par dikhega)
+// ── 7-day earnings breakdown (paid only) ──
+// Owner: set/clear the notice shown to customers
+// Owner: switch advance features on/off (unlocked shops only)
+// Owner: upload their shop logo (shown on the customer QR page)
 app.post('/api/shop/upload-logo', verifyToken, upload.single('logo'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Koi file nahi' });
-    // SIRF PNG (transparent background ke liye) — JPG/WEBP allowed nahi
+    if (!req.file) return res.status(400).json({ error: 'No file' });
+    // PNG ONLY (for a transparent background) — JPG/WEBP are not allowed
     if (req.file.mimetype !== 'image/png' || !isPng(req.file.buffer))
-      return res.status(400).json({ error: 'Sirf PNG file chalegi (transparent background wali)' });
+      return res.status(400).json({ error: 'Only PNG files are accepted (with a transparent background)' });
     // Max 50 KB
     if (req.file.size > 50 * 1024)
-      return res.status(400).json({ error: `Logo 50 KB se chhota hona chahiye (abhi ${Math.round(req.file.size/1024)} KB hai)` });
-    // Transparency check — PNG me alpha channel hona chahiye
+      return res.status(400).json({ error: `The logo must be smaller than 50 KB (it is ${Math.round(req.file.size/1024)} KB now)` });
+    // Transparency check — the PNG must have an alpha channel
     if (!pngHasAlpha(req.file.buffer))
-      return res.status(400).json({ error: 'PNG transparent background wali honi chahiye (abhi solid background hai)' });
+      return res.status(400).json({ error: 'The PNG must have a transparent background (it has a solid background now)' });
     const url = await uploadImageToCloudinary(req.file.buffer, req.file.mimetype);
     await pool.query('UPDATE shops SET shop_logo=$1 WHERE id=$2', [url, req.shopId]);
     res.json({ success: true, logoUrl: url });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Owner: logo hatao
+// Owner: remove the logo
 app.post('/api/shop/remove-logo', verifyToken, async (req, res) => {
   try {
     await pool.query("UPDATE shops SET shop_logo='' WHERE id=$1", [req.shopId]);
@@ -2592,15 +2596,15 @@ app.post('/api/shop/advance-active', verifyToken, async (req, res) => {
   try {
     const chk = await pool.query('SELECT advanced_unlocked FROM shops WHERE id=$1', [req.shopId]);
     if (!chk.rows.length || !chk.rows[0].advanced_unlocked)
-      return res.status(403).json({ error: 'Advance feature unlock nahi hai' });
+      return res.status(403).json({ error: 'The Advance Feature is not unlocked' });
     const active = req.body.active === true;
     await pool.query('UPDATE shops SET advanced_active=$1 WHERE id=$2', [active, req.shopId]);
     res.json({ success: true, active });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Advance ke 4 module — har ek alag on/off.
-// Column name whitelist se aata hai, isliye SQL injection ka scope nahi.
+// The 4 Advance modules — each switched on/off separately.
+// The column name comes from a whitelist, so there is no room for SQL injection.
 const ADV_MODULE_COLS = {
   legal:  'adv_legal_active',
   resume: 'adv_resume_active',
@@ -2613,10 +2617,10 @@ const ADV_MODULE_COLS = {
 app.post('/api/shop/advance-module', verifyToken, async (req, res) => {
   try {
     const col = ADV_MODULE_COLS[String(req.body.module || '')];
-    if (!col) return res.status(400).json({ error: 'Galat module' });
+    if (!col) return res.status(400).json({ error: 'Invalid module' });
     const chk = await pool.query('SELECT advanced_unlocked FROM shops WHERE id=$1', [req.shopId]);
     if (!chk.rows.length || !chk.rows[0].advanced_unlocked)
-      return res.status(403).json({ error: 'Advance feature unlock nahi hai' });
+      return res.status(403).json({ error: 'The Advance Feature is not unlocked' });
     const active = req.body.active === true;
     const r = await pool.query(
       `UPDATE shops SET ${col}=$1 WHERE id=$2
@@ -2637,7 +2641,7 @@ app.post('/api/shop/notice', verifyToken, async (req, res) => {
 // Owner: busy-time + feedback summary insights
 app.get('/api/shop/insights', verifyToken, async (req, res) => {
   try {
-    // Busy hours (last 30 din, IST = UTC+5:30)
+    // Busy hours (last 30 days, IST = UTC+5:30)
     const hours = await pool.query(
       `SELECT EXTRACT(HOUR FROM created_at + INTERVAL '5 hours 30 minutes') as hr, COUNT(*) as n
        FROM print_jobs WHERE shop_id=$1 AND ${JOB_COUNTS} AND created_at > NOW() - INTERVAL '30 days'
@@ -2679,22 +2683,22 @@ app.get('/api/shop/earnings-breakdown', verifyToken, async (req, res) => {
 app.get('/api/shop/referral', verifyToken, async (req, res) => {
   try {
     const me = await pool.query('SELECT referral_earnings, agent_earnings, setup_paid, demo FROM shops WHERE id=$1', [req.shopId]);
-    if (!me.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!me.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const earnings = (me.rows[0].referral_earnings || 0) + (me.rows[0].agent_earnings || 0);
-    const canRefer = me.rows[0].setup_paid && !me.rows[0].demo; // paid AND non-demo hi refer kare — warna demo user free ₹50 kamata
+    const canRefer = me.rows[0].setup_paid && !me.rows[0].demo; // only paid AND non-demo shops can refer — otherwise a demo user would earn ₹50 for free
 
-    // Withdrawn total (done + pending — dono balance se ghatao taaki double-withdraw na ho)
+    // Withdrawn total (done + pending — subtract both from the balance to prevent a double withdrawal)
     const wd = await pool.query(
       "SELECT COALESCE(SUM(amount),0) as used FROM withdrawals WHERE shop_id=$1 AND status IN ('pending','done')",
       [req.shopId]);
     const used = parseInt(wd.rows[0].used) || 0;
     const available = earnings - used;
 
-    // Referred shops list — naam, number, paid status
+    // Referred shops list — name, number, paid status
     const refs = await pool.query(
-      // Agent ne jo shops khud onboard ki hain wo yahan NAHI — unka hisaab
-      // Agent tab me alag dikhta hai (₹200 commission wala), warna ek hi shop
-      // dono jagah dikh kar confuse karti hai
+      // Shops the agent onboarded personally are NOT here — they are accounted for
+      // separately in the Agent tab (the ₹200 commission one), otherwise the same shop
+      // would appear in both places and cause confusion
       `SELECT name, phone, setup_paid, created_at FROM shops
        WHERE referred_by=$1 AND COALESCE(onboarded_by,'')='' ORDER BY created_at DESC`,
       [req.shopId]);
@@ -2719,25 +2723,25 @@ app.get('/api/shop/referral', verifyToken, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
-// AGENT APIs — shop login (verifyToken) ke andar
+// AGENT APIs — inside the shop login (verifyToken)
 // ══════════════════════════════════════════════════════════════
 
-// Mera agent status + stats
+// My agent status + stats
 app.get('/api/agent/status', verifyToken, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT id,name,is_agent,agent_code,agent_upi,agent_price,agent_blocked,
               agent_earnings,agent_joined_at,setup_paid,demo
        FROM shops WHERE id=$1`, [req.shopId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const s = r.rows[0];
-    const base = await getAgentBasePrice();  // agent ka apna floor, public price nahi
-    // ---- AGENT KE PAAS DO PLAN HAIN: Pro aur Premium ----
-    // Superadmin dono ka alag floor set karta hai (Setup Fee page par
-    // "PRO - AGENT FLOOR" aur "PREMIUM - AGENT FLOOR"). Ref-link wala
-    // registration flow dono ko pehle se support karta hai, par ye status
-    // API sirf Pro wala floor lautati thi -- isliye agent ke dashboard par
-    // hamesha EK hi option dikhta tha. Ab dono jaate hain.
+    const base = await getAgentBasePrice();  // the agent's own floor, not the public price
+    // ---- AN AGENT HAS TWO PLANS: Pro and Premium ----
+    // The superadmin sets a separate floor for each (on the Setup Fee page:
+    // "PRO - AGENT FLOOR" and "PREMIUM - AGENT FLOOR"). The ref-link
+    // registration flow already supports both, but this status API returned
+    // only the Pro floor -- so the agent's dashboard always showed
+    // just ONE option. Now both are sent.
     const premiumBase = await getAgentPremiumBasePrice();
     const agentPlans = [
       { id: 'pro',     label: 'Pro',     price: base,
@@ -2763,10 +2767,10 @@ app.get('/api/agent/status', verifyToken, async (req, res) => {
     res.json({
       is_agent: !!s.is_agent, agent_code: s.agent_code, upi: s.agent_upi || '',
       blocked: !!s.agent_blocked,
-      // price/markup ka concept khatam — sab ek hi rate par bechte hain
+      // the price/markup concept is gone — everyone sells at the same rate
       price: base, base_price: base, max_price: 0, can_set_price: false,
-      // Naya: dono plan ki list + Premium ka floor. Upar wale purane field
-      // waise ke waise hain, isliye koi purana panel nahi tootega.
+      // New: the list of both plans + the Premium floor. The old fields above
+      // are unchanged, so no old panel will break.
       plans: agentPlans,
       premium_base_price: premiumBase,
       commission_per_shop: AGENT_COMMISSION,
@@ -2782,14 +2786,14 @@ app.get('/api/agent/status', verifyToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Agent bano — sirf paid (non-demo) shop owner
+// Become an agent — paid (non-demo) shop owners only
 app.post('/api/agent/join', verifyToken, async (req, res) => {
   try {
     const r = await pool.query('SELECT setup_paid,demo,is_agent,agent_code FROM shops WHERE id=$1', [req.shopId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const s = r.rows[0];
     if (s.demo || !s.setup_paid)
-      return res.status(403).json({ error: 'Agent banne ke liye pehle plan lena zaroori hai. Demo account agent nahi ban sakta.' });
+      return res.status(403).json({ error: 'You must buy a plan before becoming an agent. A demo account cannot become an agent.' });
     if (s.is_agent) return res.json({ success: true, agent_code: s.agent_code, already: true });
 
     const code = s.agent_code || await genAgentCode();
@@ -2800,31 +2804,31 @@ app.post('/api/agent/join', verifyToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// UPI save — commission isi par aayega
+// Save the UPI ID — the commission is paid to it
 app.put('/api/agent/upi', verifyToken, async (req, res) => {
   try {
     const upi = String(req.body.upi_id || '').trim();
     if (!/^[\w.\-]{2,}@[\w.\-]{2,}$/.test(upi))
-      return res.status(400).json({ error: 'Sahi UPI ID daalo (jaise name@bank)' });
+      return res.status(400).json({ error: 'Enter a valid UPI ID (such as name@bank)' });
     const r = await pool.query('SELECT is_agent FROM shops WHERE id=$1', [req.shopId]);
-    if (!r.rows.length || !r.rows[0].is_agent) return res.status(403).json({ error: 'Aap agent nahi ho' });
+    if (!r.rows.length || !r.rows[0].is_agent) return res.status(403).json({ error: 'You are not an agent' });
     await pool.query('UPDATE shops SET agent_upi=$2 WHERE id=$1', [req.shopId, upi]);
     res.json({ success: true, upi_id: upi });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── AGENT APNA PRICE AB SET NAHI KAR SAKTA ──
-// Purana system: agent base se upar apna price rakh kar markup kamata tha.
-// Naya system: sabka price ek — commission flat ₹100. Endpoint 410 deta
-// hai (route hata dene se purane panel par JS error aata, isliye rakha hai).
+// ── AGENTS CAN NO LONGER SET THEIR OWN PRICE ──
+// Old system: the agent set a price above the base and earned the markup.
+// New system: one price for everyone — a flat ₹100 commission. The endpoint returns 410
+// (removing the route would cause a JS error in the old panel, so it is kept).
 app.put('/api/agent/price', verifyToken, async (req, res) => {
   return res.status(410).json({
-    error: 'Agent ab apna price set nahi kar sakta. Har shop par flat ₹' +
-           AGENT_COMMISSION + ' commission milta hai.'
+    error: 'Agents can no longer set their own price. Every shop earns a flat ₹' +
+           AGENT_COMMISSION + ' commission.'
   });
 });
 
-// Meri onboard ki hui shops
+// The shops I have onboarded
 app.get('/api/agent/shops', verifyToken, async (req, res) => {
   try {
     const r = await pool.query(
@@ -2839,7 +2843,7 @@ app.get('/api/agent/shops', verifyToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Kamai ka poora hisaab (payout history)
+// The full earnings record (payout history)
 app.get('/api/agent/commissions', verifyToken, async (req, res) => {
   try {
     const c = await pool.query(
@@ -2851,47 +2855,47 @@ app.get('/api/agent/commissions', verifyToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Agent khud kisi ki shop onboard kare — Shop ID + password generate
+// An agent onboards someone's shop personally — generates the Shop ID + password
 app.post('/api/agent/onboard', verifyToken, async (req, res) => {
   try {
     const me = await pool.query(
       'SELECT is_agent, agent_blocked, demo FROM shops WHERE id=$1', [req.shopId]);
-    // Demo account sab kuch DEKH sakta hai, par shop onboard nahi kar sakta.
-    // Frontend par bhi gate hai — ye doosri layer hai taaki koi seedha
-    // API call karke bhi na nikal jaye.
+    // A demo account can SEE everything but cannot onboard a shop.
+    // The frontend has a gate too — this is the second layer, so nobody can
+    // get through by calling the API directly.
     if (me.rows.length && me.rows[0].demo) {
       return res.status(403).json({
         error: 'To use this feature you must be a paid shop owner',
         needPlan: true
       });
     }
-    if (!me.rows.length || !me.rows[0].is_agent) return res.status(403).json({ error: 'Aap agent nahi ho' });
-    if (me.rows[0].agent_blocked) return res.status(403).json({ error: 'Aapka agent account abhi paused hai' });
+    if (!me.rows.length || !me.rows[0].is_agent) return res.status(403).json({ error: 'You are not an agent' });
+    if (me.rows[0].agent_blocked) return res.status(403).json({ error: 'Your agent account is currently paused' });
 
     const name = String(req.body.name || '').trim();
     const phone = String(req.body.phone || '').trim();
     const address = String(req.body.address || '').trim();
-    if (!name) return res.status(400).json({ error: 'Shop ka naam zaroori hai' });
-    if (!/^\d{10}$/.test(phone)) return res.status(400).json({ error: 'Sahi 10 digit mobile number daalo' });
+    if (!name) return res.status(400).json({ error: 'The shop name is required' });
+    if (!/^\d{10}$/.test(phone)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
 
-    // ---- KAUNSA PLAN ----
-    // Agent ke channel par sirf Pro aur Premium bikte hain (Starter nahi) --
-    // bilkul wahi niyam jo ref-link wale registration par lagta hai.
-    // Pehle ye endpoint plan poochta hi nahi tha: har shop 'onetime' ban
-    // jaati thi aur price PUBLIC setup fee se aata tha, agent ke floor se
-    // nahi. Isliye superadmin do floor set karta tha par agent ko onboard
-    // form par ek hi option dikhta tha.
+    // ---- WHICH PLAN ----
+    // Only Pro and Premium are sold through the agent channel (not Starter) --
+    // exactly the same rule as for ref-link registration.
+    // This endpoint used to not ask for a plan at all: every shop became
+    // 'onetime' and the price came from the PUBLIC setup fee, not the agent's
+    // floor. That is why the superadmin set two floors but the agent saw only
+    // one option on the onboarding form.
     let agPlan = normalizePlan(req.body.plan);
     if (!PLANS_BY_CHANNEL.agent.includes(agPlan)) agPlan = 'pro';
 
-    // Har plan ka apna agent floor -- aur bas WAHI.
+    // Each plan has its own agent floor -- and ONLY that applies.
     //
-    // Agent ka apna markup KHATAM hai (PUT /api/agent/price ab 410 deta
-    // hai, status me can_set_price:false). Par purani shops ki row me
-    // `agent_price` abhi bhi pada hai -- Mahato Net Cafe me 1799. Pehle
-    // yahan `agent_price > floor ? agent_price : floor` tha, isliye form
-    // par Rs 799 dikhta tha aur shop Rs 1799 par ban jaati thi.
-    // Ab jo superadmin ne set kiya, wahi lagta hai.
+    // The agent's own markup is GONE (PUT /api/agent/price now returns 410,
+    // and the status says can_set_price:false). But the rows of old shops still
+    // carry `agent_price` -- 1799 for Mahato Net Cafe. This used to be
+    // `agent_price > floor ? agent_price : floor`, so the form showed
+    // Rs 799 and the shop was created at Rs 1799.
+    // Now whatever the superadmin set is what applies.
     const agFloor = agPlan === 'premium'
       ? await getAgentPremiumBasePrice()
       : await getAgentBasePrice();
@@ -2899,14 +2903,14 @@ app.post('/api/agent/onboard', verifyToken, async (req, res) => {
     const sold = agFloor;
     const agCycle=(await getPlanPricing())[agPlan].billingCycle;
 
-    // Baaki details — normal registration jaisi hi
+    // The remaining details — the same as a normal registration
     const printerModel = String(req.body.printer_model || '').trim().slice(0,120);
     const priceBw    = parsePrice(req.body.price_bw);
     const priceColor = parsePrice(req.body.price_color);
     const modes = ['counter_only','both','online_only'];
     const payMode = modes.includes(req.body.payment_mode) ? req.body.payment_mode : 'counter_only';
-    // Online payment ke liye shop owner ki apni keys chahiye — wo baad me
-    // Payment Setup se khud daalega, isliye agent sirf counter_only de sakta hai
+    // Online payment needs the shop owner's own keys — they add them later
+    // in Payment Setup themselves, so an agent can only set counter_only
     const finalMode = payMode === 'counter_only' ? 'counter_only' : 'counter_only';
 
     const shopId = 'SHOP_' + uuidv4().substring(0,8).toUpperCase();
@@ -2934,8 +2938,8 @@ app.post('/api/agent/onboard', verifyToken, async (req, res) => {
 app.get('/api/superadmin/agents', verifySuperAdmin, async (req, res) => {
   try {
     const base = await getAgentBasePrice();
-    // Sabse zyada kamane wala agent SABSE UPAR. Uske neeche uski
-    // onboard ki hui shops (wahi 'shops' array me jaati hain).
+    // The highest-earning agent at the TOP. Below them the shops they
+    // onboarded (those go into the same 'shops' array).
     const ags = await pool.query(
       `SELECT id,name,phone,agent_code,agent_upi,agent_price,agent_blocked,agent_earnings,agent_joined_at
        FROM shops WHERE is_agent=true
@@ -2957,7 +2961,7 @@ app.get('/api/superadmin/agents', verifySuperAdmin, async (req, res) => {
       out.push({
         ...a,
         base_price: base,
-        markup: 0,                       // markup ka concept khatam
+        markup: 0,                       // the markup concept is gone
         shops_total: sh.rows.length,
         shops_paid:  paidShops,
         paid_out: wd.rows[0].used,
@@ -2976,31 +2980,31 @@ app.put('/api/superadmin/agent/:shopId/block', verifySuperAdmin, async (req, res
     const r = await pool.query(
       'UPDATE shops SET agent_blocked=$2 WHERE id=$1 AND is_agent=true RETURNING id, agent_blocked',
       [req.params.shopId, block]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Agent nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Agent not found' });
     res.json({ success: true, blocked: r.rows[0].agent_blocked });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Withdrawal request — min ₹500, UPI zaroori
+// Withdrawal request — min ₹500, UPI required
 app.post('/api/shop/withdraw', verifyToken, async (req, res) => {
   try {
     const { upi_id } = req.body;
     if (!upi_id || !/^[\w.\-]+@[\w.\-]+$/.test(upi_id.trim()))
-      return res.status(400).json({ error: 'Sahi UPI ID daalo (jaise name@bank)' });
+      return res.status(400).json({ error: 'Enter a valid UPI ID (such as name@bank)' });
 
     const me = await pool.query('SELECT referral_earnings, agent_earnings FROM shops WHERE id=$1', [req.shopId]);
-    // Referral (₹50) + Agent commission — dono ek hi wallet me
+    // Referral (₹50) + Agent commission — both in the same wallet
     const earnings = (me.rows[0]?.referral_earnings || 0) + (me.rows[0]?.agent_earnings || 0);
     const wd = await pool.query(
       "SELECT COALESCE(SUM(amount),0) as used FROM withdrawals WHERE shop_id=$1 AND status IN ('pending','done')",
       [req.shopId]);
     const available = earnings - (parseInt(wd.rows[0].used) || 0);
 
-    if (available < 500) return res.status(400).json({ error: `Withdrawal ke liye kam se kam ₹500 chahiye (abhi ₹${available})` });
+    if (available < 500) return res.status(400).json({ error: `A withdrawal needs at least ₹500 (you have ₹${available})` });
 
-    // Pending request already hai?
+    // Is there already a pending request?
     const pend = await pool.query("SELECT id FROM withdrawals WHERE shop_id=$1 AND status='pending'", [req.shopId]);
-    if (pend.rows.length) return res.status(400).json({ error: 'Ek withdrawal request pehle se pending hai' });
+    if (pend.rows.length) return res.status(400).json({ error: 'A withdrawal request is already pending' });
 
     await pool.query('INSERT INTO withdrawals (shop_id, amount, upi_id) VALUES ($1,$2,$3)',
       [req.shopId, available, upi_id.trim()]);
@@ -3009,79 +3013,79 @@ app.post('/api/shop/withdraw', verifyToken, async (req, res) => {
 });
 
 // ══════════════ WITHDRAWALS (superadmin side) ══════════════
-// ── MANUAL ACTIVATE — jab payment Razorpay me dikh raha ho par website
-// par match nahi hua (browser band, DB outage me order_id store nahi hua,
-// waghera). activateShop hi use hota hai — QR, referral reward sab same. ──
+// ── MANUAL ACTIVATE — when the payment shows in Razorpay but was not matched
+// on the website (browser closed, order_id not stored during a DB outage,
+// etc.). It uses activateShop — QR, referral reward, everything the same. ──
 app.post('/api/superadmin/shop/:shopId/activate', verifySuperAdmin, async (req, res) => {
   try {
     const shopId = req.params.shopId;
     const ref = String((req.body && req.body.payment_ref) || '').trim().slice(0, 60);
-    if (!ref) return res.status(400).json({ error: 'Payment reference/ID daalo (Razorpay dashboard se)' });
+    if (!ref) return res.status(400).json({ error: 'Enter the payment reference/ID (from the Razorpay dashboard)' });
     const chk = await pool.query('SELECT id, setup_paid FROM shops WHERE id=$1', [shopId]);
-    if (!chk.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
-    if (chk.rows[0].setup_paid) return res.status(400).json({ error: 'Shop pehle se active hai' });
+    if (!chk.rows.length) return res.status(404).json({ error: 'Shop not found' });
+    if (chk.rows[0].setup_paid) return res.status(400).json({ error: 'The shop is already active' });
     const { qrUrl } = await activateShop(shopId, 'MANUAL_' + ref);
     console.log(`Manual activation: ${shopId} | ref: ${ref}`);
     res.json({ success: true, qrUrl });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Password reset (superadmin) — number badal gaya / bhool gaya cases ──
-// Support: monthly shop ko +30 din (cash/offline payment case)
+// ── Password reset (superadmin) — for a changed number / forgotten password ──
+// Support: +30 days for a monthly shop (cash/offline payment case)
 app.post('/api/superadmin/shop/:shopId/extend', verifySuperAdmin, async (req, res) => {
   try {
     const r = await pool.query(
       `UPDATE shops SET paid_until = GREATEST(NOW(), COALESCE(paid_until, NOW())) + make_interval(months=>(${MONTHS_SQL}))
        WHERE id=$1 AND (${MONTHS_SQL})>0 RETURNING paid_until`, [req.params.shopId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
     console.log(`Superadmin extend +30d: ${req.params.shopId} -> ${r.rows[0].paid_until}`);
     res.json({ success: true, paid_until: r.rows[0].paid_until });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Support: kisi bhi shop ko Advance Feature FREE unlock (bina payment)
+// Support: unlock the Advance Feature for any shop for FREE (without payment)
 app.post('/api/superadmin/shop/:shopId/unlock-advanced', verifySuperAdmin, async (req, res) => {
   try {
     const r = await pool.query(
       "UPDATE shops SET advanced_unlocked=true WHERE id=$1 RETURNING id, name",
       [req.params.shopId]);
-    // Manual unlock bhi core pack deta hai — warna superadmin se
-    // khola gaya shop me feature-wise ownership khaali reh jaati.
+    // A manual unlock grants the core pack too — otherwise a shop unlocked by the
+    // superadmin would have empty per-feature ownership.
     {
       const catalog = await getAdvanceFeatures();
       await grantFeatures(req.params.shopId, coreFeatureIds(catalog));
     }
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
     console.log(`Superadmin FREE advanced unlock: ${req.params.shopId}`);
     res.json({ success: true });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Support: kisi bhi shop ko EK add-on feature free do ya wapas lo.
-// unlock-advanced poora core pack deta hai; ye single feature ke liye hai
-// (jaise Smart Scanner) — taaki bina ₹49 liye bhi kisi ko diya ja sake.
+// Support: give any shop ONE add-on feature for free, or take it back.
+// unlock-advanced grants the whole core pack; this is for a single feature
+// (such as Smart Scanner) — so it can be given without charging ₹49.
 app.post('/api/superadmin/shop/:shopId/feature', verifySuperAdmin, async (req, res) => {
   try {
     const featureId = String(req.body.featureId || '').trim().toLowerCase();
     const grant = req.body.grant !== false;      // default = de do
-    if (!featureId) return res.status(400).json({ error: 'featureId chahiye' });
+    if (!featureId) return res.status(400).json({ error: 'featureId is required' });
 
     const catalog = await getAdvanceFeatures();
     if (!catalog.some(f => f.id === featureId))
-      return res.status(404).json({ error: 'Ye feature catalog me hai hi nahi' });
+      return res.status(404).json({ error: 'This feature is not in the catalog' });
 
     const sh = await pool.query(
       'SELECT id, name, plan_type FROM shops WHERE id=$1', [req.params.shopId]);
-    if (!sh.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!sh.rows.length) return res.status(404).json({ error: 'Shop not found' });
 
-    // Premium ka hisaab plan se nikalta hai, owned_features se nahi —
-    // wahan list badalne ka koi asar hi nahi hota. Saaf mana kar do
-    // warna superadmin ko lagega ki kaam ho gaya.
+    // Premium is derived from the plan, not from owned_features —
+    // changing the list there has no effect at all. Refuse clearly,
+    // otherwise the superadmin would think it worked.
     if (sh.rows[0].plan_type === 'premium') {
       return res.status(400).json({
         error: grant
-          ? 'Premium shop ko ye pehle se free milta hai — kuch karne ki zaroorat nahi'
-          : 'Premium se feature hataya nahi ja sakta — pehle plan badlo'
+          ? 'A Premium shop already gets this for free — nothing needs to be done'
+          : 'A feature cannot be removed from Premium — change the plan first'
       });
     }
 
@@ -3101,18 +3105,18 @@ app.post('/api/superadmin/shop/:shopId/reset-password', verifySuperAdmin, async 
     const temp = 'ECHEL' + crypto.randomBytes(3).toString('hex');
     const h = await hashPassword(temp);
     const r = await pool.query('UPDATE shops SET password_hash=$1 WHERE id=$2 RETURNING id', [h, req.params.shopId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
     console.log(`Password reset by superadmin: ${req.params.shopId}`);
     res.json({ success: true, tempPassword: temp });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Demo accounts list — nazar rakhne + manual delete ke liye ──
-// Cloudinary status — kitni file abhi padi hai (sach, DB se nahi, Cloudinary se)
+// ── Demo accounts list — for monitoring + manual deletion ──
+// Cloudinary status — how many files are sitting there right now (the truth, from Cloudinary, not the DB)
 // Echel starts from its own database; cross-project copying is unavailable.
 // ══════════════ BACKUP DOWNLOAD ══════════════
-// Supabase free me automatic backup nahi hota. Ye button poora DB ek JSON
-// file me deta hai — hafte me ek baar dabao, apne phone/PC me rakh lo.
+// The Supabase free plan has no automatic backups. This button returns the whole DB as one
+// JSON file — press it once a week and keep it on your phone/PC.
 app.get('/api/superadmin/backup', verifySuperAdmin, async (req, res) => {
   try {
     const dump = { taken_at: new Date().toISOString(), tables: {} };
@@ -3129,7 +3133,7 @@ app.get('/api/superadmin/backup', verifySuperAdmin, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Row counts — migration verify karne ke liye
+// Row counts — to verify a migration
 app.get('/api/superadmin/db-counts', verifySuperAdmin, async (req, res) => {
   try {
     const counts = {};
@@ -3166,17 +3170,17 @@ app.get('/api/superadmin/cloudinary-status', verifySuperAdmin, async (req, res) 
       stale: mapped.filter(f => f.age_min >= 90).length,
       over_40kb: mapped.filter(f => f.kb > 40).length,
       by_type: byType,
-      errors,                       // khali na ho to panel me dikhao
+      errors,                       // if not empty, show it in the panel
       files: mapped.slice(0, 20)
     });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Manual sweep — "abhi saaf karo" button
-// Body options (sab optional):
-//   min_kb    : itne KB se badi file delete karo (jaise 40)
-//   min_age   : itne minute purani file delete karo (default 90)
-//   any_size  : true bhejo to size dekhe bina purani sab delete
+// Manual sweep — the "clean up now" button
+// Body options (all optional):
+//   min_kb    : delete files larger than this many KB (e.g. 40)
+//   min_age   : delete files older than this many minutes (default 90)
+//   any_size  : send true to delete all old files regardless of size
 app.post('/api/superadmin/cloudinary-sweep', verifySuperAdmin, async (req, res) => {
   try {
     if (req.body && req.body.min_kb !== undefined) return res.status(404).json({error:'Action unavailable'});
@@ -3191,13 +3195,13 @@ app.post('/api/superadmin/cloudinary-sweep', verifySuperAdmin, async (req, res) 
       const ageMin = (Date.now() - new Date(r.created_at).getTime()) / 60000;
       const kb = Math.round((r.bytes || 0) / 1024);
 
-      // Rule: size wala rule diya ho to wahi, warna umar wala
+      // Rule: if a size rule was given, use it; otherwise the age rule
       const matches = (minKb !== null && !isNaN(minKb))
         ? kb > minKb
         : ageMin >= minAge;
       if (!matches) { skippedRule++; continue; }
 
-      // Jo file abhi print hone wali hai use kabhi mat chhedo
+      // Never touch a file that is about to be printed
       const active = await pool.query(
         "SELECT 1 FROM print_jobs WHERE file_public_id=$1 AND status IN ('queued','printing')",
         [r.public_id]);
@@ -3234,13 +3238,13 @@ app.put('/api/superadmin/demo-config', verifySuperAdmin, async (req, res) => {
     const enabled = req.body.enabled ? '1' : '0';
     let mins = parseInt(req.body.minutes);
     if (isNaN(mins) || mins < 15 || mins > DEMO_MAX_MINUTES)
-      return res.status(400).json({ error: 'Minutes 15 se ' + DEMO_MAX_MINUTES + ' (365 din) ke beech ho' });
-    // Print limit optional hai — na bheja ho to purani value waise ki waisi.
+      return res.status(400).json({ error: 'Minutes must be between 15 and ' + DEMO_MAX_MINUTES + ' (365 days)' });
+    // The print limit is optional — if it is not sent, the old value stays as it is.
     let printLimit = null;
     if (req.body.printLimit !== undefined && req.body.printLimit !== null && req.body.printLimit !== '') {
       printLimit = parseInt(req.body.printLimit);
       if (isNaN(printLimit) || printLimit < 1 || printLimit > DEMO_MAX_PRINTS)
-        return res.status(400).json({ error: 'Print limit 1 se ' + DEMO_MAX_PRINTS + ' ke beech ho' });
+        return res.status(400).json({ error: 'The print limit must be between 1 and ' + DEMO_MAX_PRINTS });
     }
     await pool.query("UPDATE system_settings SET value=$1 WHERE key='demo_enabled'", [enabled]);
     await pool.query("UPDATE system_settings SET value=$1 WHERE key='demo_minutes'", [String(mins)]);
@@ -3249,7 +3253,7 @@ app.put('/api/superadmin/demo-config', verifySuperAdmin, async (req, res) => {
         `INSERT INTO system_settings (key, value) VALUES ('demo_print_limit', $1)
          ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=NOW()`, [String(printLimit)]);
     }
-    // instant bheja hi na ho to purani setting waise ki waisi rehti hai
+    // if instant was not sent at all, the old setting stays as it is
     if (req.body.instant !== undefined) {
       await pool.query("UPDATE system_settings SET value=$1 WHERE key='demo_auto_approve'",
                        [req.body.instant ? '1' : '0']);
@@ -3289,16 +3293,16 @@ app.post('/api/superadmin/withdrawals/:id/complete', verifySuperAdmin, async (re
     const r = await pool.query(
       "UPDATE withdrawals SET status='done', completed_at=NOW() WHERE id=$1 AND status='pending' RETURNING shop_id, amount",
       [req.params.id]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Pending withdrawal nahi mili' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Pending withdrawal not found' });
     res.json({ success: true });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ══════════════════ FREE DEMO (24 ghante, 10 print) ══════════════════
-// Anti-abuse: (1) ek phone = ek demo PERMANENT, (2) ek IP = 2/din,
-// (3) ek MACHINE = ek demo permanent (agent MachineGuid bhejta hai).
-// Demo settings ki upar wali seema — superadmin isse neeche kuch bhi rakh
-// sakta hai. 365 din / 1 lakh prints practically "jitna chahe" hi hai.
+// ══════════════════ FREE DEMO (24 hours, 10 prints) ══════════════════
+// Anti-abuse: (1) one phone = one demo PERMANENTLY, (2) one IP = 2/day,
+// (3) one MACHINE = one demo permanently (the agent sends its MachineGuid).
+// The upper bound of the demo settings — the superadmin can set anything below this.
+// 365 days / 100,000 prints is practically "as much as you like".
 const DEMO_MAX_MINUTES = 365 * 24 * 60;   // 525600
 const DEMO_MAX_PRINTS  = 100000;
 
@@ -3307,16 +3311,16 @@ async function getDemoConfig() {
     const r = await pool.query(
       "SELECT key,value FROM system_settings WHERE key IN ('demo_enabled','demo_minutes','demo_print_limit','demo_auto_approve')");
     const m = Object.fromEntries(r.rows.map(x => [x.key, x.value]));
-    // Superadmin jitna chahe utna set kar sakta hai — bas 15 min se kam nahi
-    // aur DEMO_MAX_MINUTES (1 saal) se zyada nahi, taaki typo se koi demo
-    // hamesha ke liye na khul jaaye.
+    // The superadmin can set as much as they like — just not less than 15 min
+    // and not more than DEMO_MAX_MINUTES (1 year), so that a typo never opens a
+    // demo forever.
     const mins = Math.max(15, Math.min(DEMO_MAX_MINUTES, parseInt(m.demo_minutes) || 1440));
     return {
       enabled: (m.demo_enabled || '1') === '1',
       minutes: mins,
       printLimit: Math.max(1, Math.min(DEMO_MAX_PRINTS, parseInt(m.demo_print_limit) || 10)),
-      // instant = form submit karte hi demo ban jaata hai (default).
-      // false = purana flow: pehle superadmin Accept kare tabhi bane.
+      // instant = the demo is created as soon as the form is submitted (default).
+      // false = the old flow: it is created only after the superadmin accepts it.
       autoApprove: (m.demo_auto_approve || '1') === '1',
       instant:     (m.demo_auto_approve || '1') === '1'
     };
@@ -3324,9 +3328,9 @@ async function getDemoConfig() {
 }
 
 /**
- * Demo shop banao. Approval ke baad (superadmin) aur legacy auto-approve
- * dono yahi function use karte hain — do jagah logic duplicate nahi hoti.
- * Timer YAHIN se shuru hota hai, registration ke waqt se nahi.
+ * Create a demo shop. Both the post-approval path (superadmin) and the legacy
+ * auto-approve use this function — the logic is not duplicated in two places.
+ * The timer starts HERE, not at registration time.
  */
 async function createDemoShop(d) {
   const cfg = await getDemoConfig();
@@ -3335,8 +3339,8 @@ async function createDemoShop(d) {
   const shopName = (d.shopName || d.name || 'Demo Shop').slice(0, 180);
 
   await pool.query(
-    // advanced_unlocked=true — demo me saare advanced features khule rehte
-    // hain. Aadha software dikha kar paise maangna ulta padta hai.
+    // advanced_unlocked=true — all advanced features stay open in a demo.
+    // Showing half the software and then asking for money backfires.
     `INSERT INTO shops (id, name, phone, email, address, printer_model,
                         price_bw, price_color, payment_mode, password_hash,
                         setup_paid, setup_amount, demo, demo_expires_at, advanced_unlocked)
@@ -3350,17 +3354,17 @@ async function createDemoShop(d) {
   const qrCode = await QRCode.toDataURL(qrUrl, { width: 300, margin: 2 });
   await pool.query('UPDATE shops SET qr_code=$1 WHERE id=$2', [qrCode, shopId]);
 
-  // Alert bhejo - par uska intezaar mat karo. Email atak jaye ya fail
-  // ho jaye to bhi demo banna ruk nahi sakta. alertNewShop bhi aise hi
-  // bulaya jaata hai, aur andar apna try/catch rakhta hai.
+  // Send the alert - but do not wait for it. Even if the email gets stuck or
+  // fails, demo creation must not stop. alertNewShop is called the same way
+  // and keeps its own try/catch inside.
   alertNewDemo(shopId, d.how);
 
   return { shopId, qrUrl, qrCode, minutes: cfg.minutes, printLimit: cfg.printLimit };
 }
 
 /**
- * Upgrade karne par kaun se plan available hain — server se aate hain,
- * frontend me hardcode nahi. Demo limit hit hone par yahi dikhaye jaate hain.
+ * Which plans are available for an upgrade — they come from the server,
+ * not hardcoded in the frontend. These are shown when the demo limit is hit.
  */
 async function getUpgradePlans() {
   try {
@@ -3381,8 +3385,8 @@ async function getUpgradePlans() {
 }
 
 /**
- * Demo shop ne apni free print limit to nahi cross kar li?
- * Har paid-print path se pehle call hota hai.
+ * Has the demo shop exceeded its free print limit?
+ * Called before every paid-print path.
  */
 async function checkDemoAllowance(shopId) {
   const r = await pool.query('SELECT demo, demo_expires_at FROM shops WHERE id=$1', [shopId]);
@@ -3393,8 +3397,8 @@ async function checkDemoAllowance(shopId) {
     return { ok: false, demo: true, reason: 'expired', used: null, limit: cfg.printLimit,
              error: 'Your demo has ended. Please upgrade to continue printing.' };
   }
-  // Demo print limit — cancel/abandon/fail hue job limit me nahi ginte,
-  // warna customer ka job fail hone par demo user ka quota kat jaata tha.
+  // Demo print limit — cancelled/abandoned/failed jobs do not count towards the limit,
+  // otherwise a customer's failed job used to eat the demo user's quota.
   const c = await pool.query(
     `SELECT COUNT(*)::int AS n FROM print_jobs WHERE shop_id=$1 AND ${JOB_COUNTS}`, [shopId]);
   const used = c.rows[0].n;
@@ -3411,12 +3415,12 @@ function normPhone(p) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// ASLI MOBILE NUMBER CHECK
-// Log form bharne se bachne ke liye 9999999999 / 1234567890 jaisa
-// kuch bhi daal dete the aur demo waste ho jaata tha. Ye validator
-// sirf pattern dekhta hai — koi paid API nahi, koi OTP nahi.
-// Ye SERVER ka final faisla hai; homepage par same rules dobara
-// chalte hain sirf turant feedback dene ke liye.
+// REAL MOBILE NUMBER CHECK
+// To avoid filling in the form, people entered things like 9999999999 /
+// 1234567890 and the demo was wasted. This validator only looks at
+// patterns — no paid API, no OTP.
+// This is the SERVER's final decision; the homepage runs the same rules again
+// only to give instant feedback.
 // ══════════════════════════════════════════════════════════════
 const FAKE_MOBILE_LIST = new Set([
   '9999999999','8888888888','7777777777','6666666666','1111111111','0000000000',
@@ -3426,7 +3430,7 @@ const FAKE_MOBILE_LIST = new Set([
   '9999999998','9999999990','9111111111','8123456789','7123456789','6123456789'
 ]);
 
-/** +91 / 0 / spaces hata kar saaf 10 digit. Sahi na ho to ''. */
+/** Strip +91 / 0 / spaces to get a clean 10 digits. '' when invalid. */
 function normIndianMobile(raw) {
   let d = String(raw || '').replace(/\D/g, '');
   if (d.length === 13 && d.startsWith('091')) d = d.slice(3);
@@ -3436,8 +3440,8 @@ function normIndianMobile(raw) {
 }
 
 /**
- * 1234567890 / 9876543210 / 6789012345 jaisa seedha sequence?
- * Modulo-10 step use karte hain taaki 9->0 ka wrap bhi pakda jaye.
+ * A straight sequence such as 1234567890 / 9876543210 / 6789012345?
+ * A modulo-10 step is used so the 9->0 wrap is caught too.
  */
 function _isRunSequence(d) {
   if (d.length < 4) return false;
@@ -3450,7 +3454,7 @@ function _isRunSequence(d) {
   return asc || desc;
 }
 
-/** 1212121212 / 1234512345 / 1111111111 jaisa dohraya hua block? */
+/** A repeated block such as 1212121212 / 1234512345 / 1111111111? */
 function _isRepeatingBlock(d) {
   for (const size of [1, 2, 5]) {
     if (d.length % size !== 0) continue;
@@ -3464,7 +3468,7 @@ function _isRepeatingBlock(d) {
   return false;
 }
 
-/** Sabse lamba ek hi digit ka run (9000000001 -> 8). */
+/** The longest run of a single digit (9000000001 -> 8). */
 function _longestRun(d) {
   let best = 1, run = 1;
   for (let i = 1; i < d.length; i++) {
@@ -3483,7 +3487,7 @@ function validateIndianMobile(raw) {
   const bad = msg => ({ ok: false, phone: '', error: msg });
 
   if (!d) return bad('Please enter a valid 10-digit mobile number.');
-  // TRAI: mobile series sirf 6/7/8/9 se shuru hoti hai
+  // TRAI: mobile series start only with 6/7/8/9
   if (!/^[6-9]/.test(d))
     return bad('Indian mobile numbers start with 6, 7, 8 or 9. Please check the number.');
   if (FAKE_MOBILE_LIST.has(d))
@@ -3496,27 +3500,27 @@ function validateIndianMobile(raw) {
     return bad('That number looks made up. Please enter your real WhatsApp number.');
   if (_longestRun(d) >= 7)
     return bad('That number looks made up. Please enter your real WhatsApp number.');
-  // 9988776655 / 1122334455 — har jodi ek hi digit ki
+  // 9988776655 / 1122334455 — every pair is a single digit
   if (/^(\d)\1(\d)\2(\d)\3(\d)\4(\d)\5$/.test(d))
     return bad('That number looks made up. Please enter your real WhatsApp number.');
 
   return { ok: true, phone: d, error: '' };
 }
 /**
- * Wahi jaanch, par register page ki bhasha me.
- * Faisla validateIndianMobile ka; yahan sirf message badalta hai.
+ * The same check, in the register page's wording.
+ * validateIndianMobile makes the decision; only the message changes here.
  */
 function registerPhoneCheck(raw) {
   const v = validateIndianMobile(raw);
   if (v.ok) return v;
   const d = normIndianMobile(raw);
   const bad = msg => ({ ok: false, phone: '', error: msg });
-  if (!d) return bad('Sahi 10-digit mobile number daalo.');
+  if (!d) return bad('Enter a valid 10-digit mobile number.');
   if (!/^[6-9]/.test(d))
-    return bad('Mobile number 6, 7, 8 ya 9 se shuru hota hai — dobara check karo.');
+    return bad('Mobile numbers start with 6, 7, 8 or 9 — please check again.');
   if (FAKE_MOBILE_LIST.has(d))
-    return bad('Ye test number hai — apna asli WhatsApp number daalo.');
-  return bad('Ye number asli nahi lag raha — apna WhatsApp number daalo.');
+    return bad('That is a test number — please enter your real WhatsApp number.');
+  return bad('That number does not look real — please enter your WhatsApp number.');
 }
 
 function isDemoExpired(shop) {
@@ -3526,9 +3530,9 @@ function isDemoExpired(shop) {
 
 // ═══════════════════════════════════════════════
 // DEMO REQUEST → SUPERADMIN APPROVAL → ACTIVATION
-// Public form ab seedha shop nahi banata. Pehle 'pending' request banti
-// hai; superadmin Accept kare tabhi demo shop create hoti hai aur 24 ghante
-// ka timer shuru hota hai.
+// The public form no longer creates the shop directly. First a 'pending' request
+// is created; only when the superadmin accepts it is the demo shop created and the
+// 24-hour timer started.
 // ═══════════════════════════════════════════════
 app.post('/api/demo/request', demoRateLimit, async (req, res) => {
   try {
@@ -3555,8 +3559,8 @@ app.post('/api/demo/request', demoRateLimit, async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid email address' });
     }
 
-    // Bot challenge — sirf tab enforce hota hai jab TURNSTILE_SECRET_KEY set ho.
-    // Set na ho to skip, taaki abhi kuch na toote.
+    // Bot challenge — enforced only when TURNSTILE_SECRET_KEY is set.
+    // If it is not set, skip it, so nothing breaks for now.
     const ts = await verifyTurnstile(b.turnstileToken, clientIp(req));
     if (!ts.ok) {
       await logSecurityEvent({ ip: clientIp(req), endpoint: '/api/demo/request', method: 'POST',
@@ -3565,7 +3569,7 @@ app.post('/api/demo/request', demoRateLimit, async (req, res) => {
       return res.status(403).json({ error: 'Verification failed. Please refresh the page and try again.' });
     }
 
-    // Layer 1: ek phone = ek demo (pending ya approved, dono count hote hain)
+    // Layer 1: one phone = one demo (both pending and approved count)
     const dup = await pool.query('SELECT status FROM demo_registrations WHERE phone=$1', [phone]);
     if (dup.rows.length) {
       return res.status(400).json({
@@ -3579,9 +3583,9 @@ app.post('/api/demo/request', demoRateLimit, async (req, res) => {
       return res.status(400).json({ error: 'A demo has already been taken on this number. Please register to continue.' });
     }
 
-    // Layer 2: ek IP se max DEMO_DAILY_PER_IP request / din (default 2).
-    // Ye sirf BANE hue demo ginta hai (DB rows), koshishein nahi — isliye
-    // form galat bharne se ye limit nahi katti.
+    // Layer 2: at most DEMO_DAILY_PER_IP requests / day from one IP (default 2).
+    // This counts only demos that were CREATED (DB rows), not attempts — so
+    // filling in the form incorrectly does not use up this limit.
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim().slice(0, 60);
     const ipCount = await pool.query(
       "SELECT COUNT(*)::int AS n FROM demo_registrations WHERE ip=$1 AND created_at > NOW() - INTERVAL '24 hours'", [ip]);
@@ -3596,20 +3600,20 @@ app.post('/api/demo/request', demoRateLimit, async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING id`,
         [phone, ip, name, email, shopName, address, printer]);
     } catch (e) {
-      if (e.code === '23505') {   // race: doosri request pehle aa gayi
+      if (e.code === '23505') {   // race: another request got there first
         return res.status(400).json({ error: 'A demo request for this number already exists.' });
       }
       throw e;
     }
 
-    // Demo sach me ban gaya — AB IP ki ginti badhao. Isse upar wale saare
-    // rejections (validation, duplicate phone, captcha) quota nahi khaate.
+    // The demo really was created — NOW increase the IP count. This way none of the
+    // rejections above (validation, duplicate phone, captcha) consume the quota.
     if (typeof req.countDemoRequest === 'function') req.countDemoRequest();
 
     // ── INSTANT ACTIVATION (default) ──
-    // Form submit karte hi shop ban jaati hai aur Shop ID + password
-    // wahin screen par aa jaate hain. Manual approval sirf tab jab
-    // superadmin ne Demo Control se off kiya ho.
+    // The shop is created as soon as the form is submitted, and the Shop ID + password
+    // appear on the same screen. Manual approval applies only when the
+    // superadmin turned this off from Demo Control.
     if (cfg.instant) {
       const created = await createDemoShop({ name, phone, shopName, address, email, printerModel: printer });
       await pool.query(
@@ -3658,7 +3662,7 @@ app.get('/api/superadmin/security-events', verifySuperAdmin, async (req, res) =>
               COUNT(*) FILTER (WHERE reason LIKE 'CAPTCHA_FAILED%')::int AS captcha_fails
          FROM security_events WHERE created_at > $1`, [since]);
 
-    // Abhi kaun block hai (in-memory)
+    // Who is blocked right now (in-memory)
     const now = Date.now();
     const active = [];
     for (const [k, until] of abuseBlocks) {
@@ -3678,9 +3682,9 @@ app.get('/api/superadmin/security-events', verifySuperAdmin, async (req, res) =>
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Pakka IP blocklist: dekho / lagao / hatao ──
-// Sath me haal hi ke registration bhi, taaki superadmin dekh sake ki
-// kaunsa IP baar-baar bina paise wali shop bana raha hai.
+// ── Permanent IP blocklist: view / add / remove ──
+// Together with recent registrations, so the superadmin can see which
+// IP keeps creating shops without paying.
 app.get('/api/superadmin/ip-bans', verifySuperAdmin, async (req, res) => {
   try {
     const bans = await pool.query(
@@ -3690,10 +3694,10 @@ app.get('/api/superadmin/ip-bans', verifySuperAdmin, async (req, res) => {
          FROM shops
         WHERE created_at > NOW() - INTERVAL '30 days'
         ORDER BY created_at DESC LIMIT 60`);
-    // Kis IP se kitni unpaid shop — sabse upar sabse zyada
+    // How many unpaid shops per IP — the highest at the top
     const worst = await pool.query(
       `SELECT created_ip AS ip,
-              COUNT(*)::int AS kul,
+              COUNT(*)::int AS total,
               COUNT(*) FILTER (WHERE setup_paid = false)::int AS unpaid
          FROM shops
         WHERE COALESCE(created_ip,'') <> ''
@@ -3708,7 +3712,7 @@ app.get('/api/superadmin/ip-bans', verifySuperAdmin, async (req, res) => {
 app.post('/api/superadmin/ip-ban', verifySuperAdmin, async (req, res) => {
   try {
     const ip = String(req.body.ip || '').trim().slice(0, 60);
-    if (!ip) return res.status(400).json({ error: 'IP daalo' });
+    if (!ip) return res.status(400).json({ error: 'Enter an IP' });
     const reason = String(req.body.reason || '').trim().slice(0, 200);
     await pool.query(
       `INSERT INTO blocked_ips (ip, reason) VALUES ($1,$2)
@@ -3722,7 +3726,7 @@ app.post('/api/superadmin/ip-ban', verifySuperAdmin, async (req, res) => {
 app.post('/api/superadmin/ip-unban', verifySuperAdmin, async (req, res) => {
   try {
     const ip = String(req.body.ip || '').trim().slice(0, 60);
-    if (!ip) return res.status(400).json({ error: 'IP daalo' });
+    if (!ip) return res.status(400).json({ error: 'Enter an IP' });
     const r = await pool.query('DELETE FROM blocked_ips WHERE ip=$1', [ip]);
     clearIpBanCache();
     console.log(`SECURITY: IP ban removed by superadmin | ${ip}`);
@@ -3730,12 +3734,12 @@ app.post('/api/superadmin/ip-unban', verifySuperAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Customer ka pakka block: dekho / lagao / hatao ──
+// ── Permanent customer block: view / add / remove ──
 //
-// Sath me wo customer bhi jo shak ke daayre me hain — sabse zyada job
-// bhejne wale aur jinke job sabse zyada DENY huye. Deny ki ginti isliye
-// zaroori hai: shop owner baar-baar kisi ka job reject kar raha hai to
-// wahi sabse saaf ishara hai ki banda pareshan kar raha hai.
+// Also the customers who look suspicious — those who send the most jobs
+// and those whose jobs are DENIED the most. The deny count matters
+// because a shop owner repeatedly rejecting someone's job is the
+// clearest sign that the person is causing trouble.
 app.get('/api/superadmin/customer-bans', verifySuperAdmin, async (req, res) => {
   try {
     const bans = await pool.query(
@@ -3745,10 +3749,10 @@ app.get('/api/superadmin/customer-bans', verifySuperAdmin, async (req, res) => {
          LEFT JOIN shops s ON s.id = c.shop_id
         ORDER BY c.created_at DESC`);
 
-    // Shak ke daayre wale. 30 din ki khidki — usse purana matlab nahi.
+    // The suspicious ones. A 30-day window — anything older is irrelevant.
     const worst = await pool.query(
       `SELECT j.customer_id                                        AS cid,
-              COUNT(*)::int                                        AS kul,
+              COUNT(*)::int                                        AS total,
               COUNT(*) FILTER (WHERE j.status = 'failed')::int     AS denied,
               COUNT(DISTINCT j.shop_id)::int                       AS shops,
               MAX(j.shop_id)                                       AS last_shop,
@@ -3759,7 +3763,7 @@ app.get('/api/superadmin/customer-bans', verifySuperAdmin, async (req, res) => {
         GROUP BY j.customer_id
        HAVING COUNT(*) >= 5
            OR COUNT(*) FILTER (WHERE j.status = 'failed') >= 2
-        ORDER BY denied DESC, kul DESC
+        ORDER BY denied DESC, total DESC
         LIMIT 25`);
 
     res.json({ bans: bans.rows, worst: worst.rows,
@@ -3771,7 +3775,7 @@ app.get('/api/superadmin/customer-bans', verifySuperAdmin, async (req, res) => {
 app.post('/api/superadmin/customer-ban', verifySuperAdmin, async (req, res) => {
   try {
     const cid = String(req.body.cid || '').trim().slice(0, 48);
-    if (!cid) return res.status(400).json({ error: 'Customer ID daalo' });
+    if (!cid) return res.status(400).json({ error: 'Enter a Customer ID' });
     const shopId = String(req.body.shopId || '').trim().slice(0, 50);
     const reason = String(req.body.reason || '').trim().slice(0, 200);
     await pool.query(
@@ -3781,12 +3785,12 @@ app.post('/api/superadmin/customer-ban', verifySuperAdmin, async (req, res) => {
       [cid, shopId, reason]);
     clearCustBanCache();
 
-    // Block sirf AAGE ke upload rokta hai. Jo job pehle se line me lagi
-    // hain wo printer se nikalti rehti — aur superadmin ko lagta hai
-    // block kaam hi nahi kar raha. Isliye unhe bhi yahin hata do.
+    // A block only stops FUTURE uploads. Jobs already in the queue
+    // would keep coming out of the printer — and the superadmin would think
+    // the block does not work. So remove them here as well.
     //
-    // Paise wali job ko HAATH NAHI LAGATE: uska paisa aa chuka hai, wo
-    // shop owner ka faisla hai (wo apne panel se deny kar sakta hai).
+    // Paid jobs are NOT TOUCHED: their money has already arrived, and that is
+    // the shop owner's decision (they can deny it from their panel).
     let cancelled = { rows: [] };
     try {
       cancelled = await pool.query(
@@ -3797,8 +3801,8 @@ app.post('/api/superadmin/customer-ban', verifySuperAdmin, async (req, res) => {
             AND COALESCE(payment_status,'pending') <> 'paid'
           RETURNING id, file_public_id`, [cid]);
     } catch (e) {
-      // Job cancel na ho paye to bhi ban to lag hi chuka hai
-      console.warn('blocked customer ke job cancel nahi hue:', e.message);
+      // Even if the jobs could not be cancelled, the ban is already in place
+      console.warn('Could not cancel the jobs of the blocked customer:', e.message);
     }
     for (const j of cancelled.rows) {
       if (j.file_public_id) {
@@ -3815,10 +3819,10 @@ app.post('/api/superadmin/customer-ban', verifySuperAdmin, async (req, res) => {
 app.post('/api/superadmin/customer-unban', verifySuperAdmin, async (req, res) => {
   try {
     const cid = String(req.body.cid || '').trim().slice(0, 48);
-    if (!cid) return res.status(400).json({ error: 'Customer ID daalo' });
+    if (!cid) return res.status(400).json({ error: 'Enter a Customer ID' });
     const r = await pool.query('DELETE FROM blocked_customers WHERE cid=$1', [cid]);
-    // 15-minute wala apne aap laga block bhi saath me hata do — warna
-    // superadmin "chhod diya" samajhta hai aur banda phir bhi ruka rehta.
+    // Also remove the automatic 15-minute block — otherwise the
+    // superadmin thinks the customer was released while they are still blocked.
     let temp = 0;
     for (const k of [...abuseBlocks.keys()]) {
       if (k.startsWith('cust:') && k.includes(cid)) { abuseBlocks.delete(k); temp++; }
@@ -3832,19 +3836,19 @@ app.post('/api/superadmin/customer-unban', verifySuperAdmin, async (req, res) =>
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Galti se block ho gaya genuine customer — superadmin turant chhoda de
+// A genuine customer blocked by mistake — the superadmin releases them immediately
 app.post('/api/superadmin/security-unblock', verifySuperAdmin, async (req, res) => {
   try {
-    // Shop ID seedha bhi aa sakti hai — "shop:" apne aap lag jayega,
-    // taaki superadmin ko key ka roop yaad na rakhna pade.
+    // A Shop ID can also arrive as-is — "shop:" is added automatically,
+    // so the superadmin does not have to remember the key format.
     let key = String(req.body.key || req.body.shopId || '').trim();
     if (key && !key.includes(':')) key = 'shop:' + key;
 
-    if (!key) {                       // sab clear
+    if (!key) {                       // all clear
       const n = abuseBlocks.size;
       abuseBlocks.clear();
-      // Ginti bhi saaf — warna block hatne ke turant baad agla upload
-      // dobara block kar deta (neeche wali tippani dekho).
+      // Clear the count too — otherwise right after the block is lifted the next upload
+      // would block again (see the note below).
       uploadHits.clear();
       demoIpHits.clear();
       console.log(`SECURITY: all ${n} blocks + counters cleared by superadmin`);
@@ -3852,16 +3856,16 @@ app.post('/api/superadmin/security-unblock', verifySuperAdmin, async (req, res) 
     }
     const had = abuseBlocks.delete(key);
 
-    // ── ASLI FIX ──
-    // Block DO jagah baitha hota hai: abuseBlocks me "abhi block hai",
-    // aur uploadHits me ginti (total, strikes). Pehle sirf pehla hatta
-    // tha — agle upload par ginti abhi bhi limit ke upar hoti aur shop
-    // TURANT dobara block ho jaati. Superadmin ko lagta ki button kaam
-    // hi nahi kar raha.
+    // ── THE REAL FIX ──
+    // A block lives in TWO places: in abuseBlocks as "blocked right now",
+    // and in uploadHits as the count (total, strikes). Only the first used to be
+    // removed — on the next upload the count was still above the limit and the shop
+    // was IMMEDIATELY blocked again. The superadmin thought the button
+    // did not work at all.
     //
-    // (Yahi bimari pehle bhi hui thi — "3 print, 16 block" — tab rolling
-    //  window se theek ki gayi thi, par haath se unblock wala rasta
-    //  chhoot gaya tha.)
+    // (The same illness happened before — "3 prints, 16 blocks" — which was fixed
+    //  with the rolling window, but the manual unblock path had been
+    //  missed.)
     let counters = 0;
     if (key.startsWith('shop:')) {
       if (uploadHits.delete(key.slice(5))) counters++;
@@ -3873,7 +3877,7 @@ app.post('/api/superadmin/security-unblock', verifySuperAdmin, async (req, res) 
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Homepage ko Turnstile site key chahiye (public key — secret nahi)
+// The homepage needs the Turnstile site key (a public key — not a secret)
 app.get('/api/security/challenge', (req, res) => {
   res.json({ enabled: !!SEC.turnstileSecret, siteKey: SEC.turnstileSiteKey || '' });
 });
@@ -3909,7 +3913,7 @@ app.post('/api/superadmin/demo-requests/:id/approve', verifySuperAdmin, async (r
       "UPDATE demo_registrations SET shop_id=$1, status='approved', reviewed_at=NOW() WHERE id=$2",
       [created.shopId, d.id]);
 
-    // WhatsApp message — superadmin ek click me bhej de
+    // WhatsApp message — the superadmin sends it in one click
     const hours = Math.round(created.minutes / 60);
     const waText =
       `Hello ${d.name}, your Echel demo account is activated for ${hours} Hours ` +
@@ -3935,7 +3939,7 @@ app.post('/api/superadmin/demo-requests/:id/approve', verifySuperAdmin, async (r
 });
 
 // ─── SUPERADMIN: Delete (reject) ───
-// Row poori tarah delete hoti hai taaki phone number dobara free ho jaye.
+// The row is deleted completely so the phone number becomes free again.
 app.delete('/api/superadmin/demo-requests/:id', verifySuperAdmin, async (req, res) => {
   try {
     const r = await pool.query(
@@ -3949,10 +3953,10 @@ app.delete('/api/superadmin/demo-requests/:id', verifySuperAdmin, async (req, re
 app.post('/api/demo/create', async (req, res) => {
   try {
     const cfg = await getDemoConfig();
-    if (!cfg.enabled) return res.status(403).json({ error: 'Demo abhi band hai — thodi der baad try karo ya seedha register karo' });
-    // Ab demo superadmin approval se banta hai. Ye purana instant-create
-    // endpoint sirf tab chalega jab demo_auto_approve='1' ho (rollback ke
-    // liye). Warna sab /api/demo/request par jaayenge.
+    if (!cfg.enabled) return res.status(403).json({ error: 'Demos are currently disabled — try again a little later or register directly' });
+    // Demos are now created through superadmin approval. This old instant-create
+    // endpoint only runs when demo_auto_approve='1' (for
+    // rollback). Otherwise everything goes to /api/demo/request.
     if (!cfg.autoApprove) {
       return res.status(410).json({
         error: 'Demo now requires approval. Please submit the demo request form.',
@@ -3962,43 +3966,43 @@ app.post('/api/demo/create', async (req, res) => {
 
     const name = String(req.body.name || '').trim().slice(0, 100);
     const phone = normPhone(req.body.phone);
-    if (!name) return res.status(400).json({ error: 'Naam daalo' });
-    if (!phone) return res.status(400).json({ error: 'Sahi 10-digit mobile number daalo' });
+    if (!name) return res.status(400).json({ error: 'Enter a name' });
+    if (!phone) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
 
-    // Layer 1: phone permanent lock — demo_registrations AUR shops dono check
-    // karo. (Migration me demo_registrations khali reh gaya tha to ye double
-    // safety hai — duplicate demo shops nahi banenge.)
+    // Layer 1: permanent phone lock — check both demo_registrations AND shops.
+    // (demo_registrations was left empty during the migration, so this is a double
+    // safety — no duplicate demo shops will be created.)
     const dup = await pool.query('SELECT id FROM demo_registrations WHERE phone=$1', [phone]);
     const dupShop = await pool.query('SELECT id FROM shops WHERE phone=$1 AND demo=true', [phone]);
     if (dup.rows.length || dupShop.rows.length)
-      return res.status(400).json({ error: 'Is number par demo pehle liya ja chuka hai. Pasand aaya tha? Ab register karo 🙂' });
+      return res.status(400).json({ error: 'A demo has already been used with this number. Did you like it? Register now 🙂' });
 
-    // Layer 2: IP — max 2 demo/din
+    // Layer 2: IP — at most 2 demos/day
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim().slice(0, 60);
     const ipCount = await pool.query(
       "SELECT COUNT(*) FROM demo_registrations WHERE ip=$1 AND created_at > NOW() - INTERVAL '24 hours'", [ip]);
     if (parseInt(ipCount.rows[0].count) >= 2)
-      return res.status(429).json({ error: 'Aaj ke liye demo limit ho gayi — kal try karo ya abhi register karo' });
+      return res.status(429).json({ error: 'The demo limit for today has been reached — try tomorrow or register now' });
 
     const shopId = 'DEMO_' + crypto.randomBytes(4).toString('hex').toUpperCase();
     const passwordHash = await hashPassword(phone);
     await pool.query(
-      // advanced_unlocked=true — demo me saare advanced features khule
-      // rehte hain. Demo ka matlab hi hai ki banda poora software dekh
-      // sake; aadha dikha kar paise maangna ulta pad jaata hai.
-      // Paid shops par ye paywall waise ka waisa hai.
+      // advanced_unlocked=true — all advanced features stay open in a demo.
+      // The whole point of a demo is that the person sees the complete software;
+      // showing half of it and then asking for money backfires.
+      // For paid shops the paywall stays exactly as it is.
       `INSERT INTO shops (id, name, phone, price_bw, price_color, payment_mode, password_hash,
                           setup_paid, setup_amount, demo, demo_expires_at, advanced_unlocked)
        VALUES ($1,$2,$3,5,10,'counter_only',$4,true,0,true,NOW() + ($5 || ' minutes')::INTERVAL,true)`,
       [shopId, name + ' (Demo)', phone, passwordHash, String(cfg.minutes)]);
-    // Unique index (uniq_demo_reg_phone) DB pe race ko bhi rok deta hai —
-    // agar do request ek saath aaye to doosri yahan safely fail hogi.
+    // The unique index (uniq_demo_reg_phone) also stops races in the DB —
+    // if two requests arrive together, the second one fails safely here.
     try {
       await pool.query('INSERT INTO demo_registrations (phone, ip, shop_id) VALUES ($1,$2,$3)', [phone, ip, shopId]);
     } catch (e) {
-      if (e.code === '23505') { // unique_violation — phone pehle se locked
-        await pool.query('DELETE FROM shops WHERE id=$1', [shopId]); // abhi bana shop rollback
-        return res.status(400).json({ error: 'Is number par demo pehle liya ja chuka hai. Ab register karo 🙂' });
+      if (e.code === '23505') { // unique_violation — the phone is already locked
+        await pool.query('DELETE FROM shops WHERE id=$1', [shopId]); // roll back the shop that was just created
+        return res.status(400).json({ error: 'A demo has already been used with this number. Register now 🙂' });
       }
       throw e;
     }
@@ -4007,14 +4011,14 @@ app.post('/api/demo/create', async (req, res) => {
     const qrCode = await QRCode.toDataURL(qrUrl, { width: 300, margin: 2 });
     await pool.query('UPDATE shops SET qr_code=$1 WHERE id=$2', [qrCode, shopId]);
 
-    // Ye purana endpoint createDemoShop() use nahi karta - iska apna
-    // INSERT hai, isliye alert yahan alag se bulana padta hai.
+    // This old endpoint does not use createDemoShop() - it has its own
+    // INSERT, so the alert has to be called separately here.
     alertNewDemo(shopId, 'legacy');
 
     console.log(`Demo created: ${shopId} | ${phone} | ip ${ip}`);
     res.json({ success: true, shopId, password: phone, qrUrl, qrCode,
                expiresInMinutes: cfg.minutes,
-               note: 'Login password = aapka mobile number' });
+               note: 'Login password = your mobile number' });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -4023,30 +4027,29 @@ app.get('/api/printer-models', (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
-//  ADVANCE FEATURE LIST  (shop ke Advance tab par jo list dikhti hai)
+//  ADVANCE FEATURE LIST  (the list shown on a shop's Advance tab)
 //
-//  Pehle ye list admin.html me hardcoded thi — naya advance feature
-//  aane par HTML edit karke dobara deploy karna padta tha, aur Mini
-//  Print add karna isi wajah se chhoot gaya tha. Ab list DB me hai
-//  aur Superadmin se badalti hai.
+//  This list used to be hardcoded in admin.html — every new advance feature
+//  meant editing the HTML and deploying again, which is exactly why adding Mini
+//  Print was missed. Now the list lives in the DB and changes
+//  from Superadmin.
 //
 //  Shape: [{ icon, title, desc, isNew }]
-//  desc me halka HTML (<b>) allowed hai — likhne wala superadmin hi hai.
+//  desc may contain light HTML (<b>) — only the superadmin writes it.
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
-//  FEATURE ENTITLEMENT — kis shop ke paas kaun sa advance feature hai
+//  FEATURE ENTITLEMENT — which shop has which advance feature
 //
-//  `advanced_unlocked` boolean ab bhi hai (purana code use karta hai),
-//  par asli sach `owned_features` me hai — feature id ki list.
+//  The `advanced_unlocked` boolean still exists (old code uses it),
+//  but the real truth is in `owned_features` — a list of feature ids.
 //
-//  Premium ki list DEKHI HI NAHI JAATI: unhe catalog me jo bhi hai, aaj
-//  ka bhi aur kal ka bhi, sab milta hai. Isi se "aane wale saare feature
-//  free" ka waada apne aap poora hota hai — naya feature add karte hi
-//  sabhi Premium shops ko mil jaata hai, koi script chalane ki zaroorat
-//  nahi.
+//  The Premium list is NOT CHECKED AT ALL: they get everything in the catalog,
+//  today's and tomorrow's. That automatically keeps the promise of "all future
+//  features free" — as soon as a new feature is added, every Premium shop
+//  gets it, with no script to run.
 // ══════════════════════════════════════════════════════════════
 
-/** Har feature ka `id` stable hona chahiye — usi se ownership judi hai. */
+/** Every feature's `id` must be stable — ownership is tied to it. */
 function normalizeFeature(f, i) {
   const id = String(f.id || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
              || ('feat' + i);
@@ -4055,20 +4058,20 @@ function normalizeFeature(f, i) {
     icon:  String(f.icon  || '✨').slice(0, 8),
     title: String(f.title || '').slice(0, 90).trim(),
     desc:  String(f.desc  || '').slice(0, 600).trim(),
-    // core = base Advance pack ka hissa (₹199 wala / Pro-Premium me included).
-    // core=false = baad me aaya naya feature, uska apna price lagta hai.
+    // core = part of the base Advance pack (the ₹199 one / included with Pro-Premium).
+    // core=false = a new feature added later, with its own price.
     core:  f.core !== false,
     price: Math.max(0, parseInt(f.price) || 0),
     isNew: !!f.isNew
   };
 }
 
-/** Base pack ke feature — ₹199 me / Pro-Premium ke saath ye sab milte hain. */
+/** Base pack features — all of these come with ₹199 / with Pro-Premium. */
 function coreFeatureIds(catalog) {
   return catalog.filter(f => f.core).map(f => f.id);
 }
 
-/** Naye (add-on) feature ka price. 0 ya set na ho to global default. */
+/** The price of a new (add-on) feature. 0 or unset = the global default. */
 async function addonFeaturePrice(feature) {
   if (feature && feature.price > 0) return feature.price;
   return await getAddonFeeDefault();
@@ -4082,27 +4085,27 @@ async function getAddonFeeDefault() {
 }
 
 /**
- * Shop ke paas asal me kaun se feature hain.
- * Premium ke liye poora catalog — chahe owned_features khaali hi ho.
+ * Which features the shop actually has.
+ * For Premium, the whole catalog — even if owned_features is empty.
  */
 function ownedFeatureIds(shop, catalog) {
   if (!shop) return [];
   if (shop.plan_type === 'premium') return catalog.map(f => f.id);
-  // Demo ko poora catalog — Smart Scanner jaise ADD-ON bhi.
+  // A demo gets the whole catalog — including ADD-ONs like the Smart Scanner.
   //
-  // Baaki 5 module advanced_unlocked se chalte the isliye demo me dikhte
-  // the, par add-on ka sach owned_features me hai aur demo ka wo khaali
-  // hota hai — isliye scanner demo me kabhi nahi dikha. Demo banane wale
-  // code ki niyat pehle se yahi thi ("demo ka matlab hi hai ki banda
-  // poora software dekh sake"); Scanner baad me add-on bana aur ye jagah
-  // chhoot gayi.
+  // The other 5 modules ran on advanced_unlocked, so they showed in demos,
+  // but the truth for add-ons lives in owned_features, which is empty for a demo
+  // — so the scanner never showed in demos. The intent of the demo-creation
+  // code already was this ("the whole point of a demo is that the person sees
+  // the complete software"); the Scanner became an add-on later and this spot
+  // was missed.
   //
-  // Yahan theek karne se aage koi bhi naya add-on demo me apne aap
-  // dikhega — har baar yaad rakhne ki zaroorat nahi.
+  // Fixing it here means any future add-on shows in demos automatically —
+  // no need to remember it every time.
   if (shop.demo) return catalog.map(f => f.id);
   const own = Array.isArray(shop.owned_features) ? shop.owned_features : [];
-  // Purani shops jinhone ₹199 diya tha unke paas owned_features khaali hai
-  // par advanced_unlocked=true hai — unhe core pack maana jaata hai.
+  // Old shops that paid ₹199 have an empty owned_features
+  // but advanced_unlocked=true — they are treated as having the core pack.
   if (!own.length && shop.advanced_unlocked) return coreFeatureIds(catalog);
   return own;
 }
@@ -4112,25 +4115,25 @@ function shopOwnsFeature(shop, featureId, catalog) {
 }
 
 /**
- * Shop ko feature de do. Premium par kuch karne ki zaroorat nahi —
- * unka hisaab plan se hi nikalta hai.
+ * Grant the shop a feature. Nothing needs to be done for Premium —
+ * theirs is derived from the plan.
  */
 // ═══════════════════════════════════════════════════════════════
 //  PAGE-RANGE SLAB PRICING
 // ═══════════════════════════════════════════════════════════════
-// Shop owner "itne se itne page tak = itna rupaya" set kar sakta hai.
-// Wo daam HAR PAGE ka rate hai, poore job ka NAHI:
-//     4 kagaz aur range 2-5 ka rate 2    =>  4 x 2   = 8
-//     8 kagaz aur range 6-10 ka rate 1.5 =>  8 x 1.5 = 12
-// Yaani jitne zyada kagaz, utna sasta per-page rate.
+// A shop owner can set "from this many pages to this many = this many rupees".
+// That price is the rate for EACH PAGE, NOT for the whole job:
+//     4 sheets and the 2-5 range rate is 2    =>  4 x 2   = 8
+//     8 sheets and the 6-10 range rate is 1.5 =>  8 x 1.5 = 12
+// So the more sheets, the cheaper the per-page rate.
 //
-// Ginti me COPIES bhi judti hain: 3 page ki 3 copy = 9 kagaz.
+// COPIES count too: 3 copies of 3 pages = 9 sheets.
 //
-// Job kisi range me na aaye (jaise sirf 1 page) to purana per-page hisaab
-// hi chalta hai, isliye jin shops ne slab set nahi kiya unpar koi asar
-// nahi padta.
+// If the job falls into no range (e.g. just 1 page), the old per-page calculation
+// applies, so shops that have not set any slabs are not
+// affected.
 //
-// Shape: { bw: [{from,to,price}, ...], color: [...] }  (5-5 tak)
+// Shape: { bw: [{from,to,price}, ...], color: [...] }  (up to 5 each)
 function parseSlabs(raw) {
   try {
     const o = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {});
@@ -4140,17 +4143,17 @@ function parseSlabs(raw) {
         to:    parseInt(s.to, 10),
         price: parseFloat(s.price)
       }))
-      // Adhoori ya ulti range chup-chaap girao — aadha bhara row
-      // galat daam laga deta, isse behtar hai purana rate chale
+      // Silently drop incomplete or reversed ranges — a half-filled row
+      // would apply a wrong price; better to let the old rate apply
       .filter(s => s.from > 0 && s.to >= s.from && s.price >= 0 && isFinite(s.price))
       .slice(0, 5);
     return { bw: clean(o.bw), color: clean(o.color) };
   } catch (e) { return { bw: [], color: [] }; }
 }
 
-// Kitne page par kaunsa rate. Do range overlap kar jayein to SABSE
-// CHHOTI (sabse khaas) range jeetegi - owner ne jo range jaan-boojh kar
-// tang rakhi hai wo badi wali se upar rehni chahiye.
+// Which rate for how many pages. If two ranges overlap, the SMALLEST
+// (most specific) range wins - a range the owner deliberately kept
+// narrow must take precedence over a wider one.
 function slabPriceFor(raw, colorMode, pages) {
   const slabs = parseSlabs(raw);
   const list = (colorMode === 'color' ? slabs.color : slabs.bw) || [];
@@ -4181,8 +4184,8 @@ async function revokeFeatures(shopId, ids) {
                                     WHERE NOT (x = ANY($2::text[])))
       WHERE id = $1`,
     [shopId, ids]);
-  // Ek bhi feature na bache to legacy flag bhi off — warna purana code
-  // samajhta rahega ki advance khula hua hai.
+  // If no feature is left, switch the legacy flag off too — otherwise old code
+  // would keep thinking that advance is unlocked.
   await pool.query(
     `UPDATE shops SET advanced_unlocked = false
       WHERE id = $1 AND COALESCE(array_length(owned_features,1),0) = 0
@@ -4191,24 +4194,24 @@ async function revokeFeatures(shopId, ids) {
 
 const DEFAULT_ADVANCE_FEATURES = [
   { id: 'photo4x6', core: true, icon: '📷', title: '4×6 Passport Photos',
-    desc: 'Customer photo bhejta hai — 4, 6, 8 ya 10 ki sheet khud ban kar photo printer se nikalti hai, cutting lines ke saath. Layout aur printer routing sab automatic.' },
+    desc: 'The customer sends a photo — a sheet of 4, 6, 8 or 10 builds itself and comes out of the photo printer with cutting lines. Layout and printer routing are fully automatic.' },
   { id: 'resume', core: true, icon: '📝', title: 'Resume Maker',
-    desc: 'Customer QR se hi 6 design me resume banata hai aur form khud bharta hai. Aap sirf print dete ho — naya kaam, bina kuch seekhe.' },
-  { id: 'bigsize', core: true, icon: '📐', title: 'A3 / A2 / A1 — Bade Size',
-    desc: 'Naksha, project chart, banner. Har bade size ka apna printer aur apna rate set kar sakte ho — A3 printer hai to ye kaam aapke paas hi rahega.' },
-  { id: 'mini', core: true, icon: '🗒️', title: 'Mini Print — ek sheet par 16 pages tak',
-    desc: 'Notes, question paper, syllabus — customer 2/4/6/8/9/12/16 pages ek hi A4 par chhapwa sakta hai. Student season me sabse zyada chalne wala option.' },
-  // Smart Scanner base pack ka hissa NAHI hai (core: false) — ye baad me
-  // aaya add-on hai. Iska matlab:
-  //   • Premium (₹999)  → ownedFeatureIds() poora catalog deta hai, free
-  //   • Pro/Starter/purane → ₹49 (system_settings.addon_feature_fee)
-  //   • Superadmin jab chahe kisi ko bhi free de sakta hai
-  // price: 0 rakha hai taaki global addon_feature_fee lagu ho — rate ek
-  // jagah (₹49) se badle, har feature me alag se nahi.
-  { id: 'scan', core: false, price: 0, icon: '📸', title: 'Smart Scanner — Photo se Scan',
-    desc: 'Customer document ka photo kheenchta hai aur CamScanner jaisa saaf seedha page ban jaata hai — background apne aap hat jaata hai. Front aur back dono side scan ho sakti hain. Bina scanner machine ke scanning ka kaam.' },
-  { id: 'duplex', core: true, icon: '📄', title: 'Duplex — Dono Side Print',
-    desc: 'Double-side print ka alag rate rakho. Auto-duplex printer nahi hai to manual mode — system khud bolta hai "page palto".' }
+    desc: 'The customer builds a resume in one of 6 designs straight from the QR and fills the form themselves. You only hand over the print — new business, nothing new to learn.' },
+  { id: 'bigsize', core: true, icon: '📐', title: 'A3 / A2 / A1 — Large Sizes',
+    desc: 'Maps, project charts, banners. Each large size gets its own printer and its own rate — if you have an A3 printer, this work stays with you.' },
+  { id: 'mini', core: true, icon: '🗒️', title: 'Mini Print — up to 16 pages on one sheet',
+    desc: 'Notes, question papers, syllabus — the customer can print 2/4/6/8/9/12/16 pages on a single A4. The busiest option during student season.' },
+  // The Smart Scanner is NOT part of the base pack (core: false) — it is an
+  // add-on that came later. This means:
+  //   • Premium (₹999)       → ownedFeatureIds() returns the whole catalog, free
+  //   • Pro/Starter/old shops → ₹49 (system_settings.addon_feature_fee)
+  //   • The superadmin can give it to anyone for free at any time
+  // price: 0 is set so the global addon_feature_fee applies — the rate changes in
+  // one place (₹49), not separately in every feature.
+  { id: 'scan', core: false, price: 0, icon: '📸', title: 'Smart Scanner — Scan from a Photo',
+    desc: 'The customer photographs a document and gets a clean, straight page like CamScanner — the background is removed automatically. Both the front and back can be scanned. Scanning without a scanner machine.' },
+  { id: 'duplex', core: true, icon: '📄', title: 'Duplex — Both-Side Printing',
+    desc: 'Charge a separate rate for double-sided printing. No auto-duplex printer? Manual mode — the system itself says "flip the page".' }
 ];
 
 async function getAdvanceFeatures() {
@@ -4216,22 +4219,22 @@ async function getAdvanceFeatures() {
     const r = await pool.query("SELECT value FROM system_settings WHERE key='advance_features'");
     if (!r.rows.length) return DEFAULT_ADVANCE_FEATURES.map((f, i) => normalizeFeature(f, i));
     const parsed = JSON.parse(r.rows[0].value);
-    // Khaali array save ho gaya ho to default hi behtar hai — warna
-    // shop ko bilkul khaali box dikhega.
+    // If an empty array was saved, the default is better — otherwise
+    // the shop would see a completely empty box.
     if (!Array.isArray(parsed) || !parsed.length)
       return DEFAULT_ADVANCE_FEATURES.map((f, i) => normalizeFeature(f, i));
 
-    // ⚠️ Purane save me `id`, `core` aur `price` the hi nahi — PUT handler
-    // unhe pheink deta tha (ab wo bhi theek kar diya hai, neeche dekho).
-    // Sirf `id` bharna kaafi nahi tha: `core` undefined rehne par
-    // normalizeFeature ka `f.core !== false` use TRUE bana deta tha,
-    // yaani har feature base pack ka hissa ban jaata aur koi bhi feature
-    // add-on (₹49 wala) ban hi nahi sakta tha.
+    // ⚠️ Old saves did not have `id`, `core` and `price` at all — the PUT handler
+    // dropped them (that has been fixed too, see below).
+    // Filling in only the `id` was not enough: with `core` undefined,
+    // normalizeFeature's `f.core !== false` made it TRUE,
+    // so every feature became part of the base pack and no feature could
+    // ever become an add-on (the ₹49 kind).
     //
-    // Purani entry ko default catalog se milate hain — pehle id se,
-    // phir TITLE se (bharosemand), aur aakhir me index se. Index akela
-    // khatarnak hai: list ka kram badla ya beech me naya feature juda to
-    // ownership galat feature par chali jaati.
+    // Old entries are matched against the default catalog — first by id,
+    // then by TITLE (reliable), and finally by index. Index alone is
+    // dangerous: if the list order changed or a new feature was inserted in the
+    // middle, ownership would move to the wrong feature.
     const byId    = {};
     const byTitle = {};
     DEFAULT_ADVANCE_FEATURES.forEach(d => {
@@ -4255,36 +4258,36 @@ async function getAdvanceFeatures() {
   }
 }
 
-// Shop ka Advance tab yahi padhta hai — public, koi auth nahi
+// A shop's Advance tab reads this — public, no auth
 // ══════════════════════════════════════════════════════════════
-//  ADD-ON FEATURE UNLOCK (₹49) — ek feature, ek payment
+//  ADD-ON FEATURE UNLOCK (₹49) — one feature, one payment
 //
-//  Starter/Pro walon ke liye. Premium yahan aata hi nahi — unhe har
-//  naya feature apne aap milta hai, isliye order banane se pehle hi
-//  rok dete hain.
+//  For Starter/Pro shops. Premium never gets here — they receive every
+//  new feature automatically, so they are stopped before an order
+//  is even created.
 // ══════════════════════════════════════════════════════════════
 app.post('/api/admin/feature/create-order', verifyToken, async (req, res) => {
   try {
     if (!OWNER_RAZORPAY_KEY_ID || !OWNER_RAZORPAY_KEY_SECRET)
-      return res.status(500).json({ error: 'Owner Razorpay configured nahi' });
+      return res.status(500).json({ error: 'The owner Razorpay account is not configured' });
 
     const featureId = String(req.body.featureId || '').trim();
     const catalog = await getAdvanceFeatures();
     const feature = catalog.find(f => f.id === featureId);
-    if (!feature) return res.status(404).json({ error: 'Ye feature exist nahi karta' });
+    if (!feature) return res.status(404).json({ error: 'This feature does not exist' });
 
     const sh = await pool.query(
       'SELECT plan_type, advanced_unlocked, owned_features FROM shops WHERE id=$1', [req.shopId]);
-    if (!sh.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!sh.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const shop = sh.rows[0];
 
     if (shop.plan_type === 'premium')
-      return res.status(400).json({ error: 'Premium me ye pehle se shaamil hai' });
+      return res.status(400).json({ error: 'This is already included in Premium' });
     if (shopOwnsFeature(shop, featureId, catalog))
-      return res.status(400).json({ error: 'Ye feature aapke paas pehle se hai' });
-    // core pack alag se bikta hai (₹199 wala), ek-ek karke nahi
+      return res.status(400).json({ error: 'You already have this feature' });
+    // the core pack is sold as a whole (the ₹199 one), not one feature at a time
     if (feature.core)
-      return res.status(400).json({ error: 'Ye Advance pack ka hissa hai — poora pack unlock karo' });
+      return res.status(400).json({ error: 'This is part of the Advance pack — unlock the whole pack' });
 
     const fee = await addonFeaturePrice(feature);
     const orderData = JSON.stringify({
@@ -4302,9 +4305,9 @@ app.post('/api/admin/feature/create-order', verifyToken, async (req, res) => {
                    resp.on('end',()=>{ try{ resolve(JSON.parse(d)); }catch(e){ reject(e); } }); });
       r.on('error', reject); r.write(orderData); r.end();
     });
-    if (!order || !order.id) return res.status(500).json({ error: 'Order nahi bana' });
+    if (!order || !order.id) return res.status(500).json({ error: 'Could not create the order' });
 
-    // order id shop par rakho — verify me isi se milaan hoga
+    // store the order id on the shop — verification matches against it
     await pool.query('UPDATE shops SET feature_order_id=$1, feature_order_fid=$2 WHERE id=$3',
       [order.id, featureId, req.shopId]);
     res.json({ orderId: order.id, amount: fee * 100, keyId: OWNER_RAZORPAY_KEY_ID,
@@ -4312,18 +4315,18 @@ app.post('/api/admin/feature/create-order', verifyToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Add-on ko order-id se unlock karo. Ise DO raste bulate hain:
-//   1. /api/admin/feature/verify — customer ke browser se, payment ke turant baad
-//   2. Razorpay webhook — agar browser band ho gaya, net kat gaya, ya token
-//      expire ho gaya
-// RACE-SAFE: `AND feature_order_id = $2` ki wajah se sirf PEHLA jeetega.
-// Doosra aayega to row match nahi karegi aur chup-chaap no-op ho jayega.
+// Unlock the add-on by order id. It is called from TWO paths:
+//   1. /api/admin/feature/verify — from the customer's browser, right after payment
+//   2. The Razorpay webhook — if the browser was closed, the network dropped, or the
+//      token expired
+// RACE-SAFE: because of `AND feature_order_id = $2` only the FIRST one wins.
+// When the second arrives, the row no longer matches and it is a silent no-op.
 async function unlockFeatureByOrder(shopId, orderId, paymentId) {
   const claim = await pool.query(
     `UPDATE shops SET feature_order_id = ''
       WHERE id = $1 AND feature_order_id = $2
       RETURNING feature_order_fid`, [shopId, orderId]);
-  if (!claim.rows.length) return null;          // pehle hi ho chuka
+  if (!claim.rows.length) return null;          // already done
 
   const featureId = claim.rows[0].feature_order_fid;
   if (!featureId) return null;
@@ -4339,7 +4342,7 @@ async function unlockFeatureByOrder(shopId, orderId, paymentId) {
       `INSERT INTO platform_payments (shop_id, shop_name, amount, payment_id, order_id, gateway, kind)
        SELECT id, name, $2, $3, $4, 'razorpay', 'feature_unlock' FROM shops WHERE id=$1`,
       [shopId, fee, paymentId || '', orderId]);
-  } catch (e) { /* record na bane to bhi unlock rukna nahi chahiye */ }
+  } catch (e) { /* even if the record cannot be written, the unlock must not stop */ }
 
   log(`Feature unlocked: ${featureId} | shop ${shopId} | ₹${fee}`);
   return featureId;
@@ -4349,21 +4352,21 @@ app.post('/api/admin/feature/verify', verifyToken, async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
-      return res.status(400).json({ error: 'Payment details adhoore hain' });
+      return res.status(400).json({ error: 'The payment details are incomplete' });
 
     const expected = crypto.createHmac('sha256', OWNER_RAZORPAY_KEY_SECRET)
       .update(razorpay_order_id + '|' + razorpay_payment_id).digest('hex');
     if (expected !== razorpay_signature)
-      return res.status(400).json({ error: 'Payment verify nahi hua' });
+      return res.status(400).json({ error: 'Payment could not be verified' });
 
-    // Sirf wahi feature do jo order banate waqt maanga tha — client ke
-    // bheje hue featureId par bharosa nahi karte.
+    // Grant only the feature that was requested when the order was created — the
+    // featureId sent by the client is not trusted.
     const featureId = await unlockFeatureByOrder(
       req.shopId, razorpay_order_id, razorpay_payment_id);
 
     if (!featureId) {
-      // Webhook pehle hi kar chuka ho sakta hai — aisa hai to shop ke paas
-      // feature maujood hoga aur ye SUCCESS hai, error nahi.
+      // The webhook may already have done it — in that case the shop already has
+      // the feature, and this is a SUCCESS, not an error.
       const sh = await pool.query(
         'SELECT plan_type, advanced_unlocked, owned_features FROM shops WHERE id=$1',
         [req.shopId]);
@@ -4371,26 +4374,26 @@ app.post('/api/admin/feature/verify', verifyToken, async (req, res) => {
       const already = (cat || []).find(f =>
         sh.rows.length && shopOwnsFeature(sh.rows[0], f.id, cat) && !f.core);
       if (already) return res.json({ success: true, featureId: already.id });
-      return res.status(400).json({ error: 'Order match nahi hua' });
+      return res.status(400).json({ error: 'The order does not match' });
     }
     res.json({ success: true, featureId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Shop ko apne feature ka status chahiye — kaun sa mila, kaun sa kharidna hai
+// The shop needs the status of its features — which it has and which it can buy
 app.get('/api/admin/features', verifyToken, async (req, res) => {
   try {
     const catalog = await getAdvanceFeatures();
     const sh = await pool.query(
       'SELECT plan_type, advanced_unlocked, owned_features FROM shops WHERE id=$1', [req.shopId]);
-    if (!sh.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!sh.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const shop = sh.rows[0];
     const owned = ownedFeatureIds(shop, catalog);
     const addonFee = await getAddonFeeDefault();
 
     res.json({
       plan: shop.plan_type || 'starter',
-      // Premium walon ko kabhi kuch kharidna nahi padta
+      // Premium shops never need to buy anything
       allIncluded: shop.plan_type === 'premium',
       addonFee,
       features: await Promise.all(catalog.map(async f => ({
@@ -4415,26 +4418,26 @@ app.get('/api/superadmin/advance-features', verifySuperAdmin, async (req, res) =
 app.put('/api/superadmin/advance-features', verifySuperAdmin, async (req, res) => {
   try {
     const list = Array.isArray(req.body.features) ? req.body.features : null;
-    if (!list) return res.status(400).json({ error: 'features ek list honi chahiye' });
-    if (list.length > 30) return res.status(400).json({ error: 'Zyada se zyada 30 feature' });
+    if (!list) return res.status(400).json({ error: 'features must be a list' });
+    if (list.length > 30) return res.status(400).json({ error: 'At most 30 features' });
 
-    // ⚠️ Ye map pehle sirf icon/title/desc/isNew save karta tha — `id`,
-    // `core` aur `price` chup-chaap gir jaate the. Nateeja: superadmin
-    // Save dabaate hi saari ID mit jaati (ownership index par tik jaati)
-    // aur har feature core:true ban jaata — yaani ₹49 wala add-on system
-    // kabhi chala hi nahi. Panel me checkbox aur price ka box dikhta tha,
-    // par Save unhe pheink deta tha.
-    // normalizeFeature() wahi shape banata hai jo padhte waqt chahiye.
+    // ⚠️ This map used to save only icon/title/desc/isNew — `id`,
+    // `core` and `price` were silently dropped. Result: as soon as the superadmin
+    // pressed Save every ID was wiped (ownership fell back to the index)
+    // and every feature became core:true — so the ₹49 add-on system
+    // never worked at all. The panel showed a checkbox and a price box,
+    // but Save threw them away.
+    // normalizeFeature() builds the same shape that reading expects.
     const clean = list.map((f, i) => normalizeFeature(f, i)).filter(f => f.title);
 
-    if (!clean.length) return res.status(400).json({ error: 'Kam se kam ek feature ka title chahiye' });
+    if (!clean.length) return res.status(400).json({ error: 'At least one feature needs a title' });
 
-    // ID par ownership tiki hai (owned_features me yahi id jaati hai).
-    // Do feature ki id ek ho gayi to ek ka paisa doosre ko khol dega,
-    // isliye server par bhi rok — client ka check kaafi nahi.
+    // Ownership depends on the ID (this id goes into owned_features).
+    // If two features shared an id, paying for one would unlock the other,
+    // so the server blocks it too — the client check is not enough.
     const _ids = clean.map(f => f.id);
     const _dup = _ids.find((x, i) => _ids.indexOf(x) !== i);
-    if (_dup) return res.status(400).json({ error: 'Do feature ki ID ek jaisi hai: ' + _dup });
+    if (_dup) return res.status(400).json({ error: 'Two features have the same ID: ' + _dup });
 
     await pool.query(
       `INSERT INTO system_settings (key,value) VALUES ('advance_features',$1)
@@ -4449,11 +4452,11 @@ app.get('/api/demo/config', async (req, res) => {
              printLimit: c.printLimit, instant: c.instant });
 });
 
-// Setup-payment page: is shop ka plan + amount (sirf unpaid — paid par info leak nahi)
+// Setup-payment page: this shop's plan + amount (unpaid only — no info leak for paid shops)
 app.get('/api/setup-status/:shopId', async (req, res) => {
   try {
     const r = await pool.query('SELECT id, setup_paid, setup_amount, plan_type, billing_cycle FROM shops WHERE id=$1', [req.params.shopId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
     if (r.rows[0].setup_paid) return res.json({ paid: true });
     res.json({ paid: false, plan: r.rows[0].plan_type || 'onetime', billingCycle: billingCycle(r.rows[0]), amount: r.rows[0].setup_amount || 0 });
   } catch(err) { res.status(500).json({ error: err.message }); }
@@ -4504,26 +4507,26 @@ Support: ${BASE_URL}/contact
 
 // ══════════════════════════════════════════════════════════════
 // AGENT PROGRAM — helpers
-// Agent = paid shop owner jo doosri shops onboard karke commission kamata hai.
-// Kamai = ₹200 fix per shop + markup (agent ka price − superadmin ka base price)
-// + har 10 shop par ₹300 bonus. Payout manual (UPI), withdrawals table se.
+// Agent = a paid shop owner who earns commission by onboarding other shops.
+// Earnings = ₹200 fixed per shop + markup (the agent's price − the superadmin's base price)
+// + a ₹300 bonus for every 10 shops. Payout is manual (UPI), via the withdrawals table.
 // ══════════════════════════════════════════════════════════════
-// ── AGENT PROGRAM (naya, simple) ──
-// FLAT ₹100 per paid shop. Bas itna hi.
-// Purana system: ₹200 + agent ka apna markup + har 10 shop par ₹300 bonus.
-// Wo hata diya gaya — agent ab apna price set NAHI kar sakta, sabko ek
-// hi rate milta hai. BONUS constants 0 hain taaki koi purana reference
-// bacha ho to bhi paisa na jude.
+// ── AGENT PROGRAM (new, simple) ──
+// A FLAT ₹100 per paid shop. That is all.
+// Old system: ₹200 + the agent's own markup + a ₹300 bonus for every 10 shops.
+// That was removed — agents can NO longer set their own price; everyone gets the
+// same rate. The BONUS constants are 0 so that even if an old reference
+// is left somewhere, no money gets added.
 const AGENT_COMMISSION   = 100;   // per successful paid shop (flat)
-const AGENT_PRICE_MAX    = 0;     // 0 = agent apna price set nahi kar sakta
+const AGENT_PRICE_MAX    = 0;     // 0 = agents cannot set their own price
 const AGENT_BONUS_EVERY  = 0;     // bonus band
 const AGENT_BONUS_AMOUNT = 0;     // bonus band
 
 // ══════════════════════════════════════════════════════════════
 // WHITE LABEL — helpers
-// Reseller apne brand + apne Razorpay se shops bechta hai. Uski shops ka
-// setup fee SEEDHA uske Razorpay me jaata hai; hamare paas sirf ek baar
-// ka license fee aata hai.
+// A reseller sells shops under their own brand + their own Razorpay. The setup fee
+// of their shops goes STRAIGHT to their Razorpay; we only receive a one-time
+// license fee.
 // ══════════════════════════════════════════════════════════════
 async function getWlLicenseFee() {
   try {
@@ -4532,7 +4535,7 @@ async function getWlLicenseFee() {
   } catch(e) { return 25000; }
 }
 
-// Reseller isse neeche shop price nahi rakh sakta. 0/unset = public Offer Price.
+// A reseller cannot set a shop price below this. 0/unset = the public Offer Price.
 async function getWlLicenseActual() {
   try {
     const r = await pool.query("SELECT value FROM system_settings WHERE key='wl_license_actual'");
@@ -4541,9 +4544,9 @@ async function getWlLicenseActual() {
 }
 
 /**
- * Agent ke liye Premium ka floor. Pro ka floor getAgentBasePrice() hai.
- * Set na ho to Premium ka apna public price — taaki agent Premium ko
- * Pro ke rate par na bech de.
+ * The Premium floor for agents. The Pro floor is getAgentBasePrice().
+ * If it is not set, Premium's own public price — so an agent does not
+ * sell Premium at the Pro rate.
  */
 async function getAgentPremiumBasePrice() {
   try {
@@ -4554,10 +4557,10 @@ async function getAgentPremiumBasePrice() {
   return (await getPlanPricing()).premium.fee;
 }
 
-/** Channel ka floor kis plan par lagega — wahi plan ka public price. */
+/** Which plan the channel floor applies to — that plan's public price. */
 async function channelFloorPlan(channel) {
   const plans = await getPlanPricing();
-  // agent ka sabse sasta plan Pro hai, wl ka Starter
+  // the agent's cheapest plan is Pro, the white-label's is Starter
   return channel === 'wl' ? plans.starter.fee : plans.pro.fee;
 }
 
@@ -4567,16 +4570,16 @@ async function getWlBasePrice() {
     const v = parseInt(r.rows[0]?.value) || 0;
     if (v > 0) return v;
   } catch(e) {}
-  // White-label sirf Starter bechta hai — uska floor Starter ka price.
+  // White-label sells only Starter — its floor is the Starter price.
   return (await getPlanPricing()).starter.fee;
 }
 
-// slug: sirf chhote akshar, number aur dash
+// slug: only lowercase letters, numbers and dashes
 function cleanSlug(s) {
   return String(s || '').toLowerCase().trim().replace(/[^a-z0-9-]/g, '').slice(0, 40);
 }
 
-// Reseller dhoondo — ?wl=slug se, ya subdomain (abc.echel.in) se
+// Find the reseller — from ?wl=slug, or from the subdomain (abc.echel.in)
 async function resolveWhitelabel(req) {
   return null; // This client edition has one business identity.
 
@@ -4585,7 +4588,7 @@ async function resolveWhitelabel(req) {
     if (!slug) {
       const host = String(req.headers.host || '').toLowerCase().split(':')[0];
       const parts = host.split('.');
-      // abc.echel.in -> abc  (www aur main domain chhod do)
+      // abc.echel.in -> abc  (skip www and the main domain)
       if (parts.length > 2 && parts[0] !== 'www') slug = cleanSlug(parts[0]);
     }
     if (!slug) return null;
@@ -4596,16 +4599,16 @@ async function resolveWhitelabel(req) {
 }
 
 /**
- * Partner ka paisa kis gateway se aayega — 'razorpay', 'cashfree', ya
- * '' (matlab kuch set hi nahi hai).
+ * Which gateway the partner's money comes through — 'razorpay', 'cashfree', or
+ * '' (meaning nothing is set).
  *
- * Pehle har jagah sirf razorpay_key_id/secret dekha jaata tha. Cashfree
- * ke column aur partner ke panel ka option dono maujood the, par paisa
- * lene wala code unhe padhta hi nahi tha.
+ * Every place used to check only razorpay_key_id/secret. The Cashfree
+ * columns and the option in the partner's panel both existed, but the code
+ * that collects money never read them.
  *
- * Chunav ka niyam: partner ne panel me jo chuna hai wo pehle. Us gateway
- * ki key na bhari ho to doosri chal jaati hai — aadhi bhari settings me
- * bikri rukni nahi chahiye.
+ * The selection rule: whatever the partner chose in the panel comes first. If that
+ * gateway's key is not filled in, the other one is used — half-filled settings
+ * must not stop sales.
  */
 function wlPayMode(wl) {
   if (!wl) return '';
@@ -4619,17 +4622,17 @@ function wlPayMode(wl) {
   return '';
 }
 
-// Reseller ka JWT verify
+// Verify the reseller's JWT
 function verifyWhitelabel(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token) return res.status(401).json({ error: 'Login zaroori hai' });
+  if (!token) return res.status(401).json({ error: 'Login required' });
   try {
     const d = jwt.verify(token, JWT_SECRET);
-    if (!d.wlId) return res.status(403).json({ error: 'Ye whitelabel token nahi hai' });
+    if (!d.wlId) return res.status(403).json({ error: 'This is not a white-label token' });
     req.wlId = d.wlId;
     next();
-  } catch(e) { return res.status(401).json({ error: 'Session expire ho gaya, dobara login karo' }); }
+  } catch(e) { return res.status(401).json({ error: 'Your session has expired, please log in again' }); }
 }
 
 async function genAgentCode() {
@@ -4641,7 +4644,7 @@ async function genAgentCode() {
   return 'QRA-' + Date.now().toString().slice(-6);
 }
 
-// ref = agent code (QRA-1234) ya purana shop id (SHOP_XXXX) — dono chalte hain
+// ref = an agent code (QRA-1234) or an old shop id (SHOP_XXXX) — both work
 async function resolveRef(ref) {
   if (!ref || typeof ref !== 'string') return null;
   const v = ref.trim().toUpperCase();
@@ -4651,17 +4654,17 @@ async function resolveRef(ref) {
      FROM shops WHERE (agent_code=$1 OR UPPER(id)=$1) LIMIT 1`, [v]);
   if (!r.rows.length) return null;
   const s = r.rows[0];
-  if (!s.setup_paid || s.demo) return null;          // unpaid/demo refer nahi kar sakta
-  if (s.is_agent && s.agent_blocked) return null;    // blocked agent ka link dead
+  if (!s.setup_paid || s.demo) return null;          // unpaid/demo shops cannot refer
+  if (s.is_agent && s.agent_blocked) return null;    // a blocked agent's link is dead
   return s;
 }
 
-// Kisi ref ke hisaab se one-time setup price (agent ne badhaya ho to wahi)
+// The one-time setup price for a given ref (if the agent raised it, that one)
 async function priceForRef(ref) {
-  // NOTE: is function ko abhi koi call nahi karta. Pehle isme bhi
-  // `agent_price > base` wala markup tha — wahi bug jo ref link par
-  // Rs 1799 kara raha tha. Agar kal koi ise use kare to wo bug dobara
-  // na aa jaye, isliye yahan bhi hata diya.
+  // NOTE: nothing calls this function right now. It used to contain the same
+  // `agent_price > base` markup — the very bug that produced Rs 1799 on the ref
+  // link. So that the bug does not return if someone uses it tomorrow, it was
+  // removed here as well.
   const base = await getSetupFeeAmount();
   const s = await resolveRef(ref);
   return { price: base, base, agent: s || null };
@@ -4674,11 +4677,11 @@ const ANALYTICS_EVENTS = [
   'pageview', 'demo_click', 'register_click', 'inquiry_click',
   'guide_click', 'agent_click',
   'pay_click',    // register form me "Pay & Activate" dabaya
-  'demo_login'    // demo shop ne dashboard me login kiya
+  'demo_login'    // a demo shop logged in to the dashboard
 ];
 
-// Referrer se pata karo visitor kahan se aaya. Sirf hostname rakhte hain —
-// poora URL nahi, taaki kisi ka private page path store na ho.
+// Work out where the visitor came from using the referrer. Only the hostname is kept —
+// not the full URL, so nobody's private page path is stored.
 function refHostname(raw) {
   try {
     const v = String(raw || '').trim();
@@ -4688,8 +4691,8 @@ function refHostname(raw) {
   } catch (e) { return ''; }
 }
 
-// Public, halka beacon — koi auth nahi (anonymous pageview/click hi hai).
-// Kabhi bhi page ko block/error nahi karta, client se fire-and-forget.
+// Public, lightweight beacon — no auth (it is only an anonymous pageview/click).
+// It never blocks or errors the page; the client fires and forgets it.
 app.post('/api/track', async (req, res) => {
   try {
     const b = req.body || {};
@@ -4709,23 +4712,23 @@ app.post('/api/track', async (req, res) => {
       ]
     );
     res.json({ success: true });
-  } catch (err) { res.status(200).json({ success: false }); } // kabhi bhi client ko error na dikhe
+  } catch (err) { res.status(200).json({ success: false }); } // never show the client an error
 });
 
 // Superadmin: aggregated funnel data — daily breakdown + totals + source split
 
 // ═══════════════════════════════════════════════════════════════════
-//  ACTION CENTER — "Aaj kya dekhna hai"
-//  19 tab me ghoomne ke bajaye ek jagah: kya atka hai, kya chhoot raha
-//  hai, kis shop ko aaj message karna hai. Sab kuch pehle se maujood
-//  data se banta hai — koi naya tracking nahi.
+//  ACTION CENTER — "what to look at today"
+//  Instead of going through 19 tabs, one place: what is stuck, what is being
+//  missed, which shops to message today. Everything is built from data that
+//  already exists — no new tracking.
 // ═══════════════════════════════════════════════════════════════════
 app.get('/api/superadmin/action-center', verifySuperAdmin, async (req, res) => {
   try {
     const LIMIT = 25;
 
-    // 1. Register hua par paisa nahi diya — seedha khoya hua paisa.
-    //    45 din se purane chhod dete hain, wo dead lead hain.
+    // 1. Registered but did not pay — money lost outright.
+    //    Anything older than 45 days is skipped; those are dead leads.
     const unpaid = await pool.query(`
       SELECT id, name, phone, email, created_at,
              EXTRACT(DAY FROM NOW() - created_at)::int AS days_ago
@@ -4734,7 +4737,7 @@ app.get('/api/superadmin/action-center', verifySuperAdmin, async (req, res) => {
         AND created_at > NOW() - INTERVAL '45 days'
       ORDER BY created_at DESC LIMIT ${LIMIT}`);
 
-    // 2. Demo khatam hone wale — abhi baat karoge to paid ban sakte hain
+    // 2. Demos about to expire — talk to them now and they may convert to paid
     const demoExpiring = await pool.query(`
       SELECT id, name, phone, email, demo_expires_at,
              GREATEST(0, CEIL(EXTRACT(EPOCH FROM (demo_expires_at - NOW()))/86400))::int AS days_left
@@ -4743,8 +4746,8 @@ app.get('/api/superadmin/action-center', verifySuperAdmin, async (req, res) => {
         AND demo_expires_at > NOW() AND demo_expires_at < NOW() + INTERVAL '3 days'
       ORDER BY demo_expires_at ASC LIMIT ${LIMIT}`);
 
-    // 2b. Demo khatam HO CHUKA — ye sabse garam lead hain, inhone product
-    //     use kiya aur ab band ho gaya. 30 din tak follow-up worth hai.
+    // 2b. Demo ALREADY EXPIRED — these are the hottest leads: they used the
+    //     product and now it has stopped. Worth following up for 30 days.
     const demoExpired = await pool.query(`
       SELECT id, name, phone, email, demo_expires_at,
              GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - demo_expires_at))/86400))::int AS days_ago
@@ -4754,9 +4757,9 @@ app.get('/api/superadmin/action-center', verifySuperAdmin, async (req, res) => {
         AND demo_expires_at > NOW() - INTERVAL '30 days'
       ORDER BY demo_expires_at DESC LIMIT ${LIMIT}`);
 
-    // 3. Print agent offline — pehle chal raha tha, ab 24 ghante se nahi.
-    //    Jinhone kabhi install hi nahi kiya wo yahan nahi aate, wo alag
-    //    problem hai (onboarding), yahan sirf toota hua setup dikhta hai.
+    // 3. Print agent offline — it used to run, but not for the last 24 hours.
+    //    Shops that never installed it do not appear here; that is a separate
+    //    problem (onboarding). Only broken setups show here.
     const agentOffline = await pool.query(`
       SELECT id, name, phone, agent_last_seen, agent_version, agent_version_label,
              agent_machine, (agent_token IS NOT NULL) AS agent_bound,
@@ -4767,9 +4770,9 @@ app.get('/api/superadmin/action-center', verifySuperAdmin, async (req, res) => {
         AND agent_last_seen < NOW() - INTERVAL '24 hours'
       ORDER BY agent_last_seen ASC LIMIT ${LIMIT}`);
 
-    // 4. Chup shops — 7 din se ek bhi print nahi. Ye chhodne wali hain.
-    //    Nayi shops (7 din se kam purani) ko chhod dete hain, unka
-    //    abhi setup hi chal raha hota hai.
+    // 4. Silent shops — not a single print in 7 days. These are about to leave.
+    //    New shops (less than 7 days old) are skipped; they are
+    //    still being set up.
     const silent = await pool.query(`
       SELECT s.id, s.name, s.phone, s.created_at,
              MAX(p.created_at) AS last_print,
@@ -4783,8 +4786,8 @@ app.get('/api/superadmin/action-center', verifySuperAdmin, async (req, res) => {
       HAVING MAX(p.created_at) IS NULL OR MAX(p.created_at) < NOW() - INTERVAL '7 days'
       ORDER BY MAX(p.created_at) ASC NULLS FIRST LIMIT ${LIMIT}`);
 
-    // 5. Renewal — 5 din me khatam, ya khatam ho chuka.
-    //    Bina reminder ke ye chupchaap chhoot jaate hain.
+    // 5. Renewal — expiring within 5 days, or already expired.
+    //    Without a reminder these quietly slip away.
     const renewals = await pool.query(`
       SELECT id, name, phone, email, paid_until, plan_type, billing_cycle,
              CEIL(EXTRACT(EPOCH FROM (paid_until - NOW()))/86400)::int AS days_left
@@ -4794,7 +4797,7 @@ app.get('/api/superadmin/action-center', verifySuperAdmin, async (req, res) => {
         AND paid_until > NOW() - INTERVAL '30 days'
       ORDER BY paid_until ASC LIMIT ${LIMIT}`);
 
-    // 6. Chhote counters — inke liye poori list ki zaroorat nahi
+    // 6. Small counters — these do not need a full list
     const wd = await pool.query(
       `SELECT COUNT(*)::int AS cnt, COALESCE(SUM(amount),0)::int AS amount
        FROM withdrawals WHERE status='pending'`);
@@ -4816,8 +4819,8 @@ app.get('/api/superadmin/action-center', verifySuperAdmin, async (req, res) => {
 
 app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
   try {
-    // ── Range: chhote ranges (1h/12h/1d) ghante-war bucket karte hain,
-    // baaki (7d/14d/30d/90d) din-war — jaisa pehle se tha.
+    // ── Range: short ranges (1h/12h/1d) are bucketed by hour,
+    // the rest (7d/14d/30d/90d) by day — as before.
     const RANGE_MAP = {
       '1h':  { amount: 1,  unit: 'hours', bucket: 'hour' },
       '12h': { amount: 12, unit: 'hours', bucket: 'hour' },
@@ -4829,17 +4832,17 @@ app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
     };
     let rangeKey = String(req.query.range || '');
     if (!RANGE_MAP[rangeKey]) {
-      // Purana ?days= param bhi chalta rahe (backward compatible)
+      // Keep the old ?days= param working too (backward compatible)
       const legacyDays = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 30));
       rangeKey = [7,14,30,90].includes(legacyDays) ? legacyDays + 'd' : '30d';
     }
     const cfg = RANGE_MAP[rangeKey];
     const intervalStr = `${cfg.amount} ${cfg.unit}`;
     const isHourly = cfg.bucket === 'hour';
-    const days = cfg.unit === 'days' ? cfg.amount : 0; // legacy field, frontend ke liye
+    const days = cfg.unit === 'days' ? cfg.amount : 0; // legacy field, for the frontend
 
-    // Ghante-war bucket IST me dikhate hain (readable), din-war bucket
-    // waisa hi rehta hai jaisa pehle tha (behaviour change nahi karna).
+    // Hourly buckets are shown in IST (readable); daily buckets stay
+    // exactly as before (no behaviour change).
     const bucketExpr = isHourly
       ? `TO_CHAR(created_at + INTERVAL '5 hours 30 minutes', 'YYYY-MM-DD"T"HH24:00')`
       : `TO_CHAR(created_at, 'YYYY-MM-DD')`;
@@ -4870,9 +4873,9 @@ app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
        WHERE event_type='pageview' AND created_at > NOW() - $1::interval
        GROUP BY source ORDER BY cnt DESC LIMIT 10`, [intervalStr]);
 
-    // Visitor kahan se aaya — utm_source ho to wahi (chhote alias jaise
-    // 'ig'/'fb' ko poore naam me normalize karte hain), warna referrer ke
-    // hostname se pehchano. Ek hi visitor ko ek hi baar gino (DISTINCT).
+    // Where the visitor came from — utm_source if present (short aliases such as
+    // 'ig'/'fb' are normalized to the full name), otherwise identified from the
+    // referrer's hostname. Each visitor is counted only once (DISTINCT).
     const sourceSql = `
       CASE
         WHEN LOWER(utm_source) IN ('ig','insta')      THEN 'instagram'
@@ -4907,8 +4910,8 @@ app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
        WHERE event_type='pageview' AND created_at > NOW() - $1::interval
        GROUP BY 1 ORDER BY visitors DESC, views DESC`, [intervalStr]);
 
-    // Kaunsa source sabse zyada asli grahak laata hai — sirf traffic nahi,
-    // demo aur pay tak kaun pahunchta hai wo bhi.
+    // Which source brings the most real customers — not just traffic,
+    // but who actually reaches demo and pay.
     const sourceQuality = await pool.query(
       `SELECT ${sourceSql} AS source,
               COUNT(DISTINCT NULLIF(visitor_id,'')) FILTER (WHERE event_type='pageview')::int   AS visitors,
@@ -4918,9 +4921,9 @@ app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
        WHERE created_at > NOW() - $1::interval
        GROUP BY 1 ORDER BY visitors DESC`, [intervalStr]);
 
-    // Din me kitna traffic, raat me kitna — IST 6AM-6PM ko "din" maante
-    // hain. created_at UTC me store hota hai isliye +5:30 shift karke
-    // IST ghanta nikalte hain.
+    // How much traffic comes by day and how much by night — IST 6AM-6PM counts as
+    // "day". created_at is stored in UTC, so it is shifted by +5:30 to get the
+    // IST hour.
     const dayNight = await pool.query(
       `SELECT
          CASE WHEN EXTRACT(HOUR FROM (created_at + INTERVAL '5 hours 30 minutes')) BETWEEN 6 AND 17
@@ -4931,7 +4934,7 @@ app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
        WHERE event_type='pageview' AND created_at > NOW() - $1::interval
        GROUP BY period`, [intervalStr]);
 
-    // Paise ka funnel — ye analytics_events se nahi, shops table ke asli data se
+    // The money funnel — not from analytics_events, but from the real data in the shops table
     const payments = await pool.query(
       `SELECT
          COUNT(*) FILTER (WHERE demo=false)::int                                  AS registered,
@@ -4941,7 +4944,7 @@ app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
        FROM shops
        WHERE created_at > NOW() - $1::interval`, [intervalStr]);
 
-    // Shops ki abhi ki halat — ye poore time ka hai, sirf range ka nahi
+    // The current state of the shops — this is all-time, not just the range
     const shopStats = await pool.query(
       `SELECT
          COUNT(*) FILTER (WHERE demo=false AND setup_paid=true)::int   AS active,
@@ -4951,12 +4954,12 @@ app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
          COUNT(*)::int AS total
        FROM shops`);
 
-    // Total overall income — "Active shops" jaisa hi POORE TIME ka hai,
-    // range filter se independent. NOTE: is table me har shop ki sirf
-    // PEHLI payment record hoti hai (setup_amount). Monthly plan ke
-    // baad ke renewals abhi alag se log nahi hote, isliye monthly
-    // shops ke liye ye unka poora lifetime revenue nahi — sirf
-    // onboarding revenue hai. Onetime shops ke liye ye hi final hai.
+    // Total overall income — ALL-TIME, just like "Active shops",
+    // independent of the range filter. NOTE: this table records only each shop's
+    // FIRST payment (setup_amount). Renewals after a monthly plan
+    // are not logged separately yet, so for monthly shops this is not
+    // their full lifetime revenue — only the
+    // onboarding revenue. For one-time shops this is final.
     const revenueAllTime = await pool.query(
       `SELECT
          COALESCE(SUM(setup_amount) FILTER (WHERE demo=false AND setup_paid=true),0)::int AS total,
@@ -4984,7 +4987,7 @@ app.get('/api/superadmin/analytics', verifySuperAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Razorpay order banane ka reusable helper (kiske keys se — wo caller decide kare)
+// A reusable helper for creating Razorpay orders (the caller decides whose keys)
 function createRazorpayOrder(keyId, keySecret, payload) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify(payload);
@@ -5008,7 +5011,7 @@ function createRazorpayOrder(keyId, keySecret, payload) {
 
 // ══════════════ WHITE LABEL — public ══════════════
 
-// License ka price (registration page dikhata hai)
+// The license price (shown by the registration page)
 app.get('/api/whitelabel/license-fee', async (req, res) => {
   try {
     res.json({
@@ -5019,13 +5022,13 @@ app.get('/api/whitelabel/license-fee', async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Branding — homepage/customer page yahan se apna brand uthate hain
-// (?wl=slug se ya subdomain se). Koi WL nahi mila to default Echel.
+// Branding — the homepage/customer page take their brand from here
+// (from ?wl=slug or the subdomain). If no WL is found, the default Echel.
 app.get('/api/whitelabel/branding', async (req, res) => {
   try {
     const wl = await resolveWhitelabel(req);
     if (!wl) return res.json({ isWhitelabel: false });
-    // Homepage ke live counters — seedha DB se (hardcoded nahi)
+    // The homepage's live counters — straight from the DB (not hardcoded)
     let stats = { shops: 0, prints: 0 };
     try {
       const c = await pool.query(
@@ -5036,7 +5039,7 @@ app.get('/api/whitelabel/branding', async (req, res) => {
              JOIN shops s ON s.id=j.shop_id
             WHERE s.whitelabel_id=$1) AS prints`, [wl.id]);
       stats = { shops: c.rows[0].shops || 0, prints: c.rows[0].prints || 0 };
-    } catch (e) { /* count fail ho to homepage na toote */ }
+    } catch (e) { /* if the count fails, the homepage must not break */ }
 
     let buttons = {};
     try { buttons = wl.hp_buttons ? JSON.parse(wl.hp_buttons) : {}; } catch (e) { buttons = {}; }
@@ -5066,7 +5069,7 @@ app.get('/api/whitelabel/branding', async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Step 1 — reseller register kare (abhi paid=false)
+// Step 1 — the reseller registers (paid=false for now)
 app.post('/api/whitelabel/register', async (req, res) => {
   try {
     const b = req.body || {};
@@ -5076,22 +5079,22 @@ app.post('/api/whitelabel/register', async (req, res) => {
     const email = String(b.email || '').trim().slice(0, 160);
     const slug  = cleanSlug(b.slug);
 
-    if (brand.length < 2) return res.status(400).json({ error: 'Brand ka naam daalo' });
-    if (!owner) return res.status(400).json({ error: 'Apna naam daalo' });
-    if (!/^\d{10}$/.test(phone)) return res.status(400).json({ error: 'Sahi 10 digit mobile number daalo' });
-    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Sahi email daalo' });
-    if (slug.length < 3) return res.status(400).json({ error: 'Slug kam se kam 3 akshar ka ho (sirf a-z, 0-9, dash)' });
+    if (brand.length < 2) return res.status(400).json({ error: 'Enter the brand name' });
+    if (!owner) return res.status(400).json({ error: 'Enter your name' });
+    if (!/^\d{10}$/.test(phone)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
+    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email' });
+    if (slug.length < 3) return res.status(400).json({ error: 'The slug must be at least 3 characters (only a-z, 0-9, dash)' });
 
     const RESERVED = ['www','api','admin','superadmin','app','mail','shop','print','register','agent','wl','whitelabel'];
-    if (RESERVED.includes(slug)) return res.status(400).json({ error: 'Ye slug reserved hai, dusra chuno' });
+    if (RESERVED.includes(slug)) return res.status(400).json({ error: 'This slug is reserved, choose another' });
 
     const dup = await pool.query('SELECT id FROM whitelabels WHERE slug=$1', [slug]);
-    if (dup.rows.length) return res.status(400).json({ error: 'Ye slug already liya jaa chuka hai' });
+    if (dup.rows.length) return res.status(400).json({ error: 'This slug is already taken' });
 
     const wlId = 'WL_' + uuidv4().substring(0, 8).toUpperCase();
     const fee = await getWlLicenseFee();
     const base = await getWlBasePrice();
-    // Password abhi random — payment ke baad hi reseller ko dikhaya jaayega
+    // The password is random for now — it is shown to the reseller only after payment
     const tempPass = crypto.randomBytes(16).toString('hex');
 
     await pool.query(
@@ -5109,16 +5112,16 @@ app.post('/api/whitelabel/register', async (req, res) => {
   }
 });
 
-// Step 2 — license fee ka order (ye paisa HAMARE account me aata hai)
+// Step 2 — the license fee order (this money comes to OUR account)
 app.post('/api/whitelabel/license/create', async (req, res) => {
   try {
     const wlId = String(req.body.wlId || '').trim();
     const r = await pool.query('SELECT id, paid, license_fee FROM whitelabels WHERE id=$1', [wlId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Registration nahi mila' });
-    if (r.rows[0].paid) return res.status(400).json({ error: 'License already paid hai' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Registration not found' });
+    if (r.rows[0].paid) return res.status(400).json({ error: 'The license is already paid' });
 
     if (!OWNER_RAZORPAY_KEY_ID || !OWNER_RAZORPAY_KEY_SECRET) {
-      return res.status(500).json({ error: 'Payment gateway configure nahi hai.' });
+      return res.status(500).json({ error: 'The payment gateway is not configured.' });
     }
 
     const amount = r.rows[0].license_fee || await getWlLicenseFee();
@@ -5127,9 +5130,9 @@ app.post('/api/whitelabel/license/create', async (req, res) => {
       receipt: 'WL_' + wlId, notes: { wlId, type: 'whitelabel_license' }
     });
     if (!order.id) {
-      const why = order?.error?.description || 'Razorpay ne order reject kiya';
+      const why = order?.error?.description || 'Razorpay rejected the order';
       console.error('WL license create — Razorpay:', JSON.stringify(order));
-      return res.status(400).json({ error: 'Order create nahi hua: ' + why });
+      return res.status(400).json({ error: 'Could not create the order: ' + why });
     }
     await pool.query('UPDATE whitelabels SET license_order_id=$1 WHERE id=$2', [order.id, wlId]);
     res.json({ success: true, orderId: order.id, amount: amount * 100, keyId: OWNER_RAZORPAY_KEY_ID, wlId });
@@ -5149,9 +5152,9 @@ app.post('/api/whitelabel/license/verify', async (req, res) => {
 
     const r = await pool.query('SELECT id, slug, paid, brand_name, license_fee FROM whitelabels WHERE id=$1 AND license_order_id=$2',
       [wlId, razorpay_order_id]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Order match nahi hua' });
+    if (!r.rows.length) return res.status(404).json({ error: 'The order does not match' });
 
-    // Idempotent — dobara verify aaye to naya password mat banao
+    // Idempotent — if verify arrives again, do not create a new password
     if (r.rows[0].paid) return res.json({ success: true, alreadyPaid: true, wlId, slug: r.rows[0].slug });
 
     const password = Math.random().toString(36).slice(-4).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
@@ -5159,7 +5162,7 @@ app.post('/api/whitelabel/license/verify', async (req, res) => {
       `UPDATE whitelabels SET paid=true, paid_at=NOW(), password_hash=$2 WHERE id=$1`,
       [wlId, await hashPassword(password)]);
 
-    // License fee HAMARA paisa hai (shop ka setup fee reseller ka hota hai)
+    // The license fee is OUR money (a shop's setup fee belongs to the reseller)
     await recordPayment({
       kind: 'wl_license', whitelabelId: wlId,
       shopName: r.rows[0].brand_name || '',
@@ -5180,18 +5183,18 @@ app.post('/api/whitelabel/license/verify', async (req, res) => {
 // Reseller login
 app.post('/api/whitelabel/login', loginLimiter, async (req, res) => {
   try {
-    // Captcha — band ho to ye line chup-chaap nikal jaati hai
+    // Captcha — when it is disabled, this line passes through silently
     if (!(await captchaGuard(req, res))) return;
     const wlId = String(req.body.wlId || '').trim().toUpperCase();
     const password = String(req.body.password || '');
     const r = await pool.query('SELECT id, brand_name, paid, blocked, password_hash FROM whitelabels WHERE id=$1', [wlId]);
-    if (!r.rows.length) return res.status(401).json({ error: 'ID ya password galat hai' });
+    if (!r.rows.length) return res.status(401).json({ error: 'Wrong ID or password' });
     const wl = r.rows[0];
     if (!(await verifyPassword(password, wl.password_hash))) {
-      return res.status(401).json({ error: 'ID ya password galat hai' });
+      return res.status(401).json({ error: 'Wrong ID or password' });
     }
-    if (!wl.paid) return res.status(403).json({ error: 'License payment abhi complete nahi hua' });
-    if (wl.blocked) return res.status(403).json({ error: 'Aapka account abhi paused hai. Admin se baat kariye.' });
+    if (!wl.paid) return res.status(403).json({ error: 'The license payment is not complete yet' });
+    if (wl.blocked) return res.status(403).json({ error: 'Your account is currently paused. Please contact the admin.' });
 
     clearLoginHits(req);
     await upgradeHashIfLegacy('whitelabels', 'id', wl.id, wl.password_hash, password);
@@ -5201,12 +5204,12 @@ app.post('/api/whitelabel/login', loginLimiter, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ══════════════ WHITE LABEL — reseller ka apna panel ══════════════
+// ══════════════ WHITE LABEL — the reseller's own panel ══════════════
 
 app.get('/api/whitelabel/me', verifyWhitelabel, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM whitelabels WHERE id=$1', [req.wlId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Account nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Account not found' });
     const wl = r.rows[0];
 
     const s = await pool.query(
@@ -5250,18 +5253,18 @@ app.get('/api/whitelabel/me', verifyWhitelabel, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Branding — powered by, logo, support contact, brand naam
+// Branding — powered by, logo, support contact, brand name
 app.put('/api/whitelabel/branding', verifyWhitelabel, async (req, res) => {
   try {
     const b = req.body || {};
     const cut = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : null);
     const email = cut(b.support_email, 160);
     if (email && email !== '' && !/^\S+@\S+\.\S+$/.test(email)) {
-      return res.status(400).json({ error: 'Sahi support email daalo' });
+      return res.status(400).json({ error: 'Enter a valid support email' });
     }
     const phone = cut(b.support_phone, 20);
     if (phone && phone !== '' && !/^\d{10}$/.test(phone)) {
-      return res.status(400).json({ error: 'Sahi 10 digit support number daalo' });
+      return res.status(400).json({ error: 'Enter a valid 10-digit support number' });
     }
     await pool.query(
       `UPDATE whitelabels SET
@@ -5280,22 +5283,22 @@ app.put('/api/whitelabel/branding', verifyWhitelabel, async (req, res) => {
 const WL_LOGO_MAX_KB = 40;
 app.post('/api/whitelabel/upload-logo', verifyWhitelabel, upload.single('logo'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Koi file nahi mili' });
+    if (!req.file) return res.status(400).json({ error: 'No file received' });
 
     const mt = req.file.mimetype;
     const isP = (mt === 'image/png')  && isPng(req.file.buffer);
     const isJ = (mt === 'image/jpeg' || mt === 'image/jpg') && isJpeg(req.file.buffer);
     if (!isP && !isJ) {
-      return res.status(400).json({ error: 'Sirf PNG ya JPG file chalegi' });
+      return res.status(400).json({ error: 'Only PNG or JPG files are accepted' });
     }
     if (req.file.size > WL_LOGO_MAX_KB * 1024) {
       return res.status(400).json({
-        error: `Logo ${WL_LOGO_MAX_KB} KB se chhota hona chahiye (abhi ${Math.round(req.file.size / 1024)} KB hai)`
+        error: `The logo must be smaller than ${WL_LOGO_MAX_KB} KB (it is ${Math.round(req.file.size / 1024)} KB now)`
       });
     }
 
     const url = await uploadImageToCloudinary(req.file.buffer, isP ? 'image/png' : 'image/jpeg');
-    // logo_url VARCHAR(400) hai — Cloudinary URL isme aaram se aa jaata hai
+    // logo_url is VARCHAR(400) — a Cloudinary URL fits comfortably
     await pool.query('UPDATE whitelabels SET logo_url=$2 WHERE id=$1', [req.wlId, String(url).slice(0, 400)]);
     res.json({ success: true, logoUrl: url, sizeKb: Math.round(req.file.size / 1024) });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -5308,30 +5311,30 @@ app.post('/api/whitelabel/remove-logo', verifyWhitelabel, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Shop owner apne agent ko dobara link kar sake.
-// Zaroorat kab: PC badla / Windows reinstall hua / token file gum ho gayi,
-// ya kisi galat agent ne token claim kar liya. Reset ke baad agli baar jo
-// agent token bhejega wahi is shop ka agent ban jaayega.
+// Lets a shop owner link their agent again.
+// When it is needed: a new PC / Windows was reinstalled / the token file was lost,
+// or a wrong agent claimed the token. After the reset, whichever agent sends a
+// token next becomes this shop's agent.
 app.post('/api/shop/agent-token/reset', verifyToken, async (req, res) => {
   try {
     await pool.query('UPDATE shops SET agent_token=NULL WHERE id=$1', [req.shopId]);
-    invalidateAgentToken(req.shopId);   // cache saaf — warna disconnect ka asar nahi hoga
+    invalidateAgentToken(req.shopId);   // clear the cache — otherwise the disconnect has no effect
     console.log('[agent] token reset by owner: ' + req.shopId);
     res.json({ success: true,
       message: 'Agent unlinked. Start the print agent on the shop PC — it will link automatically.' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Print agent ka token check ───────────────────────────────────────────
-// PROBLEM: /api/jobs/pending/:shopId jaise endpoint bina kisi auth ke chalte the.
-// Shop ID public hota hai (QR link me chhapa hota hai), matlab koi bhi us shop
-// ke customers ki uploaded file ka URL nikaal sakta tha aur job churaa sakta tha.
+// ── Print agent token check ───────────────────────────────────────────
+// PROBLEM: endpoints like /api/jobs/pending/:shopId worked without any auth.
+// The Shop ID is public (it is printed in the QR link), so anyone could pull
+// the URLs of the files uploaded by that shop's customers and steal the jobs.
 //
-// FIX (bina kisi shop ko toda): jis shop ka agent_token set hai, uske liye token
-// LAZMI hai. Jiska set nahi (purana agent) wo pehle jaisa chalta rahega —
-// aur jaise hi naya agent pehli baar token bhejta hai, wo token us shop par
-// lock ho jaata hai. Sab shops upgrade ho jaayein to AGENT_TOKEN_REQUIRED=true
-// kar do, phir bina token wale sab block ho jaayenge.
+// FIX (without breaking any shop): for a shop that has agent_token set, the token
+// is MANDATORY. A shop without one (an old agent) keeps working as before —
+// and as soon as a new agent sends a token for the first time, that token is
+// locked to the shop. Once every shop has upgraded, set AGENT_TOKEN_REQUIRED=true
+// and everything without a token gets blocked.
 const AGENT_TOKEN_REQUIRED = String(process.env.AGENT_TOKEN_REQUIRED || '') === 'true';
 
 function agentTokenFromReq(req) {
@@ -5341,76 +5344,76 @@ function agentTokenFromReq(req) {
 
 async function verifyAgent(req, res, next) {
   try {
-    // shopId ya to URL me hota hai (/api/jobs/pending/:shopId) ya BODY me
+    // The shopId is either in the URL (/api/jobs/pending/:shopId) or in the BODY
     // (/api/agent/verify-paid-shop, /api/agent/convert-to-paid).
     //
-    // Pehle sirf req.params padha jaata tha, isliye Demo -> Paid wale dono
-    // route HAMESHA 400 "shopId missing" dete the -- request endpoint tak
-    // pahunchti hi nahi thi. Yaani demo se paid banne ka flow kabhi chala
-    // hi nahi, na panel se na tray se.
+    // Only req.params used to be read, so both Demo -> Paid routes
+    // ALWAYS returned 400 "shopId missing" -- the request never even reached
+    // the endpoint. In other words the demo-to-paid flow never worked,
+    // neither from the panel nor from the tray.
     //
-    // Body se lena utna hi surakshit hai: neeche wahi agent_token check
-    // hota hai, to bina sahi token ke kisi aur shop ka data nahi milta.
+    // Taking it from the body is just as safe: the same agent_token check
+    // happens below, so without the right token no other shop's data is returned.
     let shopId = req.params.shopId
               || (req.body && (req.body.shopId || req.body.demoShopId));
 
-    // convert-to-paid sirf `ticket` bhejta hai (Shop ID uske andar hai).
-    // Ticket hum khud sign karte hain, isliye usme se demoShopId lena
-    // surakshit hai -- aur asli suraksha to neeche ka agent_token check hai:
-    // convert wahi kar sakta hai jiske paas us demo shop ka agent token ho.
+    // convert-to-paid only sends a `ticket` (the Shop ID is inside it).
+    // We sign the ticket ourselves, so taking the demoShopId from it is
+    // safe -- and the real protection is the agent_token check below:
+    // only someone holding that demo shop's agent token can convert it.
     if (!shopId && req.body && req.body.ticket) {
       try {
         const t = jwt.verify(String(req.body.ticket), JWT_SECRET);
         if (t && t.act === 'demo-convert') shopId = t.demoShopId;
-      } catch (e) { /* galat/expire ticket -- neeche 400 mil jayega */ }
+      } catch (e) { /* invalid/expired ticket -- a 400 comes back below */ }
     }
     if (!shopId) return res.status(400).json({ error: 'shopId missing' });
-    // Endpoint ise seedha use kar sake (req.params hamesha nahi hota)
+    // So the endpoint can use it directly (req.params is not always present)
     req.agentShopId = shopId;
-    // Token cache se — ye middleware HAR poll par chalta hai. Token
-    // kabhi-kabhaar hi badalta hai, aur disconnect par hum cache khud
-    // saaf karte hain, isliye cache karna surakshit hai.
+    // Token from the cache — this middleware runs on EVERY poll. The token
+    // changes only rarely, and on disconnect we clear the cache
+    // ourselves, so caching is safe.
     let _tc = agentTokenCache.get(shopId);
     const _ttl = (_tc && _tc.missing) ? AGENT_MISS_TTL_MS : AGENT_TOKEN_TTL_MS;
     if (!_tc || (Date.now() - _tc.at) >= _ttl) {
       const r = await pool.query('SELECT agent_token FROM shops WHERE id=$1', [shopId]);
       if (!r.rows.length) {
-        // Nahi mila — yahi yaad rakhna asli bachat hai. Iske bina us
-        // shop ka har agla poll dobara DB tak jaata tha.
+        // Not found — remembering that is the real saving. Without it every
+        // subsequent poll from that shop went to the DB again.
         setAgentTokenCache(shopId, { token: null, missing: true, at: Date.now() });
         return res.status(404).json({ error: 'Shop not found' });
       }
       _tc = { token: r.rows[0].agent_token, at: Date.now() };
       setAgentTokenCache(shopId, _tc);
     }
-    // Cache me "nahi mila" pada hai aur TTL abhi baaki hai — DB tak jaane
-    // ki zaroorat hi nahi.
+    // The cache holds "not found" and the TTL has not run out yet — no need
+    // to go to the DB at all.
     if (_tc.missing) return res.status(404).json({ error: 'Shop not found' });
 
     const stored = _tc.token;
     const sent   = agentTokenFromReq(req);
 
     if (stored) {
-      // Timing-safe compare — token guess karna aur mushkil
+      // Timing-safe compare — makes guessing the token harder
       const a = Buffer.from(String(stored));
       const b = Buffer.from(sent.padEnd(a.length, '\0').slice(0, a.length));
       if (sent.length !== a.length || !crypto.timingSafeEqual(a, b)) {
-        return res.status(403).json({ error: 'Agent token galat hai' });
+        return res.status(403).json({ error: 'Invalid agent token' });
       }
       return next();
     }
 
-    // Token abhi set nahi hai
+    // The token is not set yet
     if (sent && /^[A-Za-z0-9_-]{16,64}$/.test(sent)) {
-      // Pehla agent jo token bhejta hai, wahi is shop ka agent ban jaata hai
+      // The first agent that sends a token becomes this shop's agent
       await pool.query('UPDATE shops SET agent_token=$2 WHERE id=$1 AND agent_token IS NULL', [shopId, sent]);
       setAgentTokenCache(shopId, { token: sent, at: Date.now() });
       return next();
     }
     if (AGENT_TOKEN_REQUIRED) {
-      return res.status(403).json({ error: 'Agent purana hai — naya print agent install karo' });
+      return res.status(403).json({ error: 'The agent is outdated — install the new print agent' });
     }
-    return next();   // legacy agent — abhi chalne do
+    return next();   // legacy agent — let it run for now
   } catch (err) { return res.status(500).json({ error: err.message }); }
 }
 
@@ -5419,7 +5422,7 @@ app.put('/api/whitelabel/homepage', verifyWhitelabel, async (req, res) => {
   try {
     const b = req.body || {};
     const cut = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : null);
-    // Link sirf http(s) — javascript: jaisa kuch na ghuse
+    // Links must be http(s) only — so nothing like javascript: gets in
     const link = (v, n) => {
       const t = cut(v, n);
       if (t === null) return null;
@@ -5430,20 +5433,20 @@ app.put('/api/whitelabel/homepage', verifyWhitelabel, async (req, res) => {
     const ig = link(b.social_instagram, 300);
     const yt = link(b.social_youtube, 300);
     const fb = link(b.social_facebook, 300);
-    if (b.social_instagram && ig === null) return res.status(400).json({ error: 'Instagram link https:// se shuru hona chahiye' });
-    if (b.social_youtube   && yt === null) return res.status(400).json({ error: 'YouTube link https:// se shuru hona chahiye' });
-    if (b.social_facebook  && fb === null) return res.status(400).json({ error: 'Facebook link https:// se shuru hona chahiye' });
+    if (b.social_instagram && ig === null) return res.status(400).json({ error: 'The Instagram link must start with https://' });
+    if (b.social_youtube   && yt === null) return res.status(400).json({ error: 'The YouTube link must start with https://' });
+    if (b.social_facebook  && fb === null) return res.status(400).json({ error: 'The Facebook link must start with https://' });
 
-    // Monthly plan ka price — 399 se kam nahi ho sakta
+    // The monthly plan price — it cannot be less than 399
     let monthly = null;
     if (b.monthly_price !== undefined && b.monthly_price !== null && b.monthly_price !== '') {
       monthly = parseInt(b.monthly_price, 10);
-      if (isNaN(monthly)) return res.status(400).json({ error: 'Monthly price number me daalo' });
-      if (monthly < WL_MIN_MONTHLY) return res.status(400).json({ error: 'Monthly price ' + WL_MIN_MONTHLY + ' se kam nahi ho sakta' });
-      if (monthly > 100000) return res.status(400).json({ error: 'Monthly price bahut zyada hai' });
+      if (isNaN(monthly)) return res.status(400).json({ error: 'Enter the monthly price as a number' });
+      if (monthly < WL_MIN_MONTHLY) return res.status(400).json({ error: 'The monthly price cannot be less than ' + WL_MIN_MONTHLY });
+      if (monthly > 100000) return res.status(400).json({ error: 'The monthly price is too high' });
     }
 
-    // Buttons on/off — sirf allowed keys, sirf true/false
+    // Buttons on/off — only allowed keys, only true/false
     let btnJson = null;
     if (b.buttons && typeof b.buttons === 'object') {
       const clean = {};
@@ -5471,13 +5474,13 @@ app.put('/api/whitelabel/homepage', verifyWhitelabel, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Apna Cashfree (Razorpay ka doosra option) ──
+// ── Own Cashfree (the alternative to Razorpay) ──
 app.put('/api/whitelabel/cashfree', verifyWhitelabel, async (req, res) => {
   try {
     const appId  = String(req.body.cashfree_app_id || '').trim().slice(0, 120);
     const secret = String(req.body.cashfree_secret_key || '').trim().slice(0, 200);
-    if (appId && !secret) return res.status(400).json({ error: 'Secret key bhi daalo' });
-    if (secret && !appId) return res.status(400).json({ error: 'App ID bhi daalo' });
+    if (appId && !secret) return res.status(400).json({ error: 'Enter the secret key as well' });
+    if (secret && !appId) return res.status(400).json({ error: 'Enter the App ID as well' });
     await pool.query(
       'UPDATE whitelabels SET cashfree_app_id=$2, cashfree_secret_key=$3 WHERE id=$1',
       [req.wlId, appId, secret]);
@@ -5485,43 +5488,43 @@ app.put('/api/whitelabel/cashfree', verifyWhitelabel, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Kaunsa gateway use karna hai (razorpay / cashfree) ──
+// ── Which gateway to use (razorpay / cashfree) ──
 app.put('/api/whitelabel/gateway', verifyWhitelabel, async (req, res) => {
   try {
     const g = String(req.body.gateway || '').trim().toLowerCase();
     if (g !== 'razorpay' && g !== 'cashfree') {
-      return res.status(400).json({ error: 'Gateway razorpay ya cashfree hi ho sakta hai' });
+      return res.status(400).json({ error: 'The gateway can only be razorpay or cashfree' });
     }
     const me = await pool.query(
       'SELECT razorpay_key_id, cashfree_app_id FROM whitelabels WHERE id=$1', [req.wlId]);
-    if (!me.rows.length) return res.status(404).json({ error: 'Account nahi mila' });
+    if (!me.rows.length) return res.status(404).json({ error: 'Account not found' });
     if (g === 'razorpay' && !me.rows[0].razorpay_key_id) {
-      return res.status(400).json({ error: 'Pehle Razorpay keys save karo' });
+      return res.status(400).json({ error: 'Save the Razorpay keys first' });
     }
     if (g === 'cashfree' && !me.rows[0].cashfree_app_id) {
-      return res.status(400).json({ error: 'Pehle Cashfree keys save karo' });
+      return res.status(400).json({ error: 'Save the Cashfree keys first' });
     }
     await pool.query('UPDATE whitelabels SET gateway=$2 WHERE id=$1', [req.wlId, g]);
     res.json({ success: true, gateway: g });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Demo account — ab sirf partner apne login se bana sakta hai ──
+// ── Demo account — now only the partner can create one from their login ──
 app.post('/api/whitelabel/demo/create', verifyWhitelabel, async (req, res) => {
   try {
     const me = await pool.query('SELECT blocked FROM whitelabels WHERE id=$1', [req.wlId]);
-    if (!me.rows.length) return res.status(404).json({ error: 'Account nahi mila' });
-    if (me.rows[0].blocked) return res.status(403).json({ error: 'Aapka account abhi paused hai' });
+    if (!me.rows.length) return res.status(404).json({ error: 'Account not found' });
+    if (me.rows[0].blocked) return res.status(403).json({ error: 'Your account is currently paused' });
 
     const cfg = await getDemoConfig();
     const name = String(req.body.name || '').trim().slice(0, 100);
     const phone = normPhone(req.body.phone);
-    if (!name)  return res.status(400).json({ error: 'Naam daalo' });
-    if (!phone) return res.status(400).json({ error: 'Sahi 10-digit mobile number daalo' });
+    if (!name)  return res.status(400).json({ error: 'Enter a name' });
+    if (!phone) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
 
     const dupShop = await pool.query('SELECT id FROM shops WHERE phone=$1 AND demo=true', [phone]);
     if (dupShop.rows.length) {
-      return res.status(400).json({ error: 'Is number par demo pehle se hai' });
+      return res.status(400).json({ error: 'A demo already exists for this number' });
     }
 
     const minutes = Math.min(43200, Math.max(10, parseInt(req.body.minutes, 10) || cfg.minutes || 60));
@@ -5539,42 +5542,42 @@ app.post('/api/whitelabel/demo/create', verifyWhitelabel, async (req, res) => {
 
     console.log(`[WL demo] ${shopId} | wl=${req.wlId} | ${phone} | ${minutes}min`);
     res.json({ success: true, shopId, password: phone, qrUrl, qrCode,
-               expiresInMinutes: minutes, note: 'Login password = shop ka mobile number' });
+               expiresInMinutes: minutes, note: 'Login password = the shop mobile number' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Apna Razorpay — shops ka setup fee SEEDHA yahan aayega
+// Own Razorpay — shops' setup fees come STRAIGHT here
 app.put('/api/whitelabel/razorpay', verifyWhitelabel, async (req, res) => {
   try {
     const keyId = String(req.body.razorpay_key_id || '').trim().slice(0, 120);
     const secret = String(req.body.razorpay_key_secret || '').trim().slice(0, 200);
-    if (!keyId || !secret) return res.status(400).json({ error: 'Key ID aur Secret dono daalo' });
-    if (!/^rzp_/i.test(keyId)) return res.status(400).json({ error: 'Key ID rzp_ se shuru honi chahiye' });
+    if (!keyId || !secret) return res.status(400).json({ error: 'Enter both the Key ID and the Secret' });
+    if (!/^rzp_/i.test(keyId)) return res.status(400).json({ error: 'The Key ID must start with rzp_' });
     await pool.query('UPDATE whitelabels SET razorpay_key_id=$2, razorpay_key_secret=$3 WHERE id=$1',
       [req.wlId, keyId, secret]);
     res.json({ success: true, razorpayReady: true });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Shop registration ka price — base se neeche nahi
+// The shop registration price — not below the base
 app.put('/api/whitelabel/price', verifyWhitelabel, async (req, res) => {
   try {
     const r = await pool.query('SELECT base_price, blocked FROM whitelabels WHERE id=$1', [req.wlId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Account nahi mila' });
-    if (r.rows[0].blocked) return res.status(403).json({ error: 'Account paused hai' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Account not found' });
+    if (r.rows[0].blocked) return res.status(403).json({ error: 'The account is paused' });
 
     const base = r.rows[0].base_price || await getWlBasePrice();
     const p = parseInt(req.body.price, 10);
-    if (!Number.isInteger(p)) return res.status(400).json({ error: 'Sahi price daalo' });
-    if (p < base) return res.status(400).json({ error: `Price \u20b9${base} se kam nahi ho sakta` });
-    if (p > 9999) return res.status(400).json({ error: 'Price \u20b99999 se zyada nahi ho sakta' });
+    if (!Number.isInteger(p)) return res.status(400).json({ error: 'Enter a valid price' });
+    if (p < base) return res.status(400).json({ error: `The price cannot be less than \u20b9${base}` });
+    if (p > 9999) return res.status(400).json({ error: 'The price cannot be more than \u20b99999' });
 
     await pool.query('UPDATE whitelabels SET shop_price=$2 WHERE id=$1', [req.wlId, p]);
     res.json({ success: true, price: p, base });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Broadcast — sirf ISKI shops ko dikhega
+// Broadcast — shown only to THIS reseller's shops
 app.put('/api/whitelabel/broadcast', verifyWhitelabel, async (req, res) => {
   try {
     const msg = String(req.body.message || '').slice(0, 1000);
@@ -5583,7 +5586,7 @@ app.put('/api/whitelabel/broadcast', verifyWhitelabel, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Meri shops
+// My shops
 app.get('/api/whitelabel/shops', verifyWhitelabel, async (req, res) => {
   try {
     const r = await pool.query(
@@ -5626,21 +5629,21 @@ app.get('/api/superadmin/whitelabels', verifySuperAdmin, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Block/unblock + is reseller ka apna base price
+// Block/unblock + this reseller's own base price
 app.put('/api/superadmin/whitelabel/:id', verifySuperAdmin, async (req, res) => {
   try {
     const b = req.body || {};
     const chk = await pool.query('SELECT id, shop_price FROM whitelabels WHERE id=$1', [req.params.id]);
-    if (!chk.rows.length) return res.status(404).json({ error: 'White label nahi mila' });
+    if (!chk.rows.length) return res.status(404).json({ error: 'White label not found' });
 
     if (b.blocked !== undefined) {
       await pool.query('UPDATE whitelabels SET blocked=$2 WHERE id=$1', [req.params.id, !!b.blocked]);
     }
     if (b.base_price !== undefined && b.base_price !== '') {
       const bp = parseInt(b.base_price, 10);
-      if (isNaN(bp) || bp < 0) return res.status(400).json({ error: 'Valid base price daalo' });
+      if (isNaN(bp) || bp < 0) return res.status(400).json({ error: 'Enter a valid base price' });
       await pool.query('UPDATE whitelabels SET base_price=$2 WHERE id=$1', [req.params.id, bp]);
-      // Reseller ka price base se neeche reh gaya ho to usko bhi upar utha do
+      // If the reseller's price has fallen below the base, raise it as well
       if (chk.rows[0].shop_price < bp) {
         await pool.query('UPDATE whitelabels SET shop_price=$2 WHERE id=$1', [req.params.id, bp]);
       }
@@ -5650,28 +5653,28 @@ app.put('/api/superadmin/whitelabel/:id', verifySuperAdmin, async (req, res) => 
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ══════════ WHITE LABEL — apni shops par control ══════════
-// SABSE ZAROORI: har action se pehle confirm karo ki shop ISI partner ki hai.
-// Warna ek partner doosre ki (ya hamari) shops chhu sakta hai.
+// ══════════ WHITE LABEL — control over their own shops ══════════
+// MOST IMPORTANT: before every action, confirm that the shop belongs to THIS partner.
+// Otherwise one partner could touch another's (or our) shops.
 async function assertWlShop(wlId, shopId) {
   const r = await pool.query(
     'SELECT id, name, setup_paid, setup_amount, demo, whitelabel_id FROM shops WHERE id=$1', [shopId]);
-  if (!r.rows.length) return { err: 'Shop nahi mila' };
-  if ((r.rows[0].whitelabel_id || '') !== wlId) return { err: 'Ye shop aapki nahi hai' };
+  if (!r.rows.length) return { err: 'Shop not found' };
+  if ((r.rows[0].whitelabel_id || '') !== wlId) return { err: 'This shop does not belong to you' };
   return { shop: r.rows[0] };
 }
 
-// Partner apna password badle
+// The partner changes their password
 app.put('/api/whitelabel/password', verifyWhitelabel, async (req, res) => {
   try {
     const oldPass = String(req.body.old_password || '');
     const newPass = String(req.body.new_password || '');
-    if (newPass.length < 6) return res.status(400).json({ error: 'Naya password kam se kam 6 akshar ka ho' });
+    if (newPass.length < 6) return res.status(400).json({ error: 'The new password must be at least 6 characters' });
 
     const r = await pool.query('SELECT password_hash FROM whitelabels WHERE id=$1', [req.wlId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Account nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Account not found' });
     if (!(await verifyPassword(oldPass, r.rows[0].password_hash))) {
-      return res.status(401).json({ error: 'Purana password galat hai' });
+      return res.status(401).json({ error: 'The old password is wrong' });
     }
     await pool.query('UPDATE whitelabels SET password_hash=$2 WHERE id=$1',
       [req.wlId, crypto.createHash('sha256').update(newPass).digest('hex')]);
@@ -5679,30 +5682,30 @@ app.put('/api/whitelabel/password', verifyWhitelabel, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Partner khud shop onboard kare (Shop ID + password turant)
+// The partner onboards a shop personally (Shop ID + password instantly)
 app.post('/api/whitelabel/onboard', verifyWhitelabel, async (req, res) => {
   try {
     const me = await pool.query(
       `SELECT blocked, shop_price, base_price, razorpay_key_id, cashfree_app_id, gateway
          FROM whitelabels WHERE id=$1`, [req.wlId]);
-    if (!me.rows.length) return res.status(404).json({ error: 'Account nahi mila' });
-    if (me.rows[0].blocked) return res.status(403).json({ error: 'Aapka account abhi paused hai' });
-    // Razorpay YA Cashfree — koi ek set hona chahiye
+    if (!me.rows.length) return res.status(404).json({ error: 'Account not found' });
+    if (me.rows[0].blocked) return res.status(403).json({ error: 'Your account is currently paused' });
+    // Razorpay OR Cashfree — one of them must be set
     if (!me.rows[0].razorpay_key_id && !me.rows[0].cashfree_app_id) {
-      return res.status(400).json({ error: 'Pehle apna Razorpay ya Cashfree set karo — warna shop payment nahi kar payegi' });
+      return res.status(400).json({ error: 'Set up your Razorpay or Cashfree first — otherwise the shop cannot pay' });
     }
 
     const name = String(req.body.name || '').trim().slice(0, 200);
     const phone = String(req.body.phone || '').trim();
     const address = String(req.body.address || '').trim().slice(0, 300);
     const printerModel = String(req.body.printer_model || '').trim().slice(0, 120);
-    if (!name) return res.status(400).json({ error: 'Shop ka naam zaroori hai' });
-    if (!/^\d{10}$/.test(phone)) return res.status(400).json({ error: 'Sahi 10 digit mobile number daalo' });
+    if (!name) return res.status(400).json({ error: 'The shop name is required' });
+    if (!/^\d{10}$/.test(phone)) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
 
     const wlBase = me.rows[0].base_price || await getWlBasePrice();
     const sold = (me.rows[0].shop_price && me.rows[0].shop_price > wlBase) ? me.rows[0].shop_price : wlBase;
 
-    // parseInt yahan bhi ₹1.5 ko 1 kar deta tha (naya shop banate waqt)
+    // parseInt turned ₹1.5 into 1 here as well (when creating a new shop)
     const priceBw = parseFloat(req.body.price_bw);
     const priceColor = parseFloat(req.body.price_color);
     const shopId = 'SHOP_' + uuidv4().substring(0, 8).toUpperCase();
@@ -5729,7 +5732,7 @@ app.post('/api/whitelabel/onboard', verifyWhitelabel, async (req, res) => {
   }
 });
 
-// Shop ka password reset
+// Shop password reset
 app.post('/api/whitelabel/shop/:shopId/reset-password', verifyWhitelabel, async (req, res) => {
   try {
     const chk = await assertWlShop(req.wlId, req.params.shopId);
@@ -5742,26 +5745,26 @@ app.post('/api/whitelabel/shop/:shopId/reset-password', verifyWhitelabel, async 
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Manual activate — partner ne cash le liya (paisa uska hai, risk bhi uska)
+// Manual activate — the partner collected cash (the money is theirs, and so is the risk)
 app.post('/api/whitelabel/shop/:shopId/activate', verifyWhitelabel, async (req, res) => {
   try {
     const chk = await assertWlShop(req.wlId, req.params.shopId);
     if (chk.err) return res.status(403).json({ error: chk.err });
-    if (chk.shop.setup_paid) return res.status(400).json({ error: 'Shop pehle se active hai' });
+    if (chk.shop.setup_paid) return res.status(400).json({ error: 'The shop is already active' });
     const ref = String(req.body.payment_ref || '').trim().slice(0, 60);
-    if (!ref) return res.status(400).json({ error: 'Payment reference daalo (cash ho to "CASH" likh do)' });
+    if (!ref) return res.status(400).json({ error: 'Enter a payment reference (for cash, write "CASH")' });
     const { qrUrl } = await activateShop(req.params.shopId, 'WLMANUAL_' + ref);
     console.log(`WL manual activation: ${req.params.shopId} by ${req.wlId} | ref: ${ref}`);
     res.json({ success: true, qrUrl });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Pending shop delete — paid shop kabhi nahi
+// Delete a pending shop — never a paid one
 app.delete('/api/whitelabel/shop/:shopId', verifyWhitelabel, async (req, res) => {
   try {
     const chk = await assertWlShop(req.wlId, req.params.shopId);
     if (chk.err) return res.status(403).json({ error: chk.err });
-    if (chk.shop.setup_paid) return res.status(403).json({ error: 'Paid shop delete nahi ho sakti' });
+    if (chk.shop.setup_paid) return res.status(403).json({ error: 'A paid shop cannot be deleted' });
     await pool.query('DELETE FROM print_jobs WHERE shop_id=$1', [req.params.shopId]);
     await pool.query('DELETE FROM shops WHERE id=$1', [req.params.shopId]);
     console.log(`WL ${req.wlId} deleted pending shop ${req.params.shopId}`);
@@ -5769,7 +5772,7 @@ app.delete('/api/whitelabel/shop/:shopId', verifyWhitelabel, async (req, res) =>
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Shop ke PC ka printer list + selection
+// The shop PC's printer list + selection
 app.get('/api/whitelabel/shop/:shopId/printers', verifyWhitelabel, async (req, res) => {
   try {
     const chk = await assertWlShop(req.wlId, req.params.shopId);
@@ -5807,10 +5810,10 @@ app.put('/api/whitelabel/shop/:shopId/printers', verifyWhitelabel, async (req, r
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Partner ke apne link ka analytics
+// Analytics for the partner's own link
 app.get('/api/whitelabel/analytics', verifyWhitelabel, async (req, res) => {
   try {
-    // Superadmin wale analytics jaisa — chhote range ghante-war, bade din-war
+    // Like the superadmin analytics — short ranges hourly, long ones daily
     const RANGE_MAP = {
       '1h':  { amount: 1,  unit: 'hours', bucket: 'hour' },
       '12h': { amount: 12, unit: 'hours', bucket: 'hour' },
@@ -5874,7 +5877,7 @@ app.get('/api/whitelabel/analytics', verifyWhitelabel, async (req, res) => {
        FROM shops WHERE whitelabel_id=$1 AND created_at > NOW() - ($2)::interval
        GROUP BY 1 ORDER BY 1 ASC`, [req.wlId, intervalStr]);
 
-    // Business summary — shops, prints, kamai
+    // Business summary — shops, prints, earnings
     const summary = await pool.query(
       `SELECT
          (SELECT COUNT(*)::int FROM shops
@@ -5902,7 +5905,7 @@ app.get('/api/whitelabel/analytics', verifyWhitelabel, async (req, res) => {
 });
 
 // ══════════════ REVIEWS ══════════════
-// Public — homepage in par dikhata hai
+// Public — the homepage shows these
 app.get('/api/reviews', async (req, res) => {
   try {
     const r = await pool.query(
@@ -5917,9 +5920,9 @@ app.get('/api/reviews', async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Shop apna review bhejta hai — seedha live nahi hota, pehle superadmin
-// approve karega. Ek shop ka ek hi review: dobara bhejne par purana update
-// ho jaata hai aur wapas pending me chala jaata hai.
+// A shop submits its review — it does not go live directly; the superadmin
+// approves it first. One review per shop: submitting again updates the old one
+// and sends it back to pending.
 app.post('/api/shop/review', verifyToken, async (req, res) => {
   try {
     const name  = String(req.body.name  || '').trim().slice(0, 120);
@@ -5928,9 +5931,9 @@ app.post('/api/shop/review', verifyToken, async (req, res) => {
     let stars   = parseInt(req.body.stars, 10);
     if (!Number.isFinite(stars) || stars < 1 || stars > 5) stars = 5;
 
-    if (!name)  return res.status(400).json({ error: 'Naam daalo' });
-    if (!state) return res.status(400).json({ error: 'State daalo' });
-    if (text.length < 10) return res.status(400).json({ error: 'Review kam se kam 10 character ka likho' });
+    if (!name)  return res.status(400).json({ error: 'Enter a name' });
+    if (!state) return res.status(400).json({ error: 'Enter the state' });
+    if (text.length < 10) return res.status(400).json({ error: 'Write a review of at least 10 characters' });
 
     const existing = await pool.query('SELECT id FROM reviews WHERE shop_id=$1', [req.shopId]);
 
@@ -5950,11 +5953,11 @@ app.post('/api/shop/review', verifyToken, async (req, res) => {
         [name, stars, text, state, req.shopId]);
     }
     res.json({ success: true, review: r.rows[0],
-               message: 'Review bhej diya. Approve hone par homepage par dikhega.' });
+               message: 'Review sent. It will appear on the homepage once approved.' });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Shop apna bheja hua review aur uski halat dekh sake
+// Lets a shop see the review it submitted and its status
 app.get('/api/shop/review', verifyToken, async (req, res) => {
   try {
     const r = await pool.query(
@@ -5977,8 +5980,8 @@ app.post('/api/superadmin/reviews', verifySuperAdmin, async (req, res) => {
     const text = String(req.body.text || '').trim().slice(0, 1000);
     const city = String(req.body.city || '').trim().slice(0, 120);
     let stars = parseInt(req.body.stars, 10);
-    if (!name) return res.status(400).json({ error: 'Naam daalo' });
-    if (!text) return res.status(400).json({ error: 'Review likho' });
+    if (!name) return res.status(400).json({ error: 'Enter a name' });
+    if (!text) return res.status(400).json({ error: 'Write a review' });
     if (!Number.isInteger(stars) || stars < 1 || stars > 5) stars = 5;
     const r = await pool.query(
       `INSERT INTO reviews (name, stars, text, city, sort_order)
@@ -5991,7 +5994,7 @@ app.post('/api/superadmin/reviews', verifySuperAdmin, async (req, res) => {
 app.put('/api/superadmin/reviews/:id', verifySuperAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Galat id' });
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
     const b = req.body || {};
     let stars = parseInt(b.stars, 10);
     if (!Number.isInteger(stars) || stars < 1 || stars > 5) stars = null;
@@ -6011,20 +6014,20 @@ app.put('/api/superadmin/reviews/:id', verifySuperAdmin, async (req, res) => {
        stars,
        typeof b.active === 'boolean' ? b.active : null,
        Number.isInteger(parseInt(b.sort_order,10)) ? parseInt(b.sort_order,10) : null]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Review nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Review not found' });
     res.json({ success: true, review: r.rows[0] });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Approve — bina badle, ya edit ke saath. Jo fields bheje jaate hain
-// sirf wahi badalte hain, baaki waise ke waise rehte hain.
+// Approve — unchanged, or with edits. Only the fields that are sent
+// change; the rest stay as they are.
 app.post('/api/superadmin/reviews/:id/approve', verifySuperAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Galat id' });
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
 
     const cur = await pool.query('SELECT * FROM reviews WHERE id=$1', [id]);
-    if (!cur.rows.length) return res.status(404).json({ error: 'Review nahi mila' });
+    if (!cur.rows.length) return res.status(404).json({ error: 'Review not found' });
     const c = cur.rows[0];
 
     const has = k => Object.prototype.hasOwnProperty.call(req.body, k);
@@ -6036,8 +6039,8 @@ app.post('/api/superadmin/reviews/:id/approve', verifySuperAdmin, async (req, re
       const v = parseInt(req.body.stars, 10);
       if (Number.isFinite(v) && v >= 1 && v <= 5) stars = v;
     }
-    if (!name) return res.status(400).json({ error: 'Naam khaali nahi ho sakta' });
-    if (!text) return res.status(400).json({ error: 'Review khaali nahi ho sakta' });
+    if (!name) return res.status(400).json({ error: 'The name cannot be empty' });
+    if (!text) return res.status(400).json({ error: 'The review cannot be empty' });
 
     const changed = (name !== c.name) || (state !== (c.state||'')) ||
                     (text !== c.text) || (stars !== c.stars);
@@ -6051,14 +6054,14 @@ app.post('/api/superadmin/reviews/:id/approve', verifySuperAdmin, async (req, re
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Wapas pending me bhejo (galti se approve ho gaya to)
+// Send it back to pending (if it was approved by mistake)
 app.post('/api/superadmin/reviews/:id/unapprove', verifySuperAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Galat id' });
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
     const r = await pool.query(
       "UPDATE reviews SET status='pending' WHERE id=$1 RETURNING *", [id]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Review nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Review not found' });
     res.json({ success: true, review: r.rows[0] });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
@@ -6066,28 +6069,28 @@ app.post('/api/superadmin/reviews/:id/unapprove', verifySuperAdmin, async (req, 
 app.delete('/api/superadmin/reviews/:id', verifySuperAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Galat id' });
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
     await pool.query('DELETE FROM reviews WHERE id=$1', [id]);
     res.json({ success: true });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
 // ══════════════════════════════════════════════════════════════
-// ALERTS — naya shop aane par EMAIL
+// ALERTS — an EMAIL when a new shop arrives
 //
-// SMTP sirf EK BAAR superadmin set karta hai (Gmail app password se
-// 2 minute me ho jaata hai — free hai). Uske baad:
-//   normal shop      -> superadmin ke email par
-//   white-label shop -> us PARTNER ke email par
-// Partner ko koi SMTP setup nahi karna — wo bas apna email daalta hai.
+// The superadmin sets up SMTP only ONCE (with a Gmail app password it takes
+// 2 minutes — and it is free). After that:
+//   normal shop      -> to the superadmin's email
+//   white-label shop -> to that PARTNER's email
+// The partner does not set up any SMTP — they just enter their email.
 //
-// Poori tarah "fire and forget" — email fail ho to bhi registration ya
-// payment kabhi nahi rukega.
+// Completely "fire and forget" — even if the email fails, registration or
+// payment never stops.
 // ══════════════════════════════════════════════════════════════
 let _mailer = null, _mailerAt = 0;
 
 async function getMailer() {
-  // 5 min cache — har mail par DB hit na ho
+  // 5 min cache — no DB hit for every mail
   if (_mailer && (Date.now() - _mailerAt) < 5 * 60 * 1000) return _mailer;
   const r = await pool.query(
     "SELECT key,value FROM system_settings WHERE key IN ('smtp_host','smtp_port','smtp_user','smtp_pass')");
@@ -6104,7 +6107,7 @@ async function getMailer() {
   return _mailer;
 }
 
-// Brevo ka HTTPS API — SMTP ki tarah block nahi hota
+// Brevo's HTTPS API — it does not get blocked the way SMTP does
 function sendViaBrevo(apiKey, senderEmail, senderName, to, subject, text, html) {
   return new Promise((resolve) => {
     try {
@@ -6140,17 +6143,17 @@ function sendViaBrevo(apiKey, senderEmail, senderName, to, subject, text, html) 
   });
 }
 
-// htmlOverride: designed mail (jaise payment confirmation) ke liye. Na do to
-// pehle jaisa hi <pre> wala plain look — purane saare alert waise ke waise.
+// htmlOverride: for designed mails (such as the payment confirmation). Without it
+// the old plain <pre> look stays — all the old alerts are unchanged.
 async function sendEmailAlert(to, subject, body, fromName, htmlOverride) {
   try {
-    if (!to) return { ok: false, why: 'email set nahi hai' };
+    if (!to) return { ok: false, why: 'the email is not set' };
 
     const html = htmlOverride ||
       ('<pre style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.7;white-space:pre-wrap;margin:0;">'
       + String(body).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>');
 
-    // 1) Brevo (HTTPS) — Render par yahi chalta hai
+    // 1) Brevo (HTTPS) — this is what works on Render
     const bc = await pool.query(
       "SELECT key,value FROM system_settings WHERE key IN ('brevo_api_key','brevo_sender')");
     const bm = {}; bc.rows.forEach(r => { bm[r.key] = r.value; });
@@ -6160,14 +6163,14 @@ async function sendEmailAlert(to, subject, body, fromName, htmlOverride) {
       return { ok: false, why: r.why, via: 'Brevo' };
     }
 
-    // 2) SMTP — sirf tab jab host block na kare
+    // 2) SMTP — only when the host does not block it
     const t = await getMailer();
-    if (!t) return { ok: false, why: 'Email setup nahi hai — Brevo API key daalo (ya SMTP)' };
+    if (!t) return { ok: false, why: 'Email is not set up — enter a Brevo API key (or SMTP)' };
     const info = await t.sendMail({
       from: `"${(fromName || 'Echel').replace(/"/g, '')}" <${t._fromAddr}>`,
       to, subject, text: body, html
     });
-    // SMTP ne kya jawab diya — yahi asli proof hai ki mail accept hui
+    // What SMTP replied — this is the real proof that the mail was accepted
     return {
       ok: true, via: 'SMTP',
       from: t._fromAddr,
@@ -6177,20 +6180,20 @@ async function sendEmailAlert(to, subject, body, fromName, htmlOverride) {
       rejected: (info && info.rejected) || []
     };
   } catch (e) {
-    _mailer = null;                     // agli baar naya transport banega
+    _mailer = null;                     // a new transport will be created next time
     return { ok: false, why: e.message };
   }
 }
 
-// Kis ko bhejna hai wo khud dhoondh leta hai:
-// white-label ki shop -> us PARTNER ko, warna hamein.
+// It works out on its own whom to send to:
+// a white-label shop -> that PARTNER, otherwise us.
 async function alertNewShop(shopId, kind) {
   try {
     const s = await pool.query(
       'SELECT id,name,phone,address,setup_amount,whitelabel_id,demo FROM shops WHERE id=$1', [shopId]);
     if (!s.rows.length) return;
     const shop = s.rows[0];
-    if (shop.demo) return;   // demo par alert nahi — bahut zyada ho jaayenge
+    if (shop.demo) return;   // no alerts for demos — there would be far too many
 
     let to = '', brand = 'Echel';
     if (shop.whitelabel_id) {
@@ -6198,14 +6201,14 @@ async function alertNewShop(shopId, kind) {
         'SELECT brand_name, notify_email, email FROM whitelabels WHERE id=$1', [shop.whitelabel_id]);
       if (!w.rows.length) return;
       brand = w.rows[0].brand_name || brand;
-      to = w.rows[0].notify_email || w.rows[0].email || '';   // alert email na ho to login wala
+      to = w.rows[0].notify_email || w.rows[0].email || '';   // if there is no alert email, the login one
     } else {
       const c = await pool.query("SELECT value FROM system_settings WHERE key='notify_email'");
       to = c.rows[0]?.value || '';
     }
-    if (!to) return;   // set nahi hai — chup rehna
+    if (!to) return;   // not set — stay silent
 
-    const head = kind === 'paid' ? '💰 PAYMENT AAYA' : '🆕 NAYI SHOP REGISTER HUI';
+    const head = kind === 'paid' ? '💰 PAYMENT RECEIVED' : '🆕 NEW SHOP REGISTERED';
     const body =
       `${head}\n\n` +
       `🏪 Shop     : ${shop.name || '-'}\n` +
@@ -6214,46 +6217,46 @@ async function alertNewShop(shopId, kind) {
       `🆔 Shop ID  : ${shop.id}\n` +
       `💵 Amount   : ₹${shop.setup_amount || 0}\n\n` +
       (kind === 'paid'
-        ? `✅ Shop active ho gayi hai.`
-        : `⏳ Payment abhi baaki hai — follow-up kar lena.`) +
+        ? `✅ The shop is now active.`
+        : `⏳ Payment is still pending — follow up.`) +
       `\n\n— ${brand}`;
 
-    const subject = `${kind === 'paid' ? '💰 Payment aaya' : '🆕 Nayi shop'}: ${shop.name || shop.id}`;
+    const subject = `${kind === 'paid' ? '💰 Payment received' : '🆕 New shop'}: ${shop.name || shop.id}`;
     const r = await sendEmailAlert(to, subject, body, brand);
     console.log(`Alert (${kind}) ${shopId} -> ${to}: ${r.ok ? 'sent' : 'FAIL ' + r.why}`);
   } catch (e) {
-    console.error('alertNewShop error:', e.message);   // kabhi throw nahi karega
+    console.error('alertNewShop error:', e.message);   // never throws
   }
 }
 
-// Demo shop ka apna EMAIL alert.
+// The demo shop's own EMAIL alert.
 //
-// Pehle demo par koi alert jaata hi NAHI tha — alertNewShop() shuru me hi
-// `if (shop.demo) return;` kar deta hai. Wo jaan-boojh kar tha (demo bahut
-// bante hain). Par demo hi asli lead hai: banda abhi software chala kar dekh
-// raha hai. Isliye demo ka apna alag alert, apne matter ke saath — aur
-// alertNewShop ko chhua nahi, taaki paid shop ka alert waisa hi rahe.
+// No alert used to be sent for demos at all — alertNewShop() does
+// `if (shop.demo) return;` at the very start. That was deliberate (many demos
+// get created). But the demo is the real lead: the person is trying the software
+// right now. So demos get their own separate alert with their own content — and
+// alertNewShop was left untouched, so the paid-shop alert stays the same.
 //
-// Band karna ho to, koi code badle bina:
+// To turn it off without changing any code:
 //     UPDATE system_settings SET value='0' WHERE key='demo_alert';
 //
-// how: 'instant'  — form bharte hi ban gaya (aam raasta)
-//      'approved' — superadmin ne demo request approve ki
-//      'legacy'   — purana /api/demo/create endpoint
+// how: 'instant'  — created as soon as the form was submitted (the usual path)
+//      'approved' — the superadmin approved the demo request
+//      'legacy'   — the old /api/demo/create endpoint
 async function alertNewDemo(shopId, how) {
   try {
     const g = await pool.query("SELECT value FROM system_settings WHERE key='demo_alert'");
-    if (g.rows.length && g.rows[0].value === '0') return;   // superadmin ne band kiya
+    if (g.rows.length && g.rows[0].value === '0') return;   // disabled by the superadmin
 
     const s = await pool.query(
       `SELECT id,name,phone,email,address,printer_model,whitelabel_id,demo,demo_expires_at
          FROM shops WHERE id=$1`, [shopId]);
     if (!s.rows.length) return;
     const shop = s.rows[0];
-    if (!shop.demo) return;              // demo hai hi nahi — kuch mat bhejo
+    if (!shop.demo) return;              // not a demo at all — send nothing
 
-    // Kis ko bhejna hai — white-label ki shop -> us PARTNER ko, warna hamein.
-    // Bilkul wahi tarika jo alertNewShop use karta hai.
+    // Whom to send to — a white-label shop -> that PARTNER, otherwise us.
+    // Exactly the same approach alertNewShop uses.
     let to = '', brand = 'Echel';
     if (shop.whitelabel_id) {
       const w = await pool.query(
@@ -6265,16 +6268,16 @@ async function alertNewDemo(shopId, how) {
       const c = await pool.query("SELECT value FROM system_settings WHERE key='notify_email'");
       to = c.rows[0]?.value || '';
     }
-    if (!to) return;                     // set nahi hai — chup rehna
+    if (!to) return;                     // not set — stay silent
 
     const cfg = await getDemoConfig();
     const hours = Math.max(1, Math.round(cfg.minutes / 60));
-    const source = how === 'approved' ? 'Superadmin ne approve kiya'
-                 : how === 'legacy'   ? 'Purana instant endpoint'
-                 : 'Form bharte hi turant bana';
+    const source = how === 'approved' ? 'Approved by the superadmin'
+                 : how === 'legacy'   ? 'Old instant endpoint'
+                 : 'Created instantly when the form was submitted';
 
     const body =
-      `🎬 NAYA DEMO ACCOUNT BANA\n\n` +
+      `🎬 NEW DEMO ACCOUNT CREATED\n\n` +
       `🏪 Shop     : ${shop.name || '-'}\n` +
       `📱 Mobile   : ${shop.phone || '-'}\n` +
       (shop.email         ? `📧 Email    : ${shop.email}\n` : '') +
@@ -6282,44 +6285,44 @@ async function alertNewDemo(shopId, how) {
       (shop.printer_model ? `🖨 Printer  : ${shop.printer_model}\n` : '') +
       `🆔 Shop ID  : ${shop.id}\n` +
       `🔑 Password : ${shop.phone || '-'}  (mobile number)\n\n` +
-      `⏳ Demo khatam : ${fmtIST(shop.demo_expires_at)}  (${hours} ghante)\n` +
+      `⏳ Demo ends   : ${fmtIST(shop.demo_expires_at)}  (${hours} hours)\n` +
       `🖨 Free print  : ${cfg.printLimit}\n` +
-      `📥 Kaise bana  : ${source}\n\n` +
-      `Ye asli lead hai — banda abhi software chala kar dekh raha hai.\n` +
-      `Demo khatam hone se pehle follow-up kar lena.\n\n` +
+      `📥 Created via : ${source}\n\n` +
+      `This is a real lead — the person is trying the software right now.\n` +
+      `Follow up before the demo ends.\n\n` +
       `— ${brand}`;
 
     const r = await sendEmailAlert(
-      to, `🎬 Naya demo: ${shop.name || shop.id}`, body, brand);
+      to, `🎬 New demo: ${shop.name || shop.id}`, body, brand);
     console.log(`Alert (demo/${how || 'instant'}) ${shopId} -> ${to}: ${r.ok ? 'sent' : 'FAIL ' + r.why}`);
   } catch (e) {
-    console.error('alertNewDemo error:', e.message);   // kabhi throw nahi karega
+    console.error('alertNewDemo error:', e.message);   // never throws
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  SHOP KO PAYMENT CONFIRMATION EMAIL
-//  Payment confirm hone par shop owner ko jaata hai (aapke alert se alag).
-//  White-label ki shop ko PARTNER ke brand aur PARTNER ke support se.
+//  PAYMENT CONFIRMATION EMAIL TO THE SHOP
+//  Sent to the shop owner when the payment is confirmed (separate from your alert).
+//  A white-label shop gets it with the PARTNER's brand and the PARTNER's support.
 // ═══════════════════════════════════════════════════════════════════
 
-// Render UTC me chalta hai — isliye har date zabardasti IST me
+// Render runs in UTC — so every date is forced into IST
 function fmtIST(d) {
   if (!d) return '-';
   try {
     return new Date(d).toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long',
       year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
-    }).replace(/\u202f/g, ' ');   // kuch Node build me narrow-space aata hai
+    }).replace(/\u202f/g, ' ');   // some Node builds produce a narrow space
   } catch (e) { return String(d); }
 }
 
-// Wahi regex jo baaki server me pehle se chal raha hai — behaviour ek jaisa rahe
+// The same regex already used elsewhere in the server — so the behaviour stays consistent
 function isValidEmail(e) {
   return /^\S+@\S+\.\S+$/.test(String(e || '').trim());
 }
 
-// Shop ka naam customer ka diya hua hai — HTML me daalne se pehle escape ZAROORI
+// The shop name comes from the customer — escaping it before it goes into HTML is ESSENTIAL
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -6332,7 +6335,7 @@ function buildShopPaymentEmailHtml(d) {
         mono = "'DejaVu Sans Mono','Courier New',monospace",
         sans = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif";
 
-  // Receipt jaisi perforated line — yahi is mail ki pehchaan hai
+  // A receipt-like perforated line — this is the mail's signature look
   const perf = '<tr><td style="padding:0 28px"><div style="border-top:2px dashed ' + rule +
     ';height:1px;line-height:1px;font-size:1px">&nbsp;</div></td></tr>';
 
@@ -6364,16 +6367,16 @@ function buildShopPaymentEmailHtml(d) {
       '<span style="display:inline-block;font-family:' + sans + ';font-size:11px;font-weight:700;letter-spacing:.11em;' +
         'text-transform:uppercase;color:' + green + ';border:2px solid ' + green + ';border-radius:4px;padding:5px 11px">Payment received</span>' +
       '<div style="font-family:' + sans + ';font-size:23px;font-weight:700;line-height:1.3;color:' + ink + ';margin:16px 0 8px">' +
-        'Shukriya, ' + esc(d.shopName) + ' &mdash; aapki shop ab active hai.</div>' +
+        'Thank you, ' + esc(d.shopName) + ' &mdash; your shop is now active.</div>' +
       '<div style="font-family:' + sans + ';font-size:14.5px;line-height:1.65;color:' + muted + '">' +
-        'Payment mil gaya hai. Neeche aapki shop aur payment ki poori detail hai &mdash; ise sambhaal ke rakhiye.</div>' +
+        'We have received your payment. Your complete shop and payment details are below &mdash; please keep them safe.</div>' +
     '</td></tr>' +
 
     sectionTitle('Shop details') +
     '<tr><td style="padding:0 28px 6px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">' +
       row('Shop ID', esc(d.shopId), true, true) +
-      row('Shop ka naam', esc(d.shopName), false, false) +
-      row('Register hui', esc(d.registeredAt), false, false) +
+      row('Shop name', esc(d.shopName), false, false) +
+      row('Registered on', esc(d.registeredAt), false, false) +
     '</table></td></tr>' +
 
     '<tr><td style="padding:12px 0"></td></tr>' + perf +
@@ -6389,11 +6392,11 @@ function buildShopPaymentEmailHtml(d) {
 
     '<tr><td style="padding:12px 0"></td></tr>' + perf +
 
-    sectionTitle('Ab kya karein') +
+    sectionTitle('What to do next') +
     '<tr><td style="padding:2px 28px 0;font-family:' + sans + ';font-size:14.5px;line-height:1.75;color:' + ink + '">' +
-      '<div style="padding:4px 0"><b>1.</b> Dashboard me login kariye &mdash; Shop ID aur apna password se</div>' +
-      '<div style="padding:4px 0"><b>2.</b> Apna QR code download karke shop par lagaiye</div>' +
-      '<div style="padding:4px 0"><b>3.</b> Print Agent install kariye &mdash; uske baad print automatic nikalega</div>' +
+      '<div style="padding:4px 0"><b>1.</b> Log in to the dashboard &mdash; with your Shop ID and password</div>' +
+      '<div style="padding:4px 0"><b>2.</b> Download your QR code and put it up in your shop</div>' +
+      '<div style="padding:4px 0"><b>3.</b> Install the Print Agent &mdash; after that prints come out automatically</div>' +
     '</td></tr>' +
     (d.dashboardUrl
       ? '<tr><td style="padding:20px 28px 4px">' +
@@ -6404,7 +6407,7 @@ function buildShopPaymentEmailHtml(d) {
 
     '<tr><td style="padding:22px 0 0"></td></tr>' + perf +
 
-    sectionTitle('Madad chahiye') +
+    sectionTitle('Need help?') +
     '<tr><td style="padding:2px 28px 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr>' +
       (waDigits.length === 10
         ? '<td style="padding:6px 10px 6px 0"><a href="https://wa.me/91' + waDigits + '" ' +
@@ -6421,8 +6424,8 @@ function buildShopPaymentEmailHtml(d) {
     '<tr><td style="padding:26px 28px 28px">' +
       '<div style="border-top:1px solid ' + rule + ';padding-top:16px;font-family:' + sans +
         ';font-size:12.5px;line-height:1.7;color:' + muted + '">' +
-        'Ye mail ' + esc(d.brand) + ' ki taraf se automatic bheja gaya hai.<br>' +
-        'Payment aapne nahi kiya? Turant upar wale number par batayiye.' +
+        'This email was sent automatically by ' + esc(d.brand) + '.<br>' +
+        'Did you not make this payment? Let us know immediately on the number above.' +
       '</div>' +
     '</td></tr>' +
 
@@ -6430,35 +6433,35 @@ function buildShopPaymentEmailHtml(d) {
 '</td></tr></table>';
 }
 
-// Plain-text version — purane mail apps aur inbox preview line ke liye
+// Plain-text version — for old mail apps and the inbox preview line
 function buildShopPaymentEmailText(d) {
   return 'PAYMENT RECEIVED — ' + d.brand + '\n' +
     '=================================\n\n' +
-    'Shukriya, ' + d.shopName + ' — aapki shop ab active hai.\n\n' +
+    'Thank you, ' + d.shopName + ' — your shop is now active.\n\n' +
     'SHOP DETAILS\n' +
     'Shop ID       : ' + d.shopId + '\n' +
-    'Shop ka naam  : ' + d.shopName + '\n' +
-    'Register hui  : ' + d.registeredAt + '\n\n' +
+    'Shop name     : ' + d.shopName + '\n' +
+    'Registered on : ' + d.registeredAt + '\n\n' +
     'PAYMENT DETAILS\n' +
     'Plan          : ' + d.plan + '\n' +
     'Amount paid   : Rs ' + d.amount + '\n' +
     'Payment ID    : ' + d.paymentId + '\n' +
     'Paid on       : ' + d.paidAt + '\n' +
     (d.validTill ? 'Valid till    : ' + d.validTill + '\n' : '') + '\n' +
-    'AB KYA KAREIN\n' +
-    '1. Dashboard me login kariye — Shop ID aur apna password se\n' +
-    '2. Apna QR code download karke shop par lagaiye\n' +
-    '3. Print Agent install kariye — print automatic nikalega\n\n' +
+    'WHAT TO DO NEXT\n' +
+    '1. Log in to the dashboard — with your Shop ID and password\n' +
+    '2. Download your QR code and put it up in your shop\n' +
+    '3. Install the Print Agent — prints come out automatically\n\n' +
     (d.dashboardUrl ? 'Dashboard: ' + d.dashboardUrl + '\n\n' : '') +
-    'MADAD CHAHIYE\n' +
+    'NEED HELP?\n' +
     (d.supportPhone ? 'WhatsApp : ' + d.supportPhone + '\n' : '') +
     (d.supportEmail ? 'Email    : ' + d.supportEmail + '\n' : '') + '\n' +
     '-- ' + d.brand + '\n' +
-    'Payment aapne nahi kiya? Turant upar wale number par batayiye.';
+    'Did you not make this payment? Let us know immediately on the number above.';
 }
 
-// Saara data DB se uthata hai aur mail bhejta hai. Fail ho to bhi kabhi
-// throw nahi karta — activation is se kabhi nahi rukna chahiye.
+// Reads all the data from the DB and sends the mail. Even on failure it never
+// throws — activation must never be held up by this.
 async function sendShopPaymentEmail(shopId) {
   try {
     const s = await pool.query(
@@ -6467,17 +6470,17 @@ async function sendShopPaymentEmail(shopId) {
        FROM shops WHERE id=$1`, [shopId]);
     if (!s.rows.length) return;
     const shop = s.rows[0];
-    if (shop.demo) return;                 // demo par mail nahi
-    if (!shop.email) {                     // purani shop — email hai hi nahi
-      console.log(`Shop mail skip ${shopId}: email set nahi hai`);
+    if (shop.demo) return;                 // no mail for demos
+    if (!shop.email) {                     // an old shop — it has no email
+      console.log(`Shop mail skipped ${shopId}: no email set`);
       return;
     }
 
     let brand = 'Echel', supportEmail = '', supportPhone = '', dashboardUrl = BASE_URL + '/admin';
 
     if (shop.whitelabel_id) {
-      // ── WHITE LABEL ── partner ka brand aur partner ka support. Mera
-      // naam, number ya koi program is mail me kahin nahi jaana chahiye.
+      // ── WHITE LABEL ── the partner's brand and the partner's support. Our
+      // name, number or any program must not appear anywhere in this mail.
       const w = await pool.query(
         'SELECT brand_name, slug, support_email, support_phone, site_url FROM whitelabels WHERE id=$1',
         [shop.whitelabel_id]);
@@ -6494,7 +6497,7 @@ async function sendShopPaymentEmail(shopId) {
         const cfg = JSON.parse(c.rows[0]?.value || '{}');
         supportEmail = cfg.supportEmail || '';
         supportPhone = cfg.supportPhone || '';
-      } catch (e) { /* config toota ho to support ke bina hi mail jaayegi */ }
+      } catch (e) { /* if the config is broken, the mail goes out without support details */ }
     }
 
     const isMonthly = billingCycle(shop)!=='lifetime';
@@ -6513,7 +6516,7 @@ async function sendShopPaymentEmail(shopId) {
 
     const r = await sendEmailAlert(
       shop.email,
-      'Payment mil gaya — ' + data.shopName + ' active hai',
+      'Payment received — ' + data.shopName + ' is active',
       buildShopPaymentEmailText(data),
       brand,
       buildShopPaymentEmailHtml(data)
@@ -6534,7 +6537,7 @@ app.get('/api/superadmin/notify', verifySuperAdmin, async (req, res) => {
       host: m.smtp_host || 'smtp.gmail.com',
       port: m.smtp_port || '587',
       user: m.smtp_user || '',
-      hasPass: !!m.smtp_pass,          // password kabhi wapas nahi bhejte
+      hasPass: !!m.smtp_pass,          // a password is never sent back
       notifyEmail: m.notify_email || '',
       brevoSender: m.brevo_sender || '',
       hasBrevoKey: !!m.brevo_api_key
@@ -6553,20 +6556,20 @@ app.put('/api/superadmin/notify', verifySuperAdmin, async (req, res) => {
     if (b.host !== undefined) await set('smtp_host', String(b.host).trim());
     if (b.port !== undefined) await set('smtp_port', String(parseInt(b.port, 10) || 587));
     if (b.user !== undefined) await set('smtp_user', String(b.user).trim());
-    // Password khaali bheja = purana rehne do (form me dobara type na karna pade)
+    // An empty password = keep the old one (so it does not have to be typed into the form again)
     if (b.pass) await set('smtp_pass', String(b.pass).trim());
     if (b.notifyEmail !== undefined) {
       const e = String(b.notifyEmail).trim();
-      if (e && !/^\S+@\S+\.\S+$/.test(e)) return res.status(400).json({ error: 'Sahi email daalo' });
+      if (e && !/^\S+@\S+\.\S+$/.test(e)) return res.status(400).json({ error: 'Enter a valid email' });
       await set('notify_email', e);
     }
     if (b.brevoSender !== undefined) {
       const e = String(b.brevoSender).trim();
-      if (e && !/^\S+@\S+\.\S+$/.test(e)) return res.status(400).json({ error: 'Sahi sender email daalo' });
+      if (e && !/^\S+@\S+\.\S+$/.test(e)) return res.status(400).json({ error: 'Enter a valid sender email' });
       await set('brevo_sender', e);
     }
     if (b.brevoKey) await set('brevo_api_key', String(b.brevoKey).trim());
-    _mailer = null;   // settings badli — naya transport banega
+    _mailer = null;   // settings changed — a new transport will be created
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -6575,30 +6578,30 @@ app.post('/api/superadmin/notify/test', verifySuperAdmin, async (req, res) => {
   try {
     const c = await pool.query("SELECT value FROM system_settings WHERE key='notify_email'");
     const to = c.rows[0]?.value || '';
-    if (!to) return res.status(400).json({ error: 'Pehle alert email save karo' });
+    if (!to) return res.status(400).json({ error: 'Save the alert email first' });
 
-    // Brevo set hai to seedha bhejo. Warna SMTP ka connection pehle check karo.
+    // If Brevo is set, send directly. Otherwise check the SMTP connection first.
     const bk = await pool.query("SELECT value FROM system_settings WHERE key='brevo_api_key'");
     const usingBrevo = !!(bk.rows[0]?.value);
     if (!usingBrevo) {
       const t = await getMailer();
-      if (!t) return res.status(400).json({ error: 'Email setup nahi hai — Brevo API key daalo (recommended) ya SMTP bharo' });
+      if (!t) return res.status(400).json({ error: 'Email is not set up — enter a Brevo API key (recommended) or fill in SMTP' });
       try {
         await t.verify();
       } catch (e) {
         _mailer = null;
         const hint = /timeout|ETIMEDOUT|ECONNREFUSED/i.test(e.message)
-          ? ' — lagta hai hosting ne SMTP port block kiya hai. Brevo API key use karo (upar wala option).'
+          ? ' — the hosting provider seems to block the SMTP port. Use a Brevo API key (the option above).'
           : '';
-        return res.status(400).json({ error: 'SMTP connect nahi hua: ' + e.message + hint });
+        return res.status(400).json({ error: 'SMTP connection failed: ' + e.message + hint });
       }
     }
 
     const r = await sendEmailAlert(to, '✅ Test — Echel alerts',
-      'Ye ek test email hai.\n\nAgar ye mil gaya, matlab alerts chalu ho gaye hain.\nAb nayi shop register hone par aapko yahan message aayega.\n\n— Echel');
-    if (!r.ok) return res.status(400).json({ error: 'Bheja nahi ja saka: ' + r.why });
+      'This is a test email.\n\nIf you received it, alerts are working.\nFrom now on you will get a message here whenever a new shop registers.\n\n— Echel');
+    if (!r.ok) return res.status(400).json({ error: 'Could not send: ' + r.why });
     if (r.rejected && r.rejected.length) {
-      return res.status(400).json({ error: 'Server ne reject kiya: ' + r.rejected.join(', ') });
+      return res.status(400).json({ error: 'Rejected by the server: ' + r.rejected.join(', ') });
     }
     console.log(`Test mail -> ${to} | ${r.response} | id=${r.messageId}`);
     res.json({
@@ -6608,11 +6611,11 @@ app.post('/api/superadmin/notify/test', verifySuperAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── White label partner: sirf apna email (koi SMTP setup nahi) ──
+// ── White label partner: only their own email (no SMTP setup) ──
 app.put('/api/whitelabel/notify', verifyWhitelabel, async (req, res) => {
   try {
     const e = String(req.body.notifyEmail || '').trim();
-    if (e && !/^\S+@\S+\.\S+$/.test(e)) return res.status(400).json({ error: 'Sahi email daalo' });
+    if (e && !/^\S+@\S+\.\S+$/.test(e)) return res.status(400).json({ error: 'Enter a valid email' });
     await pool.query('UPDATE whitelabels SET notify_email=$2 WHERE id=$1', [req.wlId, e]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -6624,11 +6627,11 @@ app.post('/api/whitelabel/notify/test', verifyWhitelabel, async (req, res) => {
       'SELECT brand_name, notify_email, email FROM whitelabels WHERE id=$1', [req.wlId]);
     const row = w.rows[0];
     const to = (row && (row.notify_email || row.email)) || '';
-    if (!to) return res.status(400).json({ error: 'Pehle apna email save karo' });
+    if (!to) return res.status(400).json({ error: 'Save your email first' });
     const brand = row.brand_name || 'Partner';
     const r = await sendEmailAlert(to, `✅ Test — ${brand} alerts`,
-      `Ye ek test email hai.\n\nAgar ye mil gaya, matlab alerts chalu ho gaye hain.\nAb aapke link se nayi shop register hone par yahan message aayega.\n\n— ${brand}`, brand);
-    if (!r.ok) return res.status(400).json({ error: 'Bheja nahi ja saka: ' + r.why });
+      `This is a test email.\n\nIf you received it, alerts are working.\nFrom now on you will get a message here whenever a new shop registers through your link.\n\n— ${brand}`, brand);
+    if (!r.ok) return res.status(400).json({ error: 'Could not send: ' + r.why });
     res.json({ success: true, to });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -6638,9 +6641,9 @@ app.get('/api/setup-fee/current', async (req, res) => {
     const pricing = await getSetupPricing();
 
     // ── WHITE LABEL ──
-    // Partner ke site (subdomain ya ?wl=slug) par uska APNA price dikhna
-    // chahiye, hamara nahi. Pehle ye poori tarah chhoot gaya tha, isliye
-    // partner price badalta tha par uske URL par purana hi dikhta tha.
+    // A partner's site (subdomain or ?wl=slug) must show THEIR OWN price,
+    // not ours. This used to be missed entirely, so the partner changed the price
+    // but their URL still showed the old one.
     const wlHere = await resolveWhitelabel(req);
     if (wlHere) {
       const wlBase = wlHere.base_price || await getWlBasePrice();
@@ -6648,18 +6651,18 @@ app.get('/api/setup-fee/current', async (req, res) => {
       const fest0 = await getFestivalOffer();
       return res.json({
         ...pricing,
-        // White-label par sirf Starter. Partner apne base price par
-        // basic product bechta hai — Pro/Premium hamare apne channel
-        // ke liye hain. (Demo homepage par alag se milta hai.)
+        // White-label sells only Starter. The partner sells the basic product at
+        // their base price — Pro/Premium are for our own channel.
+        // (The demo is offered separately on the homepage.)
         plans: { starter: { fee: wlPrice, actual: 0, advance: false } },
         amount: wlPrice,
         offerPrice: wlPrice,
-        actualPrice: wlPrice,        // partner ke yahan koi "cut" price nahi
+        actualPrice: wlPrice,        // no "struck-through" price on the partner's site
         monthlyPrice: wlHere.monthly_price || pricing.monthlyPrice,
         advancedFee: await getAdvancedFee(),
         monthlyActualPrice: wlHere.monthly_price || await getMonthlyActualFee(),
         advancedActualPrice: await getAdvancedActualFee(),
-        // Festival offer hamara hai — partner ke price par lagu nahi hota
+        // The festival offer is ours — it does not apply to a partner's price
         festivalOfferEnabled: false,
         festivalOfferName: '',
         festivalOfferEnd: null,
@@ -6672,7 +6675,7 @@ app.get('/api/setup-fee/current', async (req, res) => {
     const festival = await getFestivalOffer();
     const out = {
       amount: pricing.offerPrice, ...pricing,
-      // Naye teen plan — homepage aur register page ise hi padhte hain
+      // The new three plans — the homepage and register page read this
       plans: await getPlanPricing(),
       advancedFee: await getAdvancedFee(),
       monthlyActualPrice: await getMonthlyActualFee(),
@@ -6681,25 +6684,25 @@ app.get('/api/setup-fee/current', async (req, res) => {
       festivalOfferName: festival.name,
       festivalOfferEnd: festival.endAt
     };
-    // ?ref=QRA-1234 — agent ka apna price (sirf one-time plan par).
-    // Agent ka floor ab AGENT BASE PRICE hai, public Offer Price nahi —
-    // agent ne kuch set na kiya ho tab bhi yahi (699 jaisa) dikhega.
+    // ?ref=QRA-1234 — the agent's own price (one-time plan only).
+    // The agent floor is now the AGENT BASE PRICE, not the public Offer Price —
+    // even if the agent has set nothing, this (such as 699) is shown.
     if (req.query.ref) {
       const s = await resolveRef(req.query.ref);
       if (s && s.is_agent) {
-        // Sirf floor. Purana `agent_price` (markup) ab nahi ginta --
-        // us feature ko band kiye jaane ke baad bhi wo column reh gaya
-        // tha aur chup-chaap customer ka price badha raha tha.
+        // Only the floor. The old `agent_price` (markup) no longer counts --
+        // the column remained even after that feature was switched off
+        // and was silently raising the customer's price.
         const agentBase = await getAgentBasePrice();
         out.offerPrice = agentBase;
         out.amount = agentBase;
         out.agentRef = req.query.ref;
         out.agentName = s.name;
-        // Agent ke link par SIRF Pro aur Premium. Starter sabse sasta
-        // hai — uspar agent ka commission nikalta hi nahi, isliye wo
-        // agent channel me nahi bechte.
+        // Only Pro and Premium on an agent link. Starter is the cheapest —
+        // there is no room for an agent commission on it, so it is not sold
+        // through the agent channel.
         out.plans = filterPlansForChannel(out.plans, 'agent');
-        // Agent ke dono plan ka apna floor hai.
+        // Both of the agent's plans have their own floor.
         if (out.plans.pro && agentBase > out.plans.pro.fee) {
           out.plans.pro = { ...out.plans.pro, fee: agentBase, actual: 0 };
         }
@@ -6721,18 +6724,18 @@ app.get('/api/setup-fee/amount/:shopId', async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Ek IP se 24 ghante me itni hi BINA PAISE wali shop ban sakti hai.
-// Paid shop is ginti me nahi aati, isliye asli reseller nahi rukta.
+// Only this many UNPAID shops can be created from one IP in 24 hours.
+// Paid shops are not counted, so genuine resellers are not blocked.
 const UNPAID_PER_IP_DAY = parseInt(process.env.UNPAID_REG_PER_IP_DAY || '3', 10);
 
-// Ek hi mobile number se itni koshish ke baad utni der ka block.
-// Imandaar aadmi ek-do baar galti karta hai, teen se aage nahi jaata.
+// After this many attempts from the same mobile number, a block for this long.
+// An honest person makes a mistake once or twice, never more than three times.
 const REG_PHONE_MAX = parseInt(process.env.REG_RETRY_PER_PHONE || '3', 10);
 const REG_PHONE_WINDOW_MS = 15 * 60 * 1000;
 
 app.post('/api/shop/register', async (req, res) => {
   try {
-    // ── Pehra 1: pakka blocklist ──
+    // ── Guard 1: the permanent blocklist ──
     const _regIp = clientIp(req);
     if (await isIpBanned(_regIp)) {
       await logSecurityEvent({
@@ -6740,11 +6743,11 @@ app.post('/api/shop/register', async (req, res) => {
         userAgent: req.headers['user-agent'],
         action: 'SHOP_REGISTER', reason: 'IP_BANNED' });
       return res.status(403).json({
-        error: 'Is connection se registration band hai. Support se baat kariye.' });
+        error: 'Registration is disabled from this connection. Please contact support.' });
     }
 
-    // ── Pehra 2: ek IP se kitni unpaid shop ──
-    // Yahi wo chhed tha jisse ek hi banda baar-baar shop banata raha.
+    // ── Guard 2: how many unpaid shops per IP ──
+    // This was the hole that let the same person keep creating shops.
     try {
       const _u = await pool.query(
         `SELECT COUNT(*)::int AS n FROM shops
@@ -6756,11 +6759,11 @@ app.post('/api/shop/register', async (req, res) => {
           userAgent: req.headers['user-agent'],
           action: 'SHOP_REGISTER', reason: 'UNPAID_REG_LIMIT (' + _u.rows[0].n + ')' });
         return res.status(429).json({
-          error: 'Is connection se pehle hi kai shop ban chuki hain jinka payment nahi hua. '
-               + 'Pehle unka setup poora karo, ya support se baat karo.' });
+          error: 'Several shops have already been created from this connection without payment. '
+               + 'Complete their setup first, or contact support.' });
       }
     } catch (e) {
-      // created_at column purane DB me na ho to register rokna galat hoga
+      // If an old DB has no created_at column, blocking registration would be wrong
       console.warn('unpaid-reg check skip:', e.message);
     }
 
@@ -6770,33 +6773,33 @@ app.post('/api/shop/register', async (req, res) => {
       cashfree_app_id, cashfree_secret_key, email, ref
     } = req.body;
 
-    // Referral: ?ref=SHOP_XXX se aaya — sirf tab valid jab wo referrer
-    // EXIST kare aur khud PAID ho (unpaid shop refer nahi kar sakta),
-    // aur khud ko refer na kare
-    // ref = agent code (QRA-1234) ya purana shop id — dono support
+    // Referral: came via ?ref=SHOP_XXX — valid only when that referrer
+    // EXISTS and is PAID itself (an unpaid shop cannot refer),
+    // and is not referring itself
+    // ref = an agent code (QRA-1234) or an old shop id — both supported
     const refShop = await resolveRef(ref);
     const referredBy = refShop ? refShop.id : '';
     const onboardedBy = (refShop && refShop.is_agent) ? refShop.id : '';
 
-    // ── Pehra 3: captcha ──
-    // Poora captcha system pehle se maujood tha aur login par chalta tha;
-    // register par lagana bas reh gaya tha. Band karna ho to
-    // system_settings me captcha_enabled = '0'.
+    // ── Guard 3: captcha ──
+    // The whole captcha system already existed and ran on login;
+    // it just had not been added to registration. To turn it off, set
+    // captcha_enabled = '0' in system_settings.
     if (!(await captchaGuard(req, res))) return;
 
-    // ── Pehra 4: asli mobile number ──
-    // validateIndianMobile() pehle se thi par SIRF demo par lagti thi.
-    // Register par phone bina dekhe DB me chala jaata tha — 1111111111
-    // bhi chal jaata. Ab dono raste ek hi jaanch se guzarte hain.
+    // ── Guard 4: a real mobile number ──
+    // validateIndianMobile() already existed but applied ONLY to demos.
+    // On registration the phone went into the DB unchecked — even 1111111111
+    // got through. Now both paths go through the same check.
     const _ph = registerPhoneCheck(phone);
     if (!_ph.ok) return res.status(400).json({ error: _ph.error });
 
-    // ── Pehra 5: ek hi number se baar-baar ──
-    // Yahan sirf DEKHTE hain ki pehle se block to nahi. GINTI neeche
-    // badhti hai — INSERT se theek pehle. Wajah: agar ginti yahin badha
-    // dete to password ki ek chhoti si galti bhi ek "koshish" gin jaati,
-    // aur teen typo ke baad imandaar aadmi 15 minute ke liye bahar.
-    // Ab wahi ginta hai jo poori tarah sahi bhara gaya ho.
+    // ── Guard 5: repeated attempts from the same number ──
+    // Here we only CHECK whether it is already blocked. The COUNT goes up
+    // below — right before the INSERT. Reason: if the count went up here,
+    // even a small password typo would count as an "attempt",
+    // and after three typos an honest person would be locked out for 15 minutes.
+    // Now only a fully valid submission is counted.
     const _pk = 'reg:' + _ph.phone;
     const _pmin = isBlocked(_pk);
     if (_pmin) {
@@ -6804,18 +6807,18 @@ app.post('/api/shop/register', async (req, res) => {
         userAgent: req.headers['user-agent'], action: 'SHOP_REGISTER',
         reason: 'PHONE_RETRY_BLOCKED' });
       return res.status(429).json({
-        error: 'Is number se abhi bahut koshish ho chuki hai. ' + _pmin
-             + ' minute baad dobara try karo.' });
+        error: 'Too many attempts from this number. Try again in ' + _pmin
+             + ' minutes.' });
     }
 
-    if (!name || !name.trim()) return res.status(400).json({ error: 'Shop ka naam zaroori hai' });
-    if (!password || password.length < 4) return res.status(400).json({ error: 'Password kam se kam 4 character ka hona chahiye' });
-    if (password.length > PASSWORD_MAX) return res.status(400).json({ error: 'Password bahut lamba hai' });
+    if (!name || !name.trim()) return res.status(400).json({ error: 'The shop name is required' });
+    if (!password || password.length < 4) return res.status(400).json({ error: 'The password must be at least 4 characters' });
+    if (password.length > PASSWORD_MAX) return res.status(400).json({ error: 'The password is too long' });
 
-    // Email ab ZAROORI hai — payment confirmation isi par jaati hai
+    // Email is now REQUIRED — the payment confirmation is sent to it
     const finalEmail = String(email || '').trim().toLowerCase();
-    if (!finalEmail) return res.status(400).json({ error: 'Email zaroori hai — payment ki receipt isi par aayegi' });
-    if (!isValidEmail(finalEmail)) return res.status(400).json({ error: 'Email sahi nahi lag raha — dobara check karo' });
+    if (!finalEmail) return res.status(400).json({ error: 'An email is required — the payment receipt is sent to it' });
+    if (!isValidEmail(finalEmail)) return res.status(400).json({ error: 'The email does not look valid — please check it again' });
 
     const validPaymentModes = ['both', 'counter_only', 'online_only'];
     const finalPaymentMode = validPaymentModes.includes(payment_mode) ? payment_mode : 'both';
@@ -6828,65 +6831,65 @@ app.post('/api/shop/register', async (req, res) => {
       } else if (payment_gateway === 'cashfree' && cashfree_app_id && cashfree_secret_key) {
         finalGateway = 'cashfree';
       } else {
-        return res.status(400).json({ error: 'Online payment ke liye Razorpay ya Cashfree ki details zaroori hain' });
+        return res.status(400).json({ error: 'Online payment requires Razorpay or Cashfree details' });
       }
     }
 
     const shopId = 'SHOP_' + uuidv4().substring(0,8).toUpperCase();
     const passwordHash = await hashPassword(password);
     const currentSetupFee = await getSetupFeeAmount();
-    // Plan: starter / pro / premium — teeno LIFETIME.
-    // Purane 'monthly'/'onetime' ab naye registration me nahi aate;
-    // purani shops apne plan_type ke saath waise hi chalti rehti hain.
+    // Plan: starter / pro / premium — all three LIFETIME.
+    // The old 'monthly'/'onetime' no longer come with new registrations;
+    // old shops keep running with their plan_type as before.
     let plan = normalizePlan(req.body.plan);
     const planPricing = await getPlanPricing();
-    // Agent ke link se aaya hai to floor = AGENT BASE PRICE (superadmin ne
-    // set kiya hua, jaise 699) — public Offer Price (599) nahi. Agent ne
-    // khud kuch aur set kiya ho (jaise 799) to wahi lagega. Ye SIRF
-    // one-time plan par lagta hai; monthly hamesha public rate par.
-    // Direct registration = chune hue plan ka price.
-    // Agent / white-label ke link se aaye to unka apna price jeetta
-    // hai (neeche override hota hai) — unka business model wahi rehta hai.
+    // If it came through an agent link, the floor = the AGENT BASE PRICE (set by
+    // the superadmin, such as 699) — not the public Offer Price (599). If the agent
+    // set something else (such as 799), that applies. This applies ONLY
+    // to the one-time plan; monthly always uses the public rate.
+    // Direct registration = the price of the chosen plan.
+    // When it comes through an agent / white-label link, their own price wins
+    // (it is overridden below) — their business model stays the same.
     let oneTimePrice = planPricing[plan].fee;
     let onetimeBaseForRecord = planPricing[plan].fee;
     if (onboardedBy) {
-      // Agent channel me sirf Pro aur Premium bikte hain. Koi seedha
-      // ?plan=starter&ref=... bhej de to bhi Starter nahi milega —
-      // page par wo option dikhta hi nahi, isliye ye jaan-bujh kar
-      // bheja gaya request hai.
+      // Only Pro and Premium are sold through the agent channel. Even if someone sends
+      // ?plan=starter&ref=... directly, they will not get Starter —
+      // that option is not shown on the page, so such a request is
+      // deliberately crafted.
       if (!PLANS_BY_CHANNEL.agent.includes(plan)) plan = 'pro';
       const agentBase = await getAgentBasePrice();
-      // Agent ka apna price sirf Pro ka floor hai. Premium ka apna
-      // (upar wala) price rehta hai — warna agent Premium sasta bech deta.
-      // Dono plan ka apna agent floor — aur bas wahi. Purana
-      // `agent_price` / `agent_premium_price` (markup) ab price me nahi
-      // ginte; wo feature band ho chuka hai par column reh gaye the.
+      // The agent's own price is only the Pro floor. Premium keeps its own
+      // (above) price — otherwise the agent would sell Premium cheaply.
+      // Each plan has its own agent floor — and only that. The old
+      // `agent_price` / `agent_premium_price` (markup) no longer count towards the price;
+      // that feature has been switched off but the columns remained.
       if (plan === 'pro') {
         oneTimePrice = agentBase;
         onetimeBaseForRecord = agentBase;
       } else {
-        // Premium ka apna agent-floor hai — Pro wale se alag.
+        // Premium has its own agent floor — separate from the Pro one.
         const premBase = await getAgentPremiumBasePrice();
         oneTimePrice = premBase;
         onetimeBaseForRecord = premBase;
       }
     }
 
-    // ── WHITE LABEL ── ?wl=slug ya subdomain se aaya ho to reseller ka
-    // price lagta hai, aur setup fee SEEDHA uske Razorpay me jaayega.
+    // ── WHITE LABEL ── when it came via ?wl=slug or a subdomain, the reseller's
+    // price applies, and the setup fee goes STRAIGHT to their Razorpay.
     const wl = await resolveWhitelabel(req);
     let whitelabelId = '';
     if (wl) {
-      // Reseller ne apna koi bhi gateway nahi lagaya — paisa galti se
-      // hamare paas aa jaata, isliye registration hi rok do (saaf message
-      // ke saath). Pehle yahan sirf Razorpay dekha jaata tha, isliye
-      // Cashfree wala partner yahin atak jaata tha.
+      // The reseller has not set up any gateway — the money would come to us by
+      // mistake, so block the registration itself (with a clear
+      // message). This used to check only Razorpay, so a partner using
+      // Cashfree got stuck right here.
       if (!wlPayMode(wl)) {
-        return res.status(503).json({ error: 'Ye partner abhi payment setup complete nahi kiya hai. Thodi der baad try kariye.' });
+        return res.status(503).json({ error: 'This partner has not completed their payment setup yet. Please try again a little later.' });
       }
       whitelabelId = wl.id;
-      // White-label par sirf Starter. Partner apne naam par basic
-      // product bechta hai — Pro/Premium hamare apne channel ke liye.
+      // White-label sells only Starter. The partner sells the basic product under
+      // their own name — Pro/Premium are for our own channel.
       if (!PLANS_BY_CHANNEL.wl.includes(plan)) plan = 'starter';
       const wlBase = wl.base_price || await getWlBasePrice();
       oneTimePrice = (wl.shop_price && wl.shop_price > wlBase) ? wl.shop_price : wlBase;
@@ -6896,10 +6899,10 @@ app.post('/api/shop/register', async (req, res) => {
     const soldPrice = oneTimePrice;
     const basePrice  = onetimeBaseForRecord;
 
-    // ── Pehra 5 (doosra hissa): ab ginti badhao ──
-    // Yahan tak wahi pahunchta hai jisne form THEEK bhara ho. Isliye ye
-    // ginti "koshish" ki hai, "typo" ki nahi. Teen ke baad us number par
-    // 15 minute ka block.
+    // ── Guard 5 (second part): now increase the count ──
+    // Only someone who filled in the form CORRECTLY gets this far. So this
+    // counts "attempts", not "typos". After three, that number gets a
+    // 15-minute block.
     {
       const _now = Date.now();
       let _h = regPhoneHits.get(_ph.phone);
@@ -6912,13 +6915,13 @@ app.post('/api/shop/register', async (req, res) => {
           userAgent: req.headers['user-agent'], action: 'SHOP_REGISTER',
           reason: 'PHONE_RETRY_LIMIT (' + _h.count + ')' });
         return res.status(429).json({
-          error: 'Is number se abhi bahut koshish ho chuki hai. ' + SEC.blockMin
-               + ' minute baad dobara try karo.' });
+          error: 'Too many attempts from this number. Try again in ' + SEC.blockMin
+               + ' minutes.' });
       }
     }
 
-    // Shop create hoti hai lekin setup_paid=false rehta hai by default.
-    // QR Code aur Print Agent sirf setup fee payment confirm hone ke baad milte hain.
+    // The shop is created, but setup_paid stays false by default.
+    // The QR Code and the Print Agent are available only after the setup fee payment is confirmed.
     await pool.query(
       `INSERT INTO shops
         (id,name,address,phone,email,printer_model,price_bw,price_color,payment_mode,password_hash,
@@ -6931,44 +6934,44 @@ app.post('/api/shop/register', async (req, res) => {
        firstPayment, plan, referredBy, onboardedBy, basePrice, soldPrice, whitelabelId,
        _regIp, planPricing[plan].billingCycle]
     );
-    // Ab har nayi shop ke saath uska IP bhi hai — aage aisa sawal aaya to
-    // jawab turant milega.
+    // Every new shop now carries its IP too — if such a question comes up again,
+    // the answer is immediate.
 
     res.json({ success: true, shopId, setupFeeAmount: firstPayment, plan, billingCycle: planPricing[plan].billingCycle });
-    // Alert baad me — response pehle ja chuka hai, isliye customer ko wait nahi karna padta
+    // The alert comes later — the response has already been sent, so the customer does not have to wait
     alertNewShop(shopId, 'new');
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── SETUP FEE PAYMENT — Rupesh (system owner) ki Razorpay account mein paisa aata hai ───
+// ─── SETUP FEE PAYMENT — the money goes to the platform owner's Razorpay account ───
 app.post('/api/setup-fee/create', async (req, res) => {
   try {
     const { shopId } = req.body;
     if (!shopId) return res.status(400).json({ error: 'Shop ID required' });
 
-    // phone bhi chahiye — Cashfree order me customer_phone lagta hai
+    // the phone is needed too — a Cashfree order requires customer_phone
     const shopResult = await pool.query(
       'SELECT id, phone, setup_paid, setup_amount, whitelabel_id FROM shops WHERE id=$1', [shopId]);
-    if (!shopResult.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
-    if (shopResult.rows[0].setup_paid) return res.status(400).json({ error: 'Setup fee already paid hai' });
+    if (!shopResult.rows.length) return res.status(404).json({ error: 'Shop not found' });
+    if (shopResult.rows[0].setup_paid) return res.status(400).json({ error: 'The setup fee is already paid' });
 
-    // ── Paisa kiske account me? ──
-    // Normal shop -> hamara Razorpay. White-label ki shop -> RESELLER ka
-    // Razorpay (uski kamai seedha usi ke paas jaati hai, hamare paas nahi).
+    // ── Whose account does the money go to? ──
+    // Normal shop -> our Razorpay. A white-label shop -> the RESELLER's
+    // Razorpay (their earnings go straight to them, not to us).
     let payKeyId = OWNER_RAZORPAY_KEY_ID, payKeySecret = OWNER_RAZORPAY_KEY_SECRET;
     const wlIdOfShop = shopResult.rows[0].whitelabel_id || '';
 
-    // SAFETY: request kisi partner ke URL se aayi hai par shop par
-    // whitelabel_id nahi hai — matlab registration ke waqt context kho
-    // gaya tha. Aise me paisa CHUPCHAAP hamare account me nahi lena.
-    // Saaf error do taaki galti pakdi jaye, paisa galat jagah na jaye.
+    // SAFETY: the request came from a partner's URL but the shop has no
+    // whitelabel_id — meaning the context was lost at registration time.
+    // In that case do NOT silently take the money into our account.
+    // Return a clear error so the mistake gets caught and the money does not go to the wrong place.
     if (!wlIdOfShop) {
       const wlReq = await resolveWhitelabel(req);
       if (wlReq) {
-        console.error(`SETUP FEE MISMATCH: shop ${shopId} par whitelabel_id khaali hai `
-          + `par request partner "${wlReq.slug}" ke URL se aayi. Payment roka gaya.`);
+        console.error(`SETUP FEE MISMATCH: shop ${shopId} has an empty whitelabel_id `
+          + `but the request came from the URL of partner "${wlReq.slug}". Payment blocked.`);
         return res.status(409).json({
-          error: 'Is shop ka partner account link nahi hua. Apne partner se sampark kariye.',
+          error: 'This shop is not linked to its partner account. Please contact your partner.',
           code: 'WL_LINK_MISSING'
         });
       }
@@ -6979,33 +6982,33 @@ app.post('/api/setup-fee/create', async (req, res) => {
                 cashfree_app_id, cashfree_secret_key, gateway, blocked
            FROM whitelabels WHERE id=$1`, [wlIdOfShop]);
       const wrow = w.rows[0];
-      if (!wrow) return res.status(503).json({ error: 'Partner ka payment setup adhoora hai. Unse sampark kariye.' });
-      if (wrow.blocked) return res.status(403).json({ error: 'Ye partner account abhi active nahi hai.' });
+      if (!wrow) return res.status(503).json({ error: 'The payment setup of the partner is incomplete. Please contact them.' });
+      if (wrow.blocked) return res.status(403).json({ error: 'This partner account is not active right now.' });
 
       const mode = wlPayMode(wrow);
       if (!mode) {
-        return res.status(503).json({ error: 'Partner ka payment setup adhoora hai. Unse sampark kariye.' });
+        return res.status(503).json({ error: 'The payment setup of the partner is incomplete. Please contact them.' });
       }
 
-      // ── Partner Cashfree par hai ──
-      // Paisa seedha partner ke Cashfree account me jaata hai. Razorpay
-      // ki tarah yahan browser koi signature wapas nahi laata — payment
-      // ke baad Cashfree apne page se wapas bhej deta hai, aur hum
-      // server se order ka status poochh kar shop activate karte hain
-      // (wahi tareeka jo customer ke print payment me chal raha hai).
+      // ── The partner uses Cashfree ──
+      // The money goes straight to the partner's Cashfree account. Unlike Razorpay,
+      // the browser brings no signature back here — after payment
+      // Cashfree redirects back from its own page, and we ask the
+      // server for the order status and activate the shop
+      // (the same approach as the customer print payment).
       if (mode === 'cashfree') {
         const cfAmount = shopResult.rows[0].setup_amount || SETUP_FEE_AMOUNT;
-        // Cashfree ka order_id: sirf A-Z 0-9 _ chalte hain, 50 char tak.
-        // Aakhir me 4 random byte — Date.now() ki resolution millisecond
-        // hai, aur Cashfree do baar wahi order_id nahi leta. Customer
-        // wale print payment me bhi yahi tareeka hai.
+        // Cashfree order_id: only A-Z 0-9 _ are allowed, up to 50 chars.
+        // 4 random bytes at the end — Date.now() has millisecond
+        // resolution, and Cashfree does not accept the same order_id twice. The customer
+        // print payment uses the same approach.
         const cfOrderId = 'QSPS_' + String(shopId).replace(/[^A-Za-z0-9_]/g, '').slice(-16)
           + '_' + Date.now().toString(36).toUpperCase()
           + crypto.randomBytes(3).toString('hex').toUpperCase();
 
-        // Wapas PARTNER ke apne domain par bhejo, hamare par nahi —
-        // warna beech raaste me brand badal jaata hai aur shop owner ko
-        // lagta hai kisi aur site par pahunch gaya.
+        // Send them back to the PARTNER's own domain, not ours —
+        // otherwise the brand changes halfway and the shop owner thinks they
+        // have landed on some other site.
         const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
         const host  = String(req.headers.host || '').split(',')[0].trim();
         const origin = host ? (proto + '://' + host) : BASE_URL;
@@ -7013,12 +7016,12 @@ app.post('/api/setup-fee/create', async (req, res) => {
         const cfPhone = String(shopResult.rows[0].phone || '').replace(/\D/g, '').slice(-10);
         const cfBody = JSON.stringify({
           order_id: cfOrderId,
-          order_amount: Number(cfAmount),        // rupees, paise NAHI
+          order_amount: Number(cfAmount),        // rupees, NOT paise
           order_currency: 'INR',
           customer_details: {
             customer_id: 'SHOP_' + String(shopId).slice(-12),
-            // Cashfree phone maangta hi hai; shop ka number na ho to
-            // placeholder — payment par iska koi asar nahi.
+            // Cashfree requires a phone; if the shop has no number, use a
+            // placeholder — it has no effect on the payment.
             customer_phone: cfPhone.length === 10 ? cfPhone : '9999999999'
           },
           order_meta: { return_url: origin + '/setup-payment/' + shopId + '?cf=1' },
@@ -7032,7 +7035,7 @@ app.post('/api/setup-fee/create', async (req, res) => {
           console.error('[Cashfree] setup order FAILED shop=' + shopId
             + ' resp=' + JSON.stringify(cfOrder).slice(0, 400));
           return res.status(400).json({
-            error: 'Partner ke Cashfree se order nahi bana — unse keys check karne ko kaho',
+            error: 'Could not create the order with the Cashfree account of the partner — ask them to check their keys',
             details: (cfOrder && (cfOrder.message || cfOrder.type || cfOrder.code)) || 'unknown'
           });
         }
@@ -7044,7 +7047,7 @@ app.post('/api/setup-fee/create', async (req, res) => {
           gateway: 'cashfree',
           paymentSessionId: cfOrder.payment_session_id,
           orderId: cfOrderId,
-          amount: cfAmount,                      // rupees (Razorpay wala paise me hai)
+          amount: cfAmount,                      // rupees (the Razorpay one is in paise)
           shopId
         });
       }
@@ -7055,7 +7058,7 @@ app.post('/api/setup-fee/create', async (req, res) => {
 
     if (!payKeyId || !payKeySecret) {
       console.error('Setup fee create error: Razorpay keys missing');
-      return res.status(500).json({ error: 'Payment gateway configure nahi hai.' });
+      return res.status(500).json({ error: 'The payment gateway is not configured.' });
     }
 
     const amount = shopResult.rows[0].setup_amount || SETUP_FEE_AMOUNT;
@@ -7092,20 +7095,20 @@ app.post('/api/setup-fee/create', async (req, res) => {
     });
 
     if (!razorpayOrder.id) {
-      // Razorpay ka asli reason (galat key, amount, etc.) yahi aata hai —
-      // isko log bhi karo aur frontend ko bhejo taaki debug ho sake.
+      // Razorpay's real reason (wrong key, amount, etc.) comes here —
+      // log it and send it to the frontend so it can be debugged.
       const rzpReason = razorpayOrder && razorpayOrder.error && razorpayOrder.error.description
         ? razorpayOrder.error.description
-        : 'Razorpay ne order reject kiya';
+        : 'Razorpay rejected the order';
       console.error('Setup fee create error — Razorpay:', JSON.stringify(razorpayOrder));
-      return res.status(400).json({ error: 'Setup fee order create nahi hua: ' + rzpReason, details: razorpayOrder });
+      return res.status(400).json({ error: 'Could not create the setup fee order: ' + rzpReason, details: razorpayOrder });
     }
 
     await pool.query('UPDATE shops SET setup_order_id=$1 WHERE id=$2', [razorpayOrder.id, shopId]);
 
     res.json({
       success: true,
-      gateway: 'razorpay',        // page isse dekh kar tay karta hai kaun sa checkout kholna hai
+      gateway: 'razorpay',        // the page uses this to decide which checkout to open
       orderId: razorpayOrder.id,
       amount: amountInPaise,
       keyId: payKeyId,
@@ -7118,26 +7121,26 @@ app.post('/api/setup-fee/create', async (req, res) => {
 });
 
 
-// ── Cashfree se wapas aayi shop ka setup confirm ──
+// ── Confirm the setup of a shop returning from Cashfree ──
 //
-// Razorpay me browser signature laata hai, isliye wahan /verify chalta
-// hai. Cashfree me aisa kuch wapas nahi aata — isliye hum KHUD Cashfree
-// se poochhte hain ki order paid hua ya nahi. Yahi tareeka customer ke
-// print payment me pehle se chal raha hai.
+// With Razorpay the browser brings a signature, so /verify runs there.
+// With Cashfree nothing like that comes back — so we ask Cashfree
+// OURSELVES whether the order was paid. The customer print payment
+// already works the same way.
 //
-// Ye route bina login ke hai (jaise customer wala status), par isse koi
-// shop muft me activate nahi kar sakta: paid tabhi maanta hai jab
-// Cashfree khud PAID kahe, aur wo bhi PARTNER ki apni keys se poochh kar.
+// This route needs no login (like the customer status), but nobody can
+// activate a shop for free through it: it counts as paid only when
+// Cashfree itself says PAID, and that is asked with the PARTNER's own keys.
 app.get('/api/setup-fee/cashfree-status/:shopId', async (req, res) => {
   try {
     const shopId = req.params.shopId;
     const r = await pool.query(
       'SELECT id, setup_paid, qr_code, setup_order_id, whitelabel_id FROM shops WHERE id=$1',
       [shopId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const shop = r.rows[0];
 
-    // Pehle hi ho chuka (dobara load, ya do tab khule the)
+    // Already done (reloaded, or two tabs were open)
     if (shop.setup_paid) {
       return res.json({ success: true, status: 'PAID', qrCode: shop.qr_code || '' });
     }
@@ -7159,8 +7162,8 @@ app.get('/api/setup-fee/cashfree-status/:shopId', async (req, res) => {
     const status = (order && order.order_status) || 'PENDING';
     if (status !== 'PAID') return res.json({ success: true, status });
 
-    // activateShop khud race-safe hai (AND setup_paid=false), isliye do
-    // poll ek saath aa jayein to bhi shop do baar activate nahi hoti.
+    // activateShop itself is race-safe (AND setup_paid=false), so even if two
+    // polls arrive together the shop is not activated twice.
     const { qrCode } = await activateShop(shopId, shop.setup_order_id);
     console.log('[Cashfree] setup PAID (partner) shop=' + shopId + ' order=' + shop.setup_order_id);
     res.json({ success: true, status: 'PAID', qrCode });
@@ -7170,21 +7173,21 @@ app.get('/api/setup-fee/cashfree-status/:shopId', async (req, res) => {
   }
 });
 
-// ── Shop activation (setup fee confirm hone par) — verify handler,
-//    webhook aur reconciliation teeno yahi use karte hain ──
-// Kis raaste se aaya customer kaun se plan dekhega.
-//   direct  — teeno (Starter, Pro, Premium)
-//   agent   — sirf Pro aur Premium. Agent ko commission milta hai,
-//             isliye sabse sasta Starter uske link par nahi dikhta.
-//   wl      — sirf Starter. Partner apne naam par basic product
-//             bechta hai; Demo alag se homepage par hota hai.
+// ── Shop activation (when the setup fee is confirmed) — the verify handler,
+//    the webhook and reconciliation all use this ──
+// Which plans a customer sees depends on the path they came through.
+//   direct  — all three (Starter, Pro, Premium)
+//   agent   — only Pro and Premium. The agent earns a commission,
+//             so the cheapest plan, Starter, is not shown on their link.
+//   wl      — only Starter. The partner sells the basic product under
+//             their own name; the demo is offered separately on the homepage.
 const PLANS_BY_CHANNEL = {
   direct: ['starter', 'pro', 'premium'],
   agent:  ['pro', 'premium'],
   wl:     ['starter']
 };
 
-/** channel ke hisaab se sirf allowed plan chhod kar baaki hata do. */
+/** Keep only the plans allowed for the channel and remove the rest. */
 function filterPlansForChannel(plans, channel) {
   const allow = PLANS_BY_CHANNEL[channel] || PLANS_BY_CHANNEL.direct;
   const out = {};
@@ -7193,19 +7196,19 @@ function filterPlansForChannel(plans, channel) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  PLANS — Starter / Pro / Premium (teeno LIFETIME)
+//  PLANS — Starter / Pro / Premium (all three LIFETIME)
 //
-//  Purane plan ('monthly', 'onetime') DB me jaise hain waise hi rehte
-//  hain — unko haath nahi lagaya. Naye registration sirf in teen me se
-//  ek chunte hain.
+//  The old plans ('monthly', 'onetime') stay in the DB exactly as they
+//  are — they were not touched. New registrations choose only one of
+//  these three.
 //
-//    Starter — software + basic Echel. Advance alag se (₹199).
-//    Pro     — advance aaj hi unlock. Aage naya feature aaye to alag.
-//    Premium — advance + aane wale SAARE advance feature free.
+//    Starter — software + basic Echel. Advance separately (₹199).
+//    Pro     — advance unlocked right away. Future new features cost extra.
+//    Premium — advance + ALL upcoming advance features free.
 //
-//  Price ke liye NAYE keys banaye hain. Purane keys (setup_fee_amount,
-//  monthly_fee) chhede nahi — un par agent, white-label aur purani
-//  shops ka hisaab tika hua hai.
+//  NEW keys were created for the prices. The old keys (setup_fee_amount,
+//  monthly_fee) were not touched — the agent, white-label and old
+//  shop calculations depend on them.
 // ══════════════════════════════════════════════════════════════
 const PLAN_DEFS = {
   starter: { feeKey: 'plan_starter_fee', actualKey: 'plan_starter_actual',
@@ -7216,21 +7219,21 @@ const PLAN_DEFS = {
              defFee: 999, defActual: 2999, advance: true  }
 };
 
-/** Body se aaya plan saaf karo. Purana naam aaye to sabse kareeb wala. */
+/** Clean the plan from the body. For an old name, map to the closest one. */
 function normalizePlan(p) {
   const v = String(p || '').toLowerCase().trim();
   if (PLAN_DEFS[v]) return v;
-  // Purana cached page ya purana link. 'onetime'/'monthly' dono me
-  // advance shaamil NAHI tha — isliye Starter hi sahi mapping hai.
+  // An old cached page or an old link. Neither 'onetime' nor 'monthly'
+  // included advance — so Starter is the correct mapping.
   return 'starter';
 }
 
-/** Pro aur Premium me advance payment ke saath hi unlock ho jaata hai. */
+/** With Pro and Premium, advance is unlocked together with the payment. */
 function planIncludesAdvance(plan) {
   return !!(PLAN_DEFS[normalizePlan(plan)] || {}).advance;
 }
 
-/** Teeno plan ka price + strikethrough, ek hi query me. */
+/** Price + strikethrough of all three plans, in a single query. */
 async function getPlanPricing() {
   const keys = [];
   Object.entries(PLAN_DEFS).forEach(([name,d]) => keys.push(d.feeKey, d.actualKey, 'plan_'+name+'_cycle'));
@@ -7239,12 +7242,12 @@ async function getPlanPricing() {
     const r = await pool.query(
       `SELECT key, value FROM system_settings WHERE key = ANY($1)`, [keys]);
     r.rows.forEach(row => { map[row.key] = parseInt(row.value); });
-  } catch (e) { /* default par gir jao */ }
+  } catch (e) { /* fall back to the default */ }
 
   const out = {};
   for (const [name, d] of Object.entries(PLAN_DEFS)) {
     const fee = (!isNaN(map[d.feeKey]) && map[d.feeKey] > 0) ? map[d.feeKey] : d.defFee;
-    // actual 0 = strikethrough chhupa do
+    // actual 0 = hide the strikethrough
     const actualRaw = map[d.actualKey];
     const actual = (!isNaN(actualRaw)) ? Math.max(0, actualRaw) : d.defActual;
     out[name] = { fee, actual: actual > fee ? actual : 0, advance: d.advance, billingCycle: billingCycle({billing_cycle:map['plan_'+name+'_cycle']}) };
@@ -7280,28 +7283,28 @@ async function getAdvancedActualFee() {
   } catch(e) { return 0; }
 }
 
-// Agent Base Price — agent ke liye alag floor. 0/unset ho to public Offer
-// Price hi floor rehta hai (purana behaviour, kuch nahi tootega). Superadmin
-// jab explicitly ise set karega tabhi agent ka price homepage ke price se
-// alag dikhna shuru hoga.
+// Agent Base Price — a separate floor for agents. If it is 0/unset, the public Offer
+// Price stays the floor (the old behaviour; nothing breaks). Only when the superadmin
+// explicitly sets it does the agent's price start to differ from the
+// homepage price.
 async function getAgentBasePrice() {
   try {
     const r = await pool.query("SELECT value FROM system_settings WHERE key='agent_base_price'");
     const v = parseInt(r.rows[0]?.value) || 0;
     if (v > 0) return v;
   } catch(e) {}
-  // Set na ho to Pro ka apna price — agent ka sabse sasta plan wahi hai.
+  // If it is not set, Pro's own price — that is the agent's cheapest plan.
   return (await getPlanPricing()).pro.fee;
 }
 
-// Shop ka subscription zinda hai? onetime = hamesha; monthly = paid_until check
+// Is the shop's subscription alive? onetime = always; monthly = check paid_until
 function isSubscriptionActive(shop) {
   return subscriptionActive(shop);
 }
 
-// Monthly renewal — RACE-SAFE: renewal_order_id match + clear ek hi atomic
-// UPDATE me (webhook + verify + reconcile teeno fire ho sakte hain — sirf
-// pehla jeeta, baaki no-op, double +30din kabhi nahi)
+// Monthly renewal — RACE-SAFE: the renewal_order_id match + clear happen in one atomic
+// UPDATE (webhook + verify + reconcile can all fire — only the
+// first one wins, the rest are no-ops, never a double +30 days)
 async function extendShop(shopId, orderId, paymentId) {
   const r = await pool.query(
     `UPDATE shops SET
@@ -7312,7 +7315,7 @@ async function extendShop(shopId, orderId, paymentId) {
     [shopId, orderId]);
   if (r.rows.length) {
     console.log(`Subscription renewed: ${shopId} | till ${r.rows[0].paid_until} | pay ${paymentId}`);
-    // Renewal bhi ledger me — pehle iska bhi koi record nahi banta tha
+    // Renewals go into the ledger too — previously no record was created for them either
     try {
       await recordPayment({
         kind: 'renewal', shopId,
@@ -7322,15 +7325,15 @@ async function extendShop(shopId, orderId, paymentId) {
     } catch (e) { console.error('renewal ledger error:', e.message); }
     return r.rows[0].paid_until;
   }
-  return null; // koi aur pehle process kar chuka
+  return null; // someone else already processed it
 }
 
 // ── PAYMENT LEDGER ──
-// Har platform payment (setup / advanced / renewal / whitelabel license)
-// yahin se record hoti hai. ON CONFLICT DO NOTHING ki wajah se webhook aur
-// verify dono aa jayen to bhi ek hi row banti hai — kabhi double count nahi.
-// Ye function kabhi throw nahi karta: ledger fail hone se payment ka asli
-// kaam (shop activate hona) nahi rukna chahiye.
+// Every platform payment (setup / advanced / renewal / whitelabel license)
+// is recorded here. Because of ON CONFLICT DO NOTHING, even if the webhook and
+// verify both arrive only one row is created — never a double count.
+// This function never throws: a ledger failure must not block the real work
+// of the payment (activating the shop).
 async function recordPayment({ kind, shopId = '', shopName = '', whitelabelId = '',
                                amount = 0, paymentId = '', orderId = '',
                                gateway = 'razorpay', note = '' }) {
@@ -7358,9 +7361,9 @@ async function activateShop(shopId, paymentId) {
   const qrUrl = `${BASE_URL}/print/${shopId}`;
   const qrCode = await QRCode.toDataURL(qrUrl, { width: 300, margin: 2 });
 
-  // RACE-SAFE: webhook, verify aur reconcile — teeno ek saath aa sakte hain.
-  // `AND setup_paid=false` ki wajah se sirf PEHLA jeetega, baaki no-op.
-  // Isi se alert aur shop ko email DO BAAR kabhi nahi jaayenge.
+  // RACE-SAFE: the webhook, verify and reconcile can all arrive at the same time.
+  // Because of `AND setup_paid=false` only the FIRST one wins; the rest are no-ops.
+  // This is why the alert and the shop email are NEVER sent TWICE.
   const upd = await pool.query(
     `UPDATE shops SET setup_paid=true, setup_payment_id=$1, qr_code=$2,
        paid_until=CASE WHEN (${MONTHS_SQL})>0 THEN NOW()+make_interval(months=>(${MONTHS_SQL})) ELSE NULL END
@@ -7370,12 +7373,12 @@ async function activateShop(shopId, paymentId) {
   const firstTime = upd.rows.length > 0;
 
   if (firstTime) {
-    // Pro aur Premium me Advance Feature payment ke saath hi khul jaata
-    // hai — shop owner ko alag se ₹199 nahi dena padta.
-    // Pro aur Premium me core Advance pack payment ke saath hi khul
-    // jaata hai. Premium ko owned_features me daalne ki zaroorat nahi
-    // (uska hisaab plan se nikalta hai) par daal dene se koi nuksan
-    // bhi nahi — aage plan badle to record bacha rehta hai.
+    // With Pro and Premium the Advance Feature unlocks together with the
+    // payment — the shop owner does not pay ₹199 separately.
+    // With Pro and Premium the core Advance pack unlocks together with the
+    // payment. Premium does not need to be put into owned_features
+    // (it is derived from the plan), but adding it does no harm
+    // either — if the plan changes later, the record is kept.
     {
       const planRow = await pool.query('SELECT plan_type FROM shops WHERE id=$1', [shopId]);
       const pt = planRow.rows[0]?.plan_type;
@@ -7386,10 +7389,10 @@ async function activateShop(shopId, paymentId) {
     }
     console.log(`Setup fee paid: ${shopId} | Payment: ${paymentId}`);
 
-    // Ledger me record karo — superadmin ko yahi dikhta hai.
-    // White-label ki shop ka paisa reseller ke account me jaata hai,
-    // hamare paas nahi — isliye wo alag mark hota hai aur hamare
-    // revenue total me nahi ginta.
+    // Record it in the ledger — this is what the superadmin sees.
+    // The money of a white-label shop goes to the reseller's account,
+    // not to us — so it is marked separately and not counted in our
+    // revenue total.
     try {
       const pinfo = await pool.query(
         'SELECT name, setup_amount, whitelabel_id, setup_order_id FROM shops WHERE id=$1', [shopId]);
@@ -7400,23 +7403,23 @@ async function activateShop(shopId, paymentId) {
         whitelabelId: p.whitelabel_id || '',
         amount: p.setup_amount || 0,
         paymentId, orderId: p.setup_order_id || '',
-        note: p.whitelabel_id ? 'white-label shop (paisa reseller ko)' : ''
+        note: p.whitelabel_id ? 'white-label shop (money goes to the reseller)' : ''
       });
     } catch (e) { console.error('setup ledger error:', e.message); }
 
-    // Aapko alert (fail ho to bhi activation nahi rukega)
+    // Alert to you (even if it fails, activation does not stop)
     alertNewShop(shopId, 'paid');
-    // Shop owner ko payment confirmation email
+    // Payment confirmation email to the shop owner
     sendShopPaymentEmail(shopId);
   } else {
-    console.log(`Setup fee: ${shopId} pehle se paid hai — dobara alert/mail nahi bheja`);
+    console.log(`Setup fee: ${shopId} is already paid — alert/mail not sent again`);
   }
 
-  // ── AGENT COMMISSION ── kya ye shop kisi agent ne onboard ki thi?
-  // NAYA NIYAM: har paid shop par FLAT ₹100. Koi markup nahi (agent apna
-  // price nahi badal sakta), koi 10-shop bonus nahi. Isliye markup/bonus
-  // columns hamesha 0 jaate hain — purani rows ka hisab waise ka waisa
-  // rehta hai, sirf aage se flat rate lagta hai.
+  // ── AGENT COMMISSION ── was this shop onboarded by an agent?
+  // NEW RULE: a FLAT ₹100 for every paid shop. No markup (agents cannot
+  // change their price), no 10-shop bonus. So the markup/bonus
+  // columns are always 0 — the calculation for old rows stays exactly
+  // the same; only from now on the flat rate applies.
   try {
     const ob = await pool.query(
       `SELECT name, onboarded_by, agent_credited, setup_amount
@@ -7443,10 +7446,10 @@ async function activateShop(shopId, paymentId) {
     }
   } catch(e) { console.error('Agent commission error:', e.message); }
 
-  // ── REFER & EARN HATA DIYA GAYA ──
-  // Pehle yahan referrer ko ₹50 milta tha. Ab sirf Agent program hai
-  // (flat ₹100). referred_by / referral_earnings columns DB me rehte hain
-  // taaki purana data na tootey, par naya reward kabhi nahi banta.
+  // ── REFER & EARN WAS REMOVED ──
+  // The referrer used to get ₹50 here. Now there is only the Agent program
+  // (flat ₹100). The referred_by / referral_earnings columns stay in the DB
+  // so old data does not break, but no new reward is ever created.
   try {
     await pool.query('UPDATE shops SET referral_rewarded=true WHERE id=$1', [shopId]);
   } catch(e) { console.error('referral flag error:', e.message); }
@@ -7458,8 +7461,8 @@ app.post('/api/setup-fee/verify', async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, shopId } = req.body;
 
-    // Signature usi SECRET se verify hoga jisse order bana tha —
-    // white-label ki shop ka order reseller ke keys se banta hai.
+    // The signature is verified with the same SECRET the order was created with —
+    // a white-label shop's order is created with the reseller's keys.
     let vSecret = OWNER_RAZORPAY_KEY_SECRET;
     const wlq = await pool.query('SELECT whitelabel_id FROM shops WHERE id=$1', [shopId]);
     const wlIdV = wlq.rows[0]?.whitelabel_id || '';
@@ -7477,9 +7480,9 @@ app.post('/api/setup-fee/verify', async (req, res) => {
       return res.status(400).json({ error: 'Payment verification failed' });
     }
 
-    // Payment confirm — ab shop activate karo aur QR generate karo
+    // Payment confirmed — now activate the shop and generate the QR
     const shopResult = await pool.query('SELECT id FROM shops WHERE id=$1 AND setup_order_id=$2', [shopId, razorpay_order_id]);
-    if (!shopResult.rows.length) return res.status(404).json({ error: 'Shop ya order match nahi hua' });
+    if (!shopResult.rows.length) return res.status(404).json({ error: 'Shop or order does not match' });
 
     const { qrCode, qrUrl } = await activateShop(shopId, razorpay_payment_id);
     res.json({ success: true, shopId, qrCode, qrUrl });
@@ -7493,10 +7496,10 @@ app.post('/api/setup-fee/verify', async (req, res) => {
 app.post('/api/admin/advanced/create-order', verifyToken, async (req, res) => {
   try {
     if (!OWNER_RAZORPAY_KEY_ID || !OWNER_RAZORPAY_KEY_SECRET)
-      return res.status(500).json({ error: 'Owner Razorpay configured nahi' });
+      return res.status(500).json({ error: 'The owner Razorpay account is not configured' });
     const sh = await pool.query('SELECT advanced_unlocked FROM shops WHERE id=$1', [req.shopId]);
-    if (!sh.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
-    if (sh.rows[0].advanced_unlocked) return res.status(400).json({ error: 'Advanced already unlocked hai' });
+    if (!sh.rows.length) return res.status(404).json({ error: 'Shop not found' });
+    if (sh.rows[0].advanced_unlocked) return res.status(400).json({ error: 'Advanced is already unlocked' });
 
     const fee = await getAdvancedFee();
     const orderData = JSON.stringify({
@@ -7513,7 +7516,7 @@ app.post('/api/admin/advanced/create-order', verifyToken, async (req, res) => {
       }, (resp) => { let d=''; resp.on('data',c=>d+=c); resp.on('end',()=>{try{resolve(JSON.parse(d))}catch(e){reject(e)}}); });
       r.on('error', reject); r.write(orderData); r.end();
     });
-    if (!order.id) return res.status(400).json({ error: 'Order create nahi hua' });
+    if (!order.id) return res.status(400).json({ error: 'Could not create the order' });
     await pool.query('UPDATE shops SET advanced_order_id=$1 WHERE id=$2', [order.id, req.shopId]);
     res.json({ success: true, orderId: order.id, amount: fee * 100, keyId: OWNER_RAZORPAY_KEY_ID, fee });
   } catch(err) { res.status(500).json({ error: err.message }); }
@@ -7525,21 +7528,21 @@ app.post('/api/admin/advanced/verify', verifyToken, async (req, res) => {
     const expected = crypto.createHmac('sha256', OWNER_RAZORPAY_KEY_SECRET)
       .update(razorpay_order_id + '|' + razorpay_payment_id).digest('hex');
     if (expected !== razorpay_signature) return res.status(400).json({ error: 'Verification failed' });
-    // Atomic: order match + unlock ek saath (double-fire safe)
+    // Atomic: order match + unlock together (double-fire safe)
     const r = await pool.query(
       "UPDATE shops SET advanced_unlocked=true, advanced_order_id='' WHERE id=$1 AND advanced_order_id=$2 RETURNING id",
       [req.shopId, razorpay_order_id]);
-    // Legacy flag ke saath core pack bhi de do — ab asli sach
-    // owned_features me hai. Iske bina Pro/Premium ka farak lagu
-    // nahi hota aur naye feature ki ownership pata nahi chalti.
+    // Grant the core pack along with the legacy flag — the real truth now lives in
+    // owned_features. Without it the Pro/Premium difference would not
+    // apply and the ownership of new features would be unknown.
     {
       const catalog = await getAdvanceFeatures();
       await grantFeatures(req.shopId, coreFeatureIds(catalog));
     }
     if (r.rows.length) {
       console.log('Advanced unlocked:', req.shopId, razorpay_payment_id);
-      // PEHLE ye paisa kahin record hi nahi hota tha — sirf console.log.
-      // Isliye superadmin me ₹199 wale unlock kabhi dikhte hi nahi the.
+      // PREVIOUSLY this money was not recorded anywhere — just a console.log.
+      // That is why the ₹199 unlocks never showed up in superadmin.
       await recordPayment({
         kind: 'advanced', shopId: req.shopId,
         amount: await getAdvancedFee(),
@@ -7551,13 +7554,13 @@ app.post('/api/admin/advanced/verify', verifyToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── MONTHLY RENEWAL — ₹99 owner ke Razorpay se Rupesh ko ───
+// ─── MONTHLY RENEWAL — ₹99 via the owner's Razorpay to the platform owner ───
 app.post('/api/admin/renew/create-order', verifyToken, async (req, res) => {
   try {
     if (!OWNER_RAZORPAY_KEY_ID || !OWNER_RAZORPAY_KEY_SECRET)
-      return res.status(500).json({ error: 'Owner Razorpay configured nahi' });
+      return res.status(500).json({ error: 'The owner Razorpay account is not configured' });
     const sh = await pool.query('SELECT id, plan_type, billing_cycle, setup_amount FROM shops WHERE id=$1', [req.shopId]);
-    if (!sh.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!sh.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const cycle=billingCycle(sh.rows[0]);
     if (cycle === 'lifetime') return res.status(400).json({error:'Lifetime plans do not require renewal'});
     const months=CYCLES[cycle];
@@ -7584,7 +7587,7 @@ app.post('/api/admin/renew/create-order', verifyToken, async (req, res) => {
       r.write(orderData);
       r.end();
     });
-    if (!razorpayOrder.id) return res.status(400).json({ error: 'Renewal order create nahi hua' });
+    if (!razorpayOrder.id) return res.status(400).json({ error: 'Could not create the renewal order' });
 
     await pool.query('UPDATE shops SET renewal_order_id=$1,renewal_amount=$3,renewal_months=$4 WHERE id=$2', [razorpayOrder.id, req.shopId, fee, months]);
     res.json({ success: true, orderId: razorpayOrder.id, amount: amountInPaise, keyId: OWNER_RAZORPAY_KEY_ID, fee, billingCycle:cycle });
@@ -7605,26 +7608,26 @@ app.post('/api/admin/renew/verify', verifyToken, async (req, res) => {
 
 app.post('/api/shop/login', loginLimiter, async (req, res) => {
   try {
-    // Captcha — band ho to ye line chup-chaap nikal jaati hai
+    // Captcha — when it is disabled, this line passes through silently
     if (!(await captchaGuard(req, res))) return;
     const { shopId, password } = req.body;
-    if (!shopId || !password) return res.status(400).json({ error: 'Shop ID aur Password dono chahiye' });
+    if (!shopId || !password) return res.status(400).json({ error: 'Both Shop ID and password are required' });
 
     const r = await pool.query('SELECT * FROM shops WHERE id=$1', [shopId.trim().toUpperCase()]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop ID nahi mila' });
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop ID not found' });
 
     const shop = r.rows[0];
 
 
     if (!shop.password_hash) {
-      return res.status(401).json({ error: 'Is shop ka password set nahi hai. Pehle Set Password karo.' });
+      return res.status(401).json({ error: 'This shop has no password set. Use Set Password first.' });
     }
     if (!(await verifyPassword(password, shop.password_hash))) {
-      return res.status(401).json({ error: 'Password galat hai' });
+      return res.status(401).json({ error: 'Wrong password' });
     }
 
     clearLoginHits(req);
-    // Purana sha256 hash hai to abhi scrypt me badal do — user ko pata nahi chalega
+    // If the hash is the old sha256, convert it to scrypt now — the user will not notice
     await upgradeHashIfLegacy('shops', 'id', shop.id, shop.password_hash, password);
 
     const token = jwt.sign({ shopId: shop.id }, JWT_SECRET, { expiresIn: '24h' });
@@ -7633,15 +7636,15 @@ app.post('/api/shop/login', loginLimiter, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Set/claim password — ab REGISTERED MOBILE verify hota hai ──
-// Pehle koi bhi kisi legacy Shop ID (jo QR URL me public hai) ka password
-// set karke shop hijack kar sakta tha. Ab: shop ka registered number do,
-// match hua tabhi. Phone public API se hata diya gaya hai (neeche), to
-// attacker use remotely nahi jaan sakta. + IP rate-limit (brute force).
+// ── Set/claim password — the REGISTERED MOBILE is now verified ──
+// Previously anyone could set the password of any legacy Shop ID (which is public
+// in the QR URL) and hijack the shop. Now: provide the shop's registered number,
+// and only a match is accepted. The phone was removed from the public API (below), so
+// an attacker cannot find it remotely. + an IP rate limit (brute force).
 const _spAttempts = new Map();
-// Shop-wise reset attempts (IP rotate karke targeted attack na ho)
+// Per-shop reset attempts (so a targeted attack cannot rotate IPs)
 const _spShopAttempts = new Map();
-// Dono map ko har ghante saaf karo — warna memory dheere-dheere badhti rahegi
+// Clear both maps every hour — otherwise memory keeps growing slowly
 setInterval(() => {
   const t = Date.now();
   for (const [k, v] of _spAttempts)     if (t > v.reset) _spAttempts.delete(k);
@@ -7653,33 +7656,33 @@ app.post('/api/shop/set-password', async (req, res) => {
     const now = Date.now();
     const rec = _spAttempts.get(ip) || { count: 0, reset: now + 3600e3 };
     if (now > rec.reset) { rec.count = 0; rec.reset = now + 3600e3; }
-    if (rec.count >= 5) return res.status(429).json({ error: 'Bahut zyada koshish — 1 ghante baad try karo' });
+    if (rec.count >= 5) return res.status(429).json({ error: 'Too many attempts — try again in 1 hour' });
     rec.count++; _spAttempts.set(ip, rec);
 
     const { shopId, phone, newPassword } = req.body;
 
-    // Sirf IP-limit kaafi nahi tha: attacker IP badal-badal kar ek hi shop par
-    // baar-baar koshish kar sakta tha. Isliye SHOP-wise limit bhi — chahe
-    // kitne bhi IP se aaye, ek shop par 1 ghante me 5 se zyada nahi.
+    // An IP limit alone was not enough: an attacker could keep changing IPs and
+    // hammer the same shop. So there is a PER-SHOP limit too — no matter
+    // how many IPs it comes from, no more than 5 per shop per hour.
     if (shopId) {
       const sKey = String(shopId).trim().toUpperCase();
       const sRec = _spShopAttempts.get(sKey) || { count: 0, reset: now + 3600e3 };
       if (now > sRec.reset) { sRec.count = 0; sRec.reset = now + 3600e3; }
       if (sRec.count >= 5) {
-        return res.status(429).json({ error: 'Is shop par bahut zyada koshish — 1 ghante baad try karo' });
+        return res.status(429).json({ error: 'Too many attempts on this shop — try again in 1 hour' });
       }
       sRec.count++; _spShopAttempts.set(sKey, sRec);
     }
     if (!shopId || !phone || !newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'Shop ID, registered mobile aur 4+ character password — teeno chahiye' });
+      return res.status(400).json({ error: 'Shop ID, registered mobile and a 4+ character password — all three are required' });
     }
     const r = await pool.query('SELECT id, phone, password_hash FROM shops WHERE id=$1', [shopId.trim().toUpperCase()]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Shop ID nahi mila' });
-    // Password set HO YA NA HO — registered phone match = reset allowed.
-    // (Pehle set-hone par admin-contact bolta tha; ab self-serve reset.
-    //  Security wahi: phone public API se hata hua hai + IP rate-limit.)
+    if (!r.rows.length) return res.status(404).json({ error: 'Shop ID not found' });
+    // Whether a password is set OR NOT — a registered phone match = reset allowed.
+    // (When one was set it used to say contact the admin; now it is a self-serve reset.
+    //  Security is the same: the phone is removed from the public API + an IP rate limit.)
     if (normPhone(phone) !== normPhone(r.rows[0].phone)) {
-      return res.status(403).json({ error: 'Mobile number match nahi hua — wahi number daalo jo registration me diya tha' });
+      return res.status(403).json({ error: 'The mobile number does not match — enter the number used at registration' });
     }
     const passwordHash = await hashPassword(newPassword);
     await pool.query('UPDATE shops SET password_hash=$1 WHERE id=$2', [passwordHash, shopId.trim().toUpperCase()]);
@@ -7687,12 +7690,12 @@ app.post('/api/shop/set-password', async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Demo status — agent 30 min me ek baar poochta hai (halka payload)
+// Demo status — the agent asks once every 30 min (a light payload)
 app.get('/api/shop/:shopId/demo-status', async (req, res) => {
   try {
-    // secondsLeft SERVER se bhejte hain (SQL me gina hua). Client ko date
-    // parse karni hi nahi padti, isliye uske PC/phone ka timezone galat ho
-    // to bhi countdown sahi rehta hai.
+    // secondsLeft is sent by the SERVER (counted in SQL). The client never has to
+    // parse a date, so even if its PC/phone timezone is wrong
+    // the countdown stays correct.
     const r = await pool.query(
       `SELECT demo, demo_expires_at,
               GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (demo_expires_at - NOW()))))::bigint AS secs_left
@@ -7722,14 +7725,14 @@ app.get('/api/shop/:shopId', async (req, res) => {
     );
     if (!r.rows.length) return res.status(404).json({ error:'Shop not found' });
     if (!r.rows[0].setup_paid) {
-      return res.status(403).json({ error: 'Shop ka setup abhi incomplete hai. Shop owner ko setup fee complete karna hoga.' });
+      return res.status(403).json({ error: 'The shop setup is not complete yet. The shop owner must complete the setup fee payment.' });
     }
     const shopInfo = r.rows[0];
-    // Customer ke liye advance tabhi ON jab kharida (unlocked) AUR owner ne active rakha
+    // For customers, advance is ON only when it was bought (unlocked) AND the owner kept it active
     const advOn = !!(shopInfo.advanced_unlocked && shopInfo.advanced_active !== false);
     shopInfo.advanced_unlocked = advOn;
-    // Har module ka effective status = advance ON aur us module ka switch ON.
-    // Customer page inhi 4 flags se apna layout banata hai.
+    // Each module's effective status = advance ON and that module's switch ON.
+    // The customer page builds its layout from these 4 flags.
     shopInfo.adv_mini_active   = advOn && shopInfo.adv_mini_active   !== false;
     shopInfo.adv_legal_active  = advOn && shopInfo.adv_legal_active  !== false;
     shopInfo.adv_resume_active = advOn && shopInfo.adv_resume_active !== false;
@@ -7737,30 +7740,30 @@ app.get('/api/shop/:shopId', async (req, res) => {
     shopInfo.adv_a3_active     = advOn && shopInfo.adv_a3_active     !== false;
 
     // ── Smart Scanner ──
-    // Baaki 5 module `advanced_unlocked` + apne switch se chalte hain,
-    // par Scanner ADD-ON hai — uska sach `owned_features` me hai.
-    // Isliye yahan ownedFeatureIds() se poochhna zaroori hai:
-    //   • Premium        → poora catalog, list dekhi hi nahi jaati
-    //   • Purani ₹199 shop → sirf core pack, scan usme nahi → OFF
-    //   • ₹49 diya / superadmin ne diya → owned_features me 'scan' → ON
-    // advanced_active OFF ho to sab kuch OFF — wahi purana niyam.
+    // The other 5 modules run on `advanced_unlocked` + their own switch,
+    // but the Scanner is an ADD-ON — its truth lives in `owned_features`.
+    // So asking ownedFeatureIds() here is essential:
+    //   • Premium                  → the whole catalog; the list is not even checked
+    //   • An old ₹199 shop          → only the core pack, which has no scan → OFF
+    //   • Paid ₹49 / granted by the superadmin → 'scan' in owned_features → ON
+    // If advanced_active is OFF, everything is OFF — the same old rule.
     try {
       const _cat = await getAdvanceFeatures();
-      // Do alag sawaal, dono ka jawab haan hona chahiye:
-      //   1. shop ke paas hai kya?  (kharida ya Premium ya superadmin ne diya)
-      //   2. owner ne on rakha hai kya?  (baaki 5 module jaisa switch)
+      // Two separate questions, and both answers must be yes:
+      //   1. does the shop have it?  (bought, Premium, or granted by the superadmin)
+      //   2. has the owner switched it on?  (a switch like the other 5 modules)
       shopInfo.adv_scan_active = advOn
         && shopOwnsFeature(shopInfo, 'scan', _cat)
         && shopInfo.adv_scan_active !== false;
     } catch (e) {
-      // Catalog na mile to feature band — khula chhodne se un shops ko
-      // free mil jaata jinhone paisa nahi diya.
+      // If the catalog cannot be read, the feature stays off — leaving it open would
+      // give it for free to shops that never paid.
       shopInfo.adv_scan_active = false;
     }
-    // Kaun sa feature hai ye customer ka kaam nahi — flag bhej diya, list nahi
+    // Which feature it is does not concern the customer — send the flag, not the list
     delete shopInfo.owned_features;
 
-    // White-label ki shop hai to customer page par PARTNER ka brand dikhega
+    // For a white-label shop, the customer page shows the PARTNER's brand
     try {
       const wq = await pool.query('SELECT whitelabel_id FROM shops WHERE id=$1', [req.params.shopId]);
       const wlId = wq.rows[0]?.whitelabel_id || '';
@@ -7774,19 +7777,19 @@ app.get('/api/shop/:shopId', async (req, res) => {
           shopInfo.wl_support_phone = w.rows[0].support_phone || '';
         }
       }
-    } catch(e) { /* branding fail ho to default hi rahega */ }
+    } catch(e) { /* if branding fails, the default stays */ }
     shopInfo.subscription_expired = !isSubscriptionActive(shopInfo);
-    delete shopInfo.paid_until; // customer ko exact date nahi dikhani
+    delete shopInfo.paid_until; // do not show the customer the exact date
     res.json(shopInfo);
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Customer: print ke baad thumbs up/down (public, ek baar)
+// Customer: thumbs up/down after printing (public, only once)
 app.post('/api/jobs/:jobId/feedback', async (req, res) => {
   try {
     const v = req.body.up === true ? 1 : req.body.up === false ? -1 : 0;
-    if (!v) return res.status(400).json({ error: 'up boolean chahiye' });
-    // Sirf printed job, aur sirf jab feedback abhi 0 hai (ek baar)
+    if (!v) return res.status(400).json({ error: 'up must be a boolean' });
+    // Only a printed job, and only while feedback is still 0 (only once)
     const r = await pool.query(
       "UPDATE print_jobs SET feedback=$1 WHERE id=$2 AND status='printed' AND feedback=0 RETURNING id",
       [v, req.params.jobId]);
@@ -7794,20 +7797,20 @@ app.post('/api/jobs/:jobId/feedback', async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ⚠️ SECURITY: ye endpoint pehle BINA LOGIN ke khula tha.
-// Shop ID QR poster par chhapa hota hai, isliye koi bhi kisi bhi shop ki
-// total earnings, aaj ki kamai aur order count dekh sakta tha — competitor
-// roz dukaan ki kamai track kar sakta tha.
-// Ab login zaroori hai AUR sirf apni hi shop ka data milta hai.
+// ⚠️ SECURITY: this endpoint used to be open WITHOUT LOGIN.
+// The Shop ID is printed on the QR poster, so anyone could see any shop's
+// total earnings, today's earnings and order count — a competitor could
+// track a shop's earnings every day.
+// Now login is required AND only your own shop's data is returned.
 app.get('/api/shop/:shopId/stats', verifyToken, async (req, res) => {
   try {
-    // Doosri shop ka ID daal kar uska data nahi le sakte (IDOR guard).
-    // Token me jo shop hai, sirf usi ka hisaab milega.
+    // You cannot get another shop's data by entering its ID (IDOR guard).
+    // Only the shop in the token gets its figures.
     if (req.params.shopId !== req.shopId) {
-      return res.status(403).json({ error: 'Ye shop aapki nahi hai' });
+      return res.status(403).json({ error: 'This shop does not belong to you' });
     }
     const today = new Date().toISOString().split('T')[0];
-    // prev_* = kal ke number. Dashboard inse "+40% vs yesterday" dikhata hai.
+    // prev_* = yesterday's numbers. The dashboard uses them to show "+40% vs yesterday".
     const r = await pool.query(`
       SELECT COUNT(*) as total_orders,
         COALESCE(SUM(amount),0) as total_earnings,
@@ -7822,17 +7825,17 @@ app.get('/api/shop/:shopId/stats', verifyToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Shop owner apne customer ke liye default bhasha chunta hai.
-// Khali string = "kuch nahi chuna" = customer ko English dikhega.
-// isKnownLang() hasOwnProperty use karta hai, isliye 'constructor' jaise
-// naam yahan se nikal nahi sakte.
-// ── WhatsApp To Print — interest register ──
-// Homepage ka form sirf 10-digit mobile number bhejta hai. Yahan use
-// sambhal kar rakhte hain aur owner ko email kar dete hain.
+// The shop owner chooses the default language for their customers.
+// An empty string = "nothing chosen" = customers see English.
+// isKnownLang() uses hasOwnProperty, so names like 'constructor'
+// cannot slip through here.
+// ── WhatsApp To Print — register interest ──
+// The homepage form sends only a 10-digit mobile number. It is stored
+// safely here and the owner gets an email.
 //
-// Ek IP se baar-baar spam na aaye, iske liye chhota sa memory cooldown.
-// Server restart par khali ho jaata hai — chalega, ye koi security
-// nahi, sirf galti se do baar dabane se bachne ke liye hai.
+// A small in-memory cooldown keeps one IP from spamming repeatedly.
+// It is cleared on server restart — that is fine; this is not security,
+// it only guards against pressing the button twice by mistake.
 const _waInterestSeen = new Map();          // ip -> last time (ms)
 const WA_INTEREST_GAP_MS = 30 * 1000;
 
@@ -7851,7 +7854,7 @@ app.post('/api/whatsapp-interest', async (req, res) => {
       return res.json({ success: true, already: true });   // chup-chaap OK
     }
     if (ip) _waInterestSeen.set(ip, now);
-    if (_waInterestSeen.size > 5000) _waInterestSeen.clear();   // memory na bhare
+    if (_waInterestSeen.size > 5000) _waInterestSeen.clear();   // so memory does not fill up
 
     const r = await pool.query(
       `INSERT INTO whatsapp_interest (phone) VALUES ($1)
@@ -7859,8 +7862,8 @@ app.post('/api/whatsapp-interest', async (req, res) => {
        RETURNING hits`, [phone]);
     const hits = r.rows.length ? r.rows[0].hits : 1;
 
-    // Email — wahi raasta jo demo/naya-shop alert use karta hai.
-    // Bhejne me der ho to bhi user ko rukna nahi padta.
+    // Email — the same path the demo/new-shop alerts use.
+    // Even if sending takes a while, the user does not have to wait.
     (async () => {
       try {
         const c = await pool.query("SELECT value FROM system_settings WHERE key='notify_email'");
@@ -7872,9 +7875,9 @@ app.post('/api/whatsapp-interest', async (req, res) => {
           '📱 WhatsApp To Print — new interest: ' + phone,
           'WHATSAPP TO PRINT — INTEREST REGISTERED\n\n' +
           'Mobile : ' + phone + '\n' +
-          'Times  : ' + hits + (hits > 1 ? ' (isne pehle bhi register kiya tha)' : '') + '\n' +
+          'Times  : ' + hits + (hits > 1 ? ' (registered before as well)' : '') + '\n' +
           'Total registered so far: ' + (total.rows[0]?.n ?? '?') + '\n\n' +
-          'Homepage ke "WhatsApp To Print" section se aaya hai.',
+          'Came from the "WhatsApp To Print" section of the homepage.',
           'Echel'
         );
       } catch (e) {
@@ -7892,9 +7895,9 @@ app.put('/api/admin/customer-language', verifyToken, async (req, res) => {
   try {
     const raw = String((req.body && req.body.default_lang) || '').trim();
     if (raw && !isKnownLang(raw)) {
-      return res.status(400).json({ error: 'Ye bhasha available nahi hai' });
+      return res.status(400).json({ error: 'This language is not available' });
     }
-    // 'hin' bhi theek hai — website ka asli text Hinglish hi hai.
+    // Only languages in I18N_LANGS are accepted (English and Manipuri); empty = English.
     await pool.query('UPDATE shops SET default_lang=$1 WHERE id=$2', [raw, req.shopId]);
     res.json({ ok: true, default_lang: raw });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -7903,8 +7906,8 @@ app.put('/api/admin/customer-language', verifyToken, async (req, res) => {
 app.get('/api/admin/profile', verifyToken, async (req, res) => {
   try {
     const r = await pool.query(
-      // demo_expires_at pehle yahan tha hi nahi — isliye panel ka demo
-      // countdown hamesha khali rehta tha (shop.demo_expires_at undefined).
+      // demo_expires_at used to be missing here — so the panel's demo
+      // countdown was always empty (shop.demo_expires_at undefined).
       `SELECT id,name,address,phone,demo,demo_expires_at,agent_machine,agent_bound_at,default_lang,
               (agent_token IS NOT NULL) AS agent_bound,
               GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (demo_expires_at - NOW()))))::bigint AS demo_seconds_left,
@@ -7922,30 +7925,30 @@ app.get('/api/admin/profile', verifyToken, async (req, res) => {
 
 app.put('/api/admin/settings', verifyToken, async (req, res) => {
   try {
-    // Advanced-lock status SABSE PEHLE — duplex aur 4x6/A3 dono blocks
-    // ise use karte hain (pehle neeche declare tha -> TDZ crash on save)
+    // The advanced-lock status FIRST — both the duplex and the 4x6/A3 blocks
+    // use it (it used to be declared further down -> a TDZ crash on save)
     const unlockChk = await pool.query('SELECT advanced_unlocked FROM shops WHERE id=$1', [req.shopId]);
     const advUnlocked = unlockChk.rows.length && unlockChk.rows[0].advanced_unlocked;
 
-    // ── Advance-only setting BADALNE ki koshish? ──
-    // Pehle in field ko neeche CHUPCHAAP chhod diya jaata tha. Owner save
-    // dabata, panel reload hota, aur duplex/printer ki value gayab —
-    // usse lagta tha "save hota hi nahi hai". Isliye saaf error dena zaroori
-    // tha.
+    // ── Trying to CHANGE an advance-only setting? ──
+    // These fields used to be SILENTLY skipped below. The owner pressed save,
+    // the panel reloaded, and the duplex/printer value was gone —
+    // they thought "saving does not work". So a clear error was
+    // needed.
     //
-    // ⚠️ Par "field aayi hai" par rokna GALAT tha. Panel har save par
-    // POORA settings object bhejta hai — usme duplex aur extra printer ki
-    // maujooda value bhi hoti hai, chahe owner ne unhe chhua bhi na ho.
-    // duplex_bw_enabled to boolean hai aur DB me default `true` — yaani
-    // har Starter shop hamesha bhejti hai. Nateeja: bina Advance wali shop
-    // apna naam, daam, ya payment key tak save nahi kar paa rahi thi.
+    // ⚠️ But blocking on "the field is present" was WRONG. The panel sends the
+    // WHOLE settings object on every save — including the current values of duplex
+    // and the extra printers, even if the owner never touched them.
+    // duplex_bw_enabled is a boolean with DB default `true` — so
+    // every Starter shop always sends it. Result: a shop without Advance
+    // could not even save its name, prices or payment keys.
     //
-    // Ab sirf wahi rokte hain jo SACH ME badal raha ho. Jo value pehle se
-    // wahi hai wo bas gunj hai — usse kuch nahi bigadta.
+    // Now only what REALLY changes is blocked. A value that is already the same
+    // is just an echo — it does no harm.
     //
-    // Jaanch UPDATE se PEHLE hai, jaan-boojh kar: warna naam/daam save ho
-    // jaate aur jawab me error aata — owner ko samajh hi na aata ki kya
-    // saved hai kya nahi.
+    // The check runs BEFORE the UPDATE, on purpose: otherwise the name/prices would
+    // be saved and the response would say error — the owner would have no idea
+    // what was saved and what was not.
     if (!advUnlocked) {
       const curAdv = await pool.query(
         `SELECT duplex_mode, printer_name_4x6, printer_name_a3, printer_name_duplex,
@@ -7978,37 +7981,37 @@ app.put('/api/admin/settings', verifyToken, async (req, res) => {
       payment_gateway, razorpay_key_id, razorpay_key_secret,
       cashfree_app_id: cashfreeAppIdRaw, cashfree_secret_key: cashfreeSecretRaw
     } = req.body;
-    // Copy-paste (especially mobile) aksar leading/trailing space ya newline
-    // chhod deta hai — Cashfree auth silently fail ho jaata hai bina kisi
-    // wajah ke. Isliye yahin trim kar dete hain (__KEEP__ sentinel ko chhod ke).
+    // Copy-paste (especially on mobile) often leaves leading/trailing spaces or a newline —
+    // Cashfree auth then fails silently for no visible
+    // reason. So they are trimmed right here (except the __KEEP__ sentinel).
     const cashfree_app_id = typeof cashfreeAppIdRaw === 'string' ? cashfreeAppIdRaw.trim() : cashfreeAppIdRaw;
     const cashfree_secret_key = (typeof cashfreeSecretRaw === 'string' && cashfreeSecretRaw !== '__KEEP__')
       ? cashfreeSecretRaw.trim() : cashfreeSecretRaw;
 
-    // Email — purani shops (jinke paas email nahi tha) yahan se bhar sakti hain.
-    // undefined = field bheji hi nahi, to purana waise ka waisa rehta hai.
+    // Email — old shops (that had no email) can fill it in here.
+    // undefined = the field was not sent, so the old value stays as it is.
     let finalEmail;
     if (email !== undefined) {
       const e = String(email || '').trim().toLowerCase();
-      if (e && !isValidEmail(e)) return res.status(400).json({ error: 'Sahi email daalo' });
+      if (e && !isValidEmail(e)) return res.status(400).json({ error: 'Enter a valid email' });
       finalEmail = e;
     }
 
     // ── PARTIAL UPDATE SUPPORT ──
-    // Website poora settings object bhejti hai, par desktop panel sirf
-    // wahi field bhejta hai jo badla ho (jaise sirf printer ya sirf price).
-    // Pehle payment_mode na aane par ye 'both' maan leta tha aur phir
-    // "Online payment ke liye keys zaroori hain" error de deta tha — jabki
-    // keys pehle se save thi. Us se bhi bura: payment ke 5 field COALESCE
-    // ke bina UPDATE ho rahe the, yaani sirf printer save karne par
-    // Razorpay ki keys MIT jaati thi.
+    // The website sends the whole settings object, but the desktop panel sends only
+    // the fields that changed (such as just the printer or just a price).
+    // When payment_mode was missing, this used to assume 'both' and then
+    // return "Online payment requires keys" — even though the
+    // keys were already saved. Worse still: the 5 payment fields were UPDATEd
+    // without COALESCE, so saving just the printer
+    // WIPED the Razorpay keys.
     const curQ = await pool.query(
       `SELECT payment_mode, payment_gateway, razorpay_key_id, razorpay_key_secret,
               cashfree_app_id, cashfree_secret_key
          FROM shops WHERE id=$1`, [req.shopId]);
     const cur = curQ.rows[0] || {};
 
-    // Request payment settings ko chhu bhi rahi hai ya nahi?
+    // Does the request touch the payment settings at all?
     const touchingPayment =
       payment_mode !== undefined || payment_gateway !== undefined ||
       razorpay_key_id !== undefined || razorpay_key_secret !== undefined ||
@@ -8017,16 +8020,16 @@ app.put('/api/admin/settings', verifyToken, async (req, res) => {
     const validPaymentModes = ['both', 'counter_only', 'online_only'];
     const finalPaymentMode = validPaymentModes.includes(payment_mode)
       ? payment_mode
-      : (cur.payment_mode || 'both');          // bheji nahi = purani hi rahe
+      : (cur.payment_mode || 'both');          // not sent = keep the old value
 
-    // Jo field bheji hi nahi, uske liye purani value chalegi
+    // For fields that were not sent, the old value is used
     const finalGatewayIn = payment_gateway !== undefined ? payment_gateway : (cur.payment_gateway || '');
     const finalRzpId     = razorpay_key_id  !== undefined ? razorpay_key_id  : (cur.razorpay_key_id || '');
     const finalCfId      = cashfree_app_id  !== undefined ? cashfree_app_id  : (cur.cashfree_app_id || '');
 
     const needsGateway = finalPaymentMode === 'both' || finalPaymentMode === 'online_only';
 
-    // __KEEP__ sentinel ka matlab hai "purana secret hi rakho, change nahi karna"
+    // The __KEEP__ sentinel means "keep the old secret, do not change it"
     let finalRzpSecret = razorpay_key_secret;
     let finalCfSecret = cashfree_secret_key;
     if (razorpay_key_secret === '__KEEP__' || cashfree_secret_key === '__KEEP__') {
@@ -8037,17 +8040,17 @@ app.put('/api/admin/settings', verifyToken, async (req, res) => {
       }
     }
 
-    // Secret bheja hi nahi = purana rakho (panel sirf printer bhejta hai)
+    // Secret not sent = keep the old one (the panel sends only the printer)
     if (razorpay_key_secret === undefined) finalRzpSecret = cur.razorpay_key_secret || '';
     if (cashfree_secret_key === undefined) finalCfSecret = cur.cashfree_secret_key || '';
 
-    // Gateway ki jaanch SIRF tab jab request payment settings badal rahi ho.
-    // Sirf printer/price save karne par ye jaanch chalni hi nahi chahiye.
+    // Check the gateway ONLY when the request changes the payment settings.
+    // When only a printer/price is saved, this check must not run at all.
     if (touchingPayment && needsGateway) {
       const validRazorpay = finalGatewayIn === 'razorpay' && finalRzpId && finalRzpSecret;
       const validCashfree = finalGatewayIn === 'cashfree' && finalCfId && finalCfSecret;
       if (!validRazorpay && !validCashfree) {
-        return res.status(400).json({ error: 'Online payment ke liye Razorpay ya Cashfree ki details zaroori hain' });
+        return res.status(400).json({ error: 'Online payment requires Razorpay or Cashfree details' });
       }
     }
 
@@ -8079,7 +8082,7 @@ app.put('/api/admin/settings', verifyToken, async (req, res) => {
     );
 
     const r = await pool.query('SELECT id,name,address,phone,email,printer_model,printer_name_bw,printer_name_color,price_bw,price_color,payment_mode,payment_gateway,razorpay_key_id,cashfree_app_id FROM shops WHERE id=$1', [req.shopId]);
-    // Duplex mode alag se (validate karke)
+    // Duplex mode separately (validated)
     if (advUnlocked && typeof req.body.duplex_mode === 'string' && ['','auto','manual'].includes(req.body.duplex_mode)) {
       await pool.query('UPDATE shops SET duplex_mode=$1 WHERE id=$2', [req.body.duplex_mode, req.shopId]);
     }
@@ -8088,11 +8091,11 @@ app.put('/api/admin/settings', verifyToken, async (req, res) => {
         await pool.query('UPDATE shops SET printer_name_4x6=$1 WHERE id=$2', [req.body.printer_name_4x6.slice(0,300), req.shopId]);
       if (typeof req.body.printer_name_a3 === 'string')
         await pool.query('UPDATE shops SET printer_name_a3=$1 WHERE id=$2', [req.body.printer_name_a3.slice(0,300), req.shopId]);
-      // Duplex ka apna printer. Khaali = purana behaviour (B&W/Color wala hi).
+      // Duplex's own printer. Empty = the old behaviour (the B&W/Color one).
       if (typeof req.body.printer_name_duplex === 'string')
         await pool.query('UPDATE shops SET printer_name_duplex=$1 WHERE id=$2', [req.body.printer_name_duplex.slice(0,300), req.shopId]);
-      // Duplex kis mode par chalu hai -- B&W aur Color alag-alag.
-      // Field bheji hi nahi = purani value waise ki waisi (partial update safe).
+      // In which modes duplex is enabled -- B&W and Color separately.
+      // Field not sent = the old value stays as it is (safe for partial updates).
       for (const [dKey, dCol] of [['duplex_bw_enabled','duplex_bw_enabled'],
                                   ['duplex_color_enabled','duplex_color_enabled']]) {
         if (req.body[dKey] !== undefined) {
@@ -8115,49 +8118,49 @@ app.put('/api/admin/settings', verifyToken, async (req, res) => {
         }
       }
     }
-    // page_slabs upar wale price loop me NAHI ja sakta — wo har value ko
-    // parsePrice() se guzarta hai jo NUMBER chahta hai. Slab ek JSON
-    // TEXT hai, isliye wahan wo null ban kar chup-chaap gir jaata tha:
-    // owner Save dabata tha, kuch save hota hi nahi, aur reload par
-    // saare box khaali dikhte the.
+    // page_slabs cannot go through the price loop above — that passes every value
+    // through parsePrice(), which expects a NUMBER. A slab is a JSON
+    // TEXT, so there it silently became null and was dropped:
+    // the owner pressed Save, nothing was saved, and after a reload
+    // all the boxes were empty.
     if (req.body.page_slabs !== undefined) {
       let slabTxt = '';
       try {
-        // Saaf karke hi rakho — kachra JSON aage price calc todta
+        // Store it only after cleaning — garbage JSON would break the price calculation later
         const p = parseSlabs(req.body.page_slabs);
         slabTxt = (p.bw.length || p.color.length) ? JSON.stringify(p) : '';
       } catch (e) { slabTxt = ''; }
       await pool.query('UPDATE shops SET page_slabs=$1 WHERE id=$2', [slabTxt, req.shopId]);
     }
 
-    // Duplex prices — sirf tab store jab valid non-negative int mile
+    // Duplex prices — stored only when a valid non-negative int arrives
     const pbwd = parsePrice(req.body.price_bw_duplex);
     const pcld = parsePrice(req.body.price_color_duplex);
     if (pbwd !== null) await pool.query('UPDATE shops SET price_bw_duplex=$1 WHERE id=$2', [pbwd, req.shopId]);
     if (pcld !== null) await pool.query('UPDATE shops SET price_color_duplex=$1 WHERE id=$2', [pcld, req.shopId]);
 
     // ==============================================================
-    // SHOP OPEN/CLOSE + SUPPLY -- Desktop Panel yahin bhejta hai
+    // SHOP OPEN/CLOSE + SUPPLY -- the Desktop Panel sends these here
     //
-    // Website ye do cheezein /api/shop/pause aur /api/shop/supply-warning
-    // par bhejti hai, par Desktop Panel (agent_panel.py) inhe SETTINGS ke
-    // saath bhejta hai. Yahan inka koi handler tha hi nahi: server
-    // { success:true } lauta deta tha, DB me kuch likhta NAHI tha, aur
-    // panel refresh par purani value wapas padh leta tha -- isliye panel
-    // ka "Shop Open/Close" dabate hi wapas apni jagah chala jaata tha,
-    // jabki website se wahi kaam theek chalta tha.
+    // The website sends these two things to /api/shop/pause and /api/shop/supply-warning,
+    // but the Desktop Panel (agent_panel.py) sends them together with the
+    // SETTINGS. There was no handler for them here: the server returned
+    // { success:true } but wrote NOTHING to the DB, and the
+    // panel read the old value back on refresh -- so pressing the panel's
+    // "Shop Open/Close" snapped straight back to where it was,
+    // while the same action from the website worked fine.
     //
-    // Ye handler server par hone se HAR pehle se installed agent turant
-    // theek ho jaata hai -- kisi shop ko naya .exe bhejne ki zaroorat nahi.
+    // With this handler on the server, EVERY already-installed agent is fixed
+    // immediately -- no shop needs a new .exe.
     if (req.body.paused !== undefined) {
       const isPaused = (req.body.paused === true || req.body.paused === 'true' ||
                         req.body.paused === 1 || req.body.paused === '1');
       await pool.query('UPDATE shops SET paused=$1 WHERE id=$2', [isPaused, req.shopId]);
     }
     if (req.body.supply_warning !== undefined) {
-      // Panel ki apni bhasha ('ok'|'ink'|'paper') aur DB ki bhasha
-      // (''|'low_ink'|'no_paper') -- dono accept karo. Koi anjaan value
-      // aaye to poora save fail karne ke bajaye sirf isi field ko chhod do.
+      // Accept both the panel's own vocabulary ('ok'|'ink'|'paper') and the DB's
+      // (''|'low_ink'|'no_paper'). If an unknown value arrives, skip just this
+      // field instead of failing the whole save.
       const SUPPLY_MAP = { ok: '', '': '', ink: 'low_ink', low_ink: 'low_ink',
                            paper: 'no_paper', no_paper: 'no_paper' };
       const wNew = SUPPLY_MAP[String(req.body.supply_warning || '')];
@@ -8173,14 +8176,14 @@ app.put('/api/admin/change-password', verifyToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'Naya password kam se kam 4 character ka hona chahiye' });
+      return res.status(400).json({ error: 'The new password must be at least 4 characters' });
     }
     const r = await pool.query('SELECT password_hash FROM shops WHERE id=$1', [req.shopId]);
     if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
 
 
     if (!(await verifyPassword(currentPassword || '', r.rows[0].password_hash))) {
-      return res.status(401).json({ error: 'Current password galat hai' });
+      return res.status(401).json({ error: 'The current password is wrong' });
     }
 
     const newHash = await hashPassword(newPassword);
@@ -8190,9 +8193,9 @@ app.put('/api/admin/change-password', verifyToken, async (req, res) => {
 });
 
 // ─── DESKTOP PANEL STATS ─────────────────────────────────────────
-// Web dashboard ye numbers /api/admin/jobs se khud calculate karta hai.
-// Desktop panel ko wahi maths dobara likhne se rokne ke liye server hi
-// ek chhota summary de deta hai — ek query, kuch bytes, koi file nahi.
+// The web dashboard calculates these numbers itself from /api/admin/jobs.
+// To keep the desktop panel from re-implementing the same maths, the server
+// provides a small summary — one query, a few bytes, no file.
 app.get('/api/admin/stats', verifyToken, async (req, res) => {
   try {
     const q = await pool.query(
@@ -8238,18 +8241,18 @@ app.get('/api/admin/stats', verifyToken, async (req, res) => {
 // ACCOUNT — DATA DOWNLOAD & DELETE
 // ═══════════════════════════════════════════════
 
-/** Shop ka saara data ek JSON file me — shop khud download kar sakta hai. */
+/** All of the shop's data in one JSON file — the shop can download it itself. */
 app.get('/api/admin/export-data', verifyToken, async (req, res) => {
   try {
     const id = req.shopId;
     const q = async (sql, p = [id]) => {
       try { return (await pool.query(sql, p)).rows; }
-      catch (e) { return [{ _error: e.message }]; }   // ek table fail ho to baaki na ruke
+      catch (e) { return [{ _error: e.message }]; }   // if one table fails, the rest must not stop
     };
 
     const shopRows = await q('SELECT * FROM shops WHERE id=$1');
     const shop = shopRows[0] || {};
-    // Secrets kabhi file me nahi jaate
+    // Secrets never go into the file
     for (const k of Object.keys(shop)) {
       const lk = k.toLowerCase();
       if (lk.endsWith('_secret') || lk.endsWith('secret_key') ||
@@ -8259,7 +8262,7 @@ app.get('/api/admin/export-data', verifyToken, async (req, res) => {
     const data = {
       exportedAt: new Date().toISOString(),
       shopId: id,
-      note: 'Echel — aapke account ka poora data. Ise sambhal kar rakhein.',
+      note: 'Echel — the complete data of your account. Please keep it safe.',
       shop,
       registration: await q('SELECT * FROM demo_registrations WHERE shop_id=$1'),
       printJobs:    await q(`SELECT id, file_name, file_type, total_pages, copies, color_mode,
@@ -8296,25 +8299,25 @@ app.get('/api/admin/export-data', verifyToken, async (req, res) => {
 });
 
 /**
- * Account HAMESHA ke liye delete. Wapas nahi aayega.
- * Sab kuch ek transaction me — beech me fail ho to kuch bhi delete nahi hota.
+ * Delete the account PERMANENTLY. It cannot be restored.
+ * Everything happens in one transaction — if it fails midway, nothing is deleted.
  */
 app.delete('/api/admin/delete-account', verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const id = req.shopId;
 
-    // "DELETE" likhna zaroori — galti se click hone par kuch na ho
+    // Typing "DELETE" is required — so an accidental click does nothing
     if (String((req.body && req.body.confirm) || '').trim().toUpperCase() !== 'DELETE') {
-      return res.status(400).json({ error: 'Confirm karne ke liye DELETE likhna zaroori hai' });
+      return res.status(400).json({ error: 'Type DELETE to confirm' });
     }
 
     const shopRow = await client.query('SELECT id, name, phone FROM shops WHERE id=$1', [id]);
     if (!shopRow.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const shop = shopRow.rows[0];
 
-    // Cloudinary ki bachi hui files pehle hata do — DB se row jaane ke baad
-    // in tak pahunchne ka koi rasta nahi bachega.
+    // Remove the remaining Cloudinary files first — once the rows leave the DB there
+    // is no way left to reach them.
     const files = await client.query(
       `SELECT file_public_id FROM print_jobs
         WHERE shop_id=$1 AND file_public_id IS NOT NULL AND file_deleted=false`, [id]);
@@ -8326,15 +8329,15 @@ app.delete('/api/admin/delete-account', verifyToken, async (req, res) => {
       const r = await client.query(`DELETE FROM ${tbl} WHERE shop_id=$1`, [id]);
       counts[tbl] = r.rowCount;
     }
-    // Registration row rakhte hain par shop se link tod dete hain, taaki
-    // wo phone number dobara demo le sake.
+    // The registration row is kept but its link to the shop is broken, so
+    // that phone number can take a demo again.
     await client.query(
       "UPDATE demo_registrations SET shop_id=NULL WHERE shop_id=$1", [id]);
     const sh = await client.query('DELETE FROM shops WHERE id=$1', [id]);
     counts.shops = sh.rowCount;
     await client.query('COMMIT');
 
-    // DB saaf hone ke baad hi files hatao
+    // Remove the files only after the DB is clean
     let filesDeleted = 0;
     for (const f of files.rows) {
       try { await deleteFromCloudinary(f.file_public_id); filesDeleted++; } catch (_) {}
@@ -8364,20 +8367,20 @@ app.get('/api/admin/jobs', verifyToken, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
-// DIRECT UPLOAD — Customer → Cloudinary (Render ko file chhuti hi nahi)
+// DIRECT UPLOAD — Customer → Cloudinary (the file never touches Render)
 //
-// Purana flow: Customer → Render → Cloudinary. 10 MB file par Render ko
-// 10 MB receive + ~13 MB bhejna padta tha (base64 33% bada kar deta hai)
-// = ~23 MB per file. Render ka 5 GB isi me udd raha tha.
+// Old flow: Customer → Render → Cloudinary. For a 10 MB file Render had to
+// receive 10 MB + send ~13 MB (base64 makes it 33% larger)
+// = ~23 MB per file. Render's 5 GB was being burned on exactly this.
 //
-// Naya flow: Render sirf ek signature deta hai (~200 bytes), customer
-// seedha Cloudinary ko file bhejta hai, phir Render ko sirf public_id
-// aata hai (~300 bytes). Bandwidth ~99% bach jaata hai.
+// New flow: Render only issues a signature (~200 bytes), the customer
+// sends the file straight to Cloudinary, and then Render receives only the public_id
+// (~300 bytes). ~99% of the bandwidth is saved.
 //
-// Security: signature ke saath ek HMAC token bhi jaata hai. Confirm par
-// wahi token match hona chahiye AUR Cloudinary se confirm hona chahiye ki
-// file sach me wahan hai — warna koi jhoota public_id bhej kar bina file
-// ke job bana sakta tha.
+// Security: an HMAC token goes along with the signature. On confirm the
+// same token must match AND Cloudinary must confirm that the
+// file really exists there — otherwise someone could send a fake public_id and
+// create a job without a file.
 // ══════════════════════════════════════════════════════════════
 function uploadTokenFor(shopId, publicId) {
   return crypto.createHmac('sha256', JWT_SECRET)
@@ -8385,52 +8388,52 @@ function uploadTokenFor(shopId, publicId) {
 }
 
 // ─── UPLOAD VALIDATION HELPERS ──────────────────────────────────────
-// IMPORTANT: ye saare checks Cloudinary upload se PEHLE chalte hain
-// (/api/upload/sign par). Signature na mile to browser Cloudinary ko
-// chhoo bhi nahi sakta — isliye reject hone par 0 bandwidth kharch hoti hai.
+// IMPORTANT: all these checks run BEFORE the Cloudinary upload
+// (at /api/upload/sign). Without a signature the browser cannot even touch
+// Cloudinary — so a rejection costs 0 bandwidth.
 
 function checkSizeLimit(bytes) {
   const n = Number(bytes);
-  if (!Number.isFinite(n) || n <= 0) return null;      // pata nahi — skip
+  if (!Number.isFinite(n) || n <= 0) return null;      // unknown — skip
   return n > MAX_UPLOAD_BYTES ? LIMIT_MSG.size : null;
 }
 
 function checkPageLimit(pages, fileName) {
   const n = parseInt(pages, 10);
-  if (!Number.isInteger(n) || n <= 0) return null;     // pata nahi — skip
-  // Page limit sirf multi-page documents par. Ek photo = 1 page, usko
-  // kabhi block nahi karna.
+  if (!Number.isInteger(n) || n <= 0) return null;     // unknown — skip
+  // The page limit applies only to multi-page documents. A single photo = 1 page and
+  // must never be blocked.
   if (n > MAX_PDF_PAGES) return LIMIT_MSG.pages;
   return null;
 }
 
 /**
- * Ek job me kitne kagaz nikal rahe hain — page x copies.
- * Server har jagah yahi ginti karta hai (finalPages x effCopies), aur
- * customer.html ka getSlabPageCount() bhi bilkul yahi. Teeno ek jaise
- * rehne chahiye, warna customer ko dikhta kuch aur hai aur hota kuch aur.
+ * How many sheets a job produces — pages x copies.
+ * The server counts it the same way everywhere (finalPages x effCopies), and
+ * customer.html's getSlabPageCount() does exactly the same. All three must stay
+ * identical, otherwise the customer sees one thing and gets another.
  */
 function checkSheetLimit(pages, copies) {
   const p = parseInt(pages, 10), c = parseInt(copies, 10);
-  if (!Number.isInteger(p) || p <= 0) return null;     // pata nahi — skip
+  if (!Number.isInteger(p) || p <= 0) return null;     // unknown — skip
   if (!Number.isInteger(c) || c <= 0) return null;
   return (p * c) > MAX_JOB_SHEETS ? LIMIT_MSG.sheets : null;
 }
 
 /**
- * Ek hi customer baar-baar, jaldi-jaldi print de raha hai?
+ * Is the same customer sending prints again and again, very quickly?
  *
- * SHOP wale checkUploadAbuse() se ALAG hai, aur jaan-boojh kar alag hai:
- * wo shop ko block karta hai. Agar customer ko rokne ke liye wahi use
- * karte to ek badmash poori dukaan band kara deta — aur wo ho chuka hai
- * ("3 print, 16 block"). Yahan block SIRF us customer par lagta hai;
- * dukaan aur baaki customer chalte rehte hain.
+ * This is SEPARATE from the SHOP-level checkUploadAbuse(), and deliberately so:
+ * that one blocks the shop. If it were used to stop customers, one bad actor
+ * could shut down the whole shop — and that has happened
+ * ("3 prints, 16 blocks"). Here the block applies ONLY to that customer;
+ * the shop and the other customers keep working.
  *
- * Pehchaan do tarah se:
- *   cid — browser me rakhi device id. Pakki, par incognito me nayi.
- *   ip  — chaura jaal, isliye limit BAHUT udaar. Cyber cafe ki WiFi par
- *         saare customer ek hi IP par hote hain; sakht rakhte to
- *         imandaar log ruk jaate.
+ * Identified in two ways:
+ *   cid — the device id stored in the browser. Reliable, but new in incognito.
+ *   ip  — a broad net, so the limit is VERY generous. On a cyber cafe's WiFi
+ *         all customers share one IP; a strict limit would stop
+ *         honest people.
  */
 function checkCustomerAbuse(shopId, cid, ip) {
   const now = Date.now();
@@ -8448,8 +8451,8 @@ function checkCustomerAbuse(shopId, cid, ip) {
   const cidKey = cid ? (shopId + '|' + cid) : '';
   const ipKey  = ip  ? (shopId + '|' + ip)  : '';
 
-  // Pehle dekho ki pehle se block to nahi — ginti tabhi badhao jab
-  // banda sach me andar aa raha ho.
+  // First check whether it is already blocked — increase the count only when
+  // the person is really getting in.
   for (const k of [cidKey, ipKey]) {
     if (!k) continue;
     const mins = isBlocked('cust:' + k);
@@ -8469,14 +8472,14 @@ function checkCustomerAbuse(shopId, cid, ip) {
 }
 
 /**
- * Customer ka poora darwaza — dono pehre ek jagah.
+ * The customer's complete gate — both guards in one place.
  *
- * Har upload ke shuru me: `if (!(await customerGuard(req, res, shopId))) return;`
+ * At the start of every upload: `if (!(await customerGuard(req, res, shopId))) return;`
  *
- *   1. PAKKA ban  — superadmin ne lagaya, DB me hai, khud kabhi nahi hatta
- *   2. jaldi-jaldi — apne aap lagta hai, 15 minute me khud khul jaata hai
+ *   1. PERMANENT ban — set by the superadmin, stored in the DB, never lifts by itself
+ *   2. too fast       — applied automatically, lifts by itself after 15 minutes
  *
- * Dono me block SIRF us customer par lagta hai. Shop chalti rehti hai.
+ * In both cases the block applies ONLY to that customer. The shop keeps working.
  */
 async function customerGuard(req, res, shopId) {
   const cid = customerId(req);
@@ -8487,7 +8490,7 @@ async function customerGuard(req, res, shopId) {
       action: 'PDF_UPLOAD', reason: 'CUSTOMER_BANNED',
       userAgent: req.headers['user-agent'] });
     res.status(403).json({
-      error: 'Is device se print band kar diya gaya hai. Shop owner se baat kariye.',
+      error: 'Printing from this device has been disabled. Please talk to the shop owner.',
       customerBanned: true });
     return false;
   }
@@ -8498,15 +8501,15 @@ async function customerGuard(req, res, shopId) {
       action: 'PDF_UPLOAD', reason: r.reason,
       userAgent: req.headers['user-agent'] });
     res.status(429).json({
-      error: 'Bahut jaldi-jaldi print bhej rahe ho. ' + r.mins
-           + ' minute baad dobara try karo.',
+      error: 'You are sending prints too quickly. Try again in ' + r.mins
+           + ' minutes.',
       customerBlocked: true });
     return false;
   }
   return true;
 }
 
-/** Customer ki device id — header se ya body se, saaf karke. */
+/** The customer's device id — from the header or the body, sanitized. */
 function customerId(req) {
   const raw = req.headers['x-customer-id']
            || (req.body && (req.body.customerId || req.body.cid)) || '';
@@ -8516,9 +8519,9 @@ function customerId(req) {
 const SHA256_RE = /^[a-f0-9]{64}$/i;
 
 /**
- * File sach me wahi hai jo naam keh raha hai? Sirf extension par bharosa
- * mat karo — attacker .exe ko .pdf naam de sakta hai.
- * Buffer wahin milta hai jahan file server se guzarti hai (fallback path).
+ * Is the file really what its name claims? Do not trust the extension
+ * alone — an attacker can name an .exe as .pdf.
+ * The buffer is only available where the file passes through the server (fallback path).
  */
 function sniffFileType(buffer) {
   if (!buffer || buffer.length < 4) return null;
@@ -8531,7 +8534,7 @@ function sniffFileType(buffer) {
   return null;
 }
 
-/** PDF ke andar asli page count — client ke bheje number par bharosa nahi. */
+/** The real page count inside the PDF — the number sent by the client is not trusted. */
 function countPdfPages(buffer) {
   try {
     const txt = buffer.toString('latin1');
@@ -8540,11 +8543,11 @@ function countPdfPages(buffer) {
       const counts = [...txt.matchAll(/\/Count\s+(\d+)/g)].map(m => parseInt(m[1], 10));
       if (counts.length) n = Math.max(...counts);
     }
-    return n > 0 ? n : null;    // parse na ho to null — block mat karo
+    return n > 0 ? n : null;    // if it cannot be parsed, null — do not block
   } catch (e) { return null; }
 }
 
-/** Extension + magic bytes + (PDF ho to) asli page count. */
+/** Extension + magic bytes + (for a PDF) the real page count. */
 function validateFileBuffer(buffer, originalName) {
   const ext = (path.extname(originalName || '').replace('.', '') || '').toLowerCase();
   const sniffed = sniffFileType(buffer);
@@ -8566,17 +8569,17 @@ function validateFileBuffer(buffer, originalName) {
 }
 
 /**
- * Duplicate upload guard. Ek hi shop par ek hi file (same SHA-256)
- * DUP_UPLOAD_LIMIT baar se zyada DUP_UPLOAD_WINDOW_MIN minute me upload
- * nahi ho sakti.
- * @param {boolean} commit  false = sirf check karo (sign par),
- *                          true  = count badhao (confirm par)
+ * Duplicate upload guard. The same file (same SHA-256) cannot be uploaded
+ * to the same shop more than DUP_UPLOAD_LIMIT times within DUP_UPLOAD_WINDOW_MIN
+ * minutes.
+ * @param {boolean} commit  false = only check (at sign),
+ *                          true  = increase the count (at confirm)
  */
 async function checkDuplicateUpload(shopId, fileHash, commit) {
-  if (!fileHash || !SHA256_RE.test(String(fileHash))) return null;  // hash nahi — skip
+  if (!fileHash || !SHA256_RE.test(String(fileHash))) return null;  // no hash — skip
   const hash = String(fileHash).toLowerCase();
   try {
-    // Window ke bahar ka record purana maan kar reset kar do
+    // Treat a record outside the window as old and reset it
     const r = await pool.query(
       `SELECT hits, last_seen,
               (last_seen < NOW() - ($3 || ' minutes')::interval) AS expired
@@ -8601,7 +8604,7 @@ async function checkDuplicateUpload(shopId, fileHash, commit) {
       [shopId, hash, String(DUP_UPLOAD_WINDOW_MIN)]);
     return null;
   } catch (e) {
-    // Guard fail ho to genuine customer ko block MAT karo — sirf log karo.
+    // If the guard fails, do NOT block a genuine customer — just log it.
     console.warn('Duplicate-check skipped:', e.message);
     return null;
   }
@@ -8612,14 +8615,14 @@ app.post('/api/upload/sign', async (req, res) => {
     const shopId = String(req.body.shopId || '').trim();
     if (!shopId) return res.status(400).json({ error: 'Shop ID required' });
     if (!CLOUD_NAME || !CLD_API_KEY || !CLD_API_SECRET) {
-      return res.status(500).json({ error: 'Cloudinary configure nahi hai' });
+      return res.status(500).json({ error: 'Cloudinary is not configured' });
     }
     const s = await pool.query('SELECT id FROM shops WHERE id=$1', [shopId]);
     if (!s.rows.length) return res.status(404).json({ error: 'Shop not found' });
 
     // ── GLOBAL EMERGENCY BRAKE ──
-    // Poore server par upload rate phat gaya (loop/bug/attack)? Naye
-    // uploads temporarily rok do — Cloudinary ko call hi nahi jaayegi.
+    // Has the upload rate across the whole server exploded (loop/bug/attack)? Temporarily
+    // stop new uploads — no call goes to Cloudinary at all.
     if (!globalBrake()) {
       return res.status(503).json({
         error: 'The service is very busy right now. Please try again in a minute.' });
@@ -8635,14 +8638,14 @@ app.post('/api/upload/sign', async (req, res) => {
       return res.status(429).json({ error: abuse.error, blocked: true, reason: abuse.reason });
     }
 
-    // ── CUSTOMER ka apna pehra ──
-    // Upar wala checkUploadAbuse SHOP ko dekhta hai. Ye us AADMI ko dekhta
-    // hai jo QR scan karke print de raha hai. Block sirf usi par lagta hai
-    // — dukaan aur baaki customer chalte rehte hain.
+    // ── The CUSTOMER's own guard ──
+    // checkUploadAbuse above looks at the SHOP. This one looks at the PERSON
+    // who scans the QR and submits prints. The block applies only to them
+    // — the shop and the other customers keep working.
     if (!(await customerGuard(req, res, shopId))) return;
 
-    // Demo shop limit khatam ho chuki hai to upload shuru hi mat hone do —
-    // customer ko baad me "limit over" dikhane se behtar hai pehle rok dena.
+    // If the demo shop's limit is already used up, do not even let the upload start —
+    // stopping it up front is better than telling the customer "limit over" later.
     const allowDemo = await checkDemoAllowance(shopId);
     if (!allowDemo.ok) {
       return res.status(403).json({
@@ -8652,8 +8655,8 @@ app.post('/api/upload/sign', async (req, res) => {
       });
     }
 
-    // ── GUARDRAILS: signature dene se PEHLE. Reject hua to browser
-    //    Cloudinary tak pahunchta hi nahi = zero bandwidth waste. ──
+    // ── GUARDRAILS: BEFORE issuing the signature. If rejected, the browser
+    //    never reaches Cloudinary = zero wasted bandwidth. ──
     const sizeErr = checkSizeLimit(req.body.fileSize);
     if (sizeErr) return res.status(413).json({ error: sizeErr });
 
@@ -8680,7 +8683,7 @@ app.post('/api/upload/sign', async (req, res) => {
   }
 });
 
-// Cloudinary se confirm karo ki file sach me wahan hai (aur uska asli URL lo)
+// Confirm with Cloudinary that the file really exists (and get its real URL)
 function cloudinaryResourceInfo(publicId) {
   return new Promise((resolve, reject) => {
     const r = https.request({
@@ -8694,7 +8697,7 @@ function cloudinaryResourceInfo(publicId) {
       resp.on('end', () => {
         try {
           const j = JSON.parse(data);
-          if (resp.statusCode !== 200) return reject(new Error(j?.error?.message || 'File Cloudinary par nahi mili'));
+          if (resp.statusCode !== 200) return reject(new Error(j?.error?.message || 'The file was not found on Cloudinary'));
           resolve(j);
         } catch(e) { reject(e); }
       });
@@ -8709,51 +8712,51 @@ app.post('/api/upload/confirm', async (req, res) => {
   try {
     const b = req.body || {};
     const shopId = String(b.shopId || '').trim();
-    // Cloudinary raw upload par public_id ke aage extension jod deta hai
-    // (qrprint_abc -> qrprint_abc.pdf). Isliye do alag values aati hain:
-    //   signedPublicId = jo humne sign kiya (token isi se bana)
-    //   publicId       = jo Cloudinary ne wapas diya (lookup isi se hoga)
+    // On a raw upload Cloudinary appends the extension to the public_id
+    // (qrprint_abc -> qrprint_abc.pdf). So two different values arrive:
+    //   signedPublicId = what we signed (the token was built from it)
+    //   publicId       = what Cloudinary returned (the lookup uses it)
     const publicId = String(b.publicId || '').trim();
     const signedPublicId = String(b.signedPublicId || b.publicId || '').trim();
     const token = String(b.uploadToken || '').trim();
     if (!shopId || !isJobAsset(publicId) || !isJobAsset(signedPublicId)) return res.status(400).json({ error: 'A valid shop and Echel upload are required.' });
 
-    // 1) Token match — ye public_id humne hi is shop ke liye issue kiya tha?
+    // 1) Token match — did we issue this public_id for this shop?
     if (token !== uploadTokenFor(shopId, signedPublicId)) {
-      return res.status(403).json({ error: 'Upload token match nahi hua' });
+      return res.status(403).json({ error: 'The upload token does not match' });
     }
-    // 2) Cloudinary ka public_id wahi hona chahiye jo humne sign kiya
-    //    (bas extension juda ho sakta hai) — warna koi doosri file point kar sakta hai
+    // 2) Cloudinary's public_id must be the one we signed
+    //    (only an extension may be appended) — otherwise it could point to another file
     if (publicId !== signedPublicId && !publicId.startsWith(signedPublicId + '.')) {
-      return res.status(403).json({ error: 'Public ID match nahi hua' });
+      return res.status(403).json({ error: 'The public ID does not match' });
     }
 
     const shopResult = await pool.query('SELECT * FROM shops WHERE id=$1', [shopId]);
     if (!shopResult.rows.length) return res.status(404).json({ error: 'Shop not found' });
-    // ── CUSTOMER ka pehra — YAHAN SABSE ZAROORI ──
-    // Job isi route par banti hai. Pehle guard sirf /api/upload/sign aur
-    // /api/upload par tha, aur ye raasta khula pada tha — banda block
-    // hone ke baad bhi job bana leta tha. Ab teeno darwazon par ek hi
-    // pehra hai.
+    // ── The CUSTOMER guard — MOST IMPORTANT HERE ──
+    // The job is created on this route. The guard used to be only on /api/upload/sign and
+    // /api/upload, and this path was left open — a person could still create
+    // a job after being blocked. Now all three doors have the same
+    // guard.
     if (!(await customerGuard(req, res, shopId))) return;
 
     const shop = shopResult.rows[0];
 
-    // 3) File ka URL.
-    //    Security pehle hi ho chuki hai: HMAC token proof hai ki ye public_id
-    //    HUMNE isi shop ke liye issue kiya tha, aur public_id prefix bhi match
-    //    kar chuka hai. Isliye URL banane ke liye Cloudinary se poochna
-    //    ZAROORI nahi — aur wahi Admin API call 500 de raha tha.
+    // 3) The file URL.
+    //    Security has already been handled: the HMAC token proves that WE
+    //    issued this public_id for this shop, and the public_id prefix has also
+    //    matched. So asking Cloudinary is NOT REQUIRED to build the URL —
+    //    and that same Admin API call was returning 500.
     //
-    //    Rasta: URL client se lo par crypto-validate karo; na mile to khud
-    //    bana lo (raw upload ka URL format fixed hai). Cloudinary se verify
-    //    sirf "best effort" — fail ho to bhi job banega (file sach me na hui
-    //    to agent download par pata chal jayega aur job fail ho jayega).
+    //    Approach: take the URL from the client but validate it cryptographically; if it
+    //    is missing, build it ourselves (the raw upload URL format is fixed). Verifying
+    //    with Cloudinary is only "best effort" — even if it fails the job is created (if
+    //    the file really does not exist, the agent download will reveal it and the job will fail).
     let fileUrl = String(b.secureUrl || '').trim();
     let cldInfo = null;
     const okHost = fileUrl.startsWith(`https://res.cloudinary.com/${CLOUD_NAME}/`);
     if (!fileUrl || !okHost || !fileUrl.includes(signedPublicId)) {
-      // Purana client ho ya URL galat — khud bana lo (deterministic)
+      // An old client or a wrong URL — build it ourselves (deterministic)
       fileUrl = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${publicId}`;
     }
 
@@ -8761,12 +8764,12 @@ app.post('/api/upload/confirm', async (req, res) => {
       cldInfo = await cloudinaryResourceInfo(publicId);
       if (cldInfo && (cldInfo.secure_url || cldInfo.url)) fileUrl = cldInfo.secure_url || cldInfo.url;
     } catch (e) {
-      console.warn(`Cloudinary verify skip (${e.message}) — URL khud bana liya: ${publicId}`);
+      console.warn(`Cloudinary verify skipped (${e.message}) — built the URL ourselves: ${publicId}`);
     }
 
-    // ── GUARDRAILS (dobara, ab asli data ke saath) ──
-    // Client jhooth bol sakta hai, isliye Cloudinary ka actual bytes count
-    // hi final hai. Limit toot gayi to file waapas delete kar do.
+    // ── GUARDRAILS (again, now with the real data) ──
+    // The client can lie, so Cloudinary's actual byte count is
+    // final. If a limit is exceeded, delete the file again.
     const realBytes = cldInfo && Number(cldInfo.bytes);
     const sizeErr2 = checkSizeLimit(realBytes);
     if (sizeErr2) {
@@ -8779,7 +8782,7 @@ app.post('/api/upload/confirm', async (req, res) => {
       try { await deleteFromCloudinary(publicId); } catch(_) {}
       return res.status(413).json({ error: pageErr2 });
     }
-    // Ab jab upload sach me hua hai, tabhi duplicate counter badhao.
+    // Increase the duplicate counter only now that the upload really happened.
     const dupErr2 = await checkDuplicateUpload(shopId, b.fileHash, true);
     if (dupErr2) {
       try { await deleteFromCloudinary(publicId); } catch(_) {}
@@ -8804,18 +8807,18 @@ app.post('/api/upload/confirm', async (req, res) => {
        [4,6,8,10].includes(parseInt(b.photoCount)) ? parseInt(b.photoCount) : 0,
        customerId(req)]
     );
-    console.log(`Direct upload confirmed: ${jobId} (${(cldInfo && cldInfo.bytes) || '?'} bytes, Render se nahi guzri)`);
+    console.log(`Direct upload confirmed: ${jobId} (${(cldInfo && cldInfo.bytes) || '?'} bytes, did not pass through Render)`);
     res.json({ success: true, jobId, fileName, fileType, amount,
       copies: numCopies, totalPages: numPages, colorMode });
   } catch(err) {
     console.error('Upload confirm error:', err.message);
-    // Galti hamari thi — customer ki retry par dukaan block na ho
+    // The mistake was ours — the customer's retry must not get the shop blocked
     pardonUploadFailure(req.body && req.body.shopId);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── Purana upload (fallback) — direct upload fail ho to isse kaam chalta rahe ──
+// ── The old upload (fallback) — keeps things working if the direct upload fails ──
 app.post('/api/upload', upload.single('file'), handleUploadErrors, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error:'No file uploaded' });
@@ -8826,7 +8829,7 @@ app.post('/api/upload', upload.single('file'), handleUploadErrors, async (req, r
     if (!shopResult.rows.length) return res.status(404).json({ error:'Shop not found' });
     const shop = shopResult.rows[0];
 
-    // ── GUARDRAILS (fallback path) — Cloudinary upload se PEHLE ──
+    // ── GUARDRAILS (fallback path) — BEFORE the Cloudinary upload ──
     if (!globalBrake()) {
       return res.status(503).json({ error: 'The service is very busy right now. Please try again in a minute.' });
     }
@@ -8844,8 +8847,8 @@ app.post('/api/upload', upload.single('file'), handleUploadErrors, async (req, r
         plans: await getUpgradePlans() });
     }
 
-    // File sach me PDF/image hai? Magic bytes + asli page count check —
-    // yahan file server ke paas hai, isliye client par bharosa zaroori nahi.
+    // Is the file really a PDF/image? Magic bytes + real page count check —
+    // here the file is on the server, so there is no need to trust the client.
     const fv = validateFileBuffer(req.file.buffer, req.file.originalname);
     if (!fv.ok) {
       await logSecurityEvent({ ip: clientIp(req), shopId, endpoint: '/api/upload', method: 'POST',
@@ -8854,7 +8857,7 @@ app.post('/api/upload', upload.single('file'), handleUploadErrors, async (req, r
       return res.status(415).json({ error: fv.error });
     }
 
-    // multer ne size limit pehle hi laga di, par yahan exact message do.
+    // multer already applied the size limit, but give an exact message here.
     const sizeErr = checkSizeLimit(req.file.size);
     if (sizeErr) return res.status(413).json({ error: sizeErr });
 
@@ -8863,8 +8866,8 @@ app.post('/api/upload', upload.single('file'), handleUploadErrors, async (req, r
     const pageErr = checkPageLimit(totalPages, req.file.originalname);
     if (pageErr) return res.status(413).json({ error: pageErr });
 
-    // Is path par file server ke paas hai — hash yahi bana lo, client par
-    // bharosa karne ki zaroorat nahi.
+    // On this path the file is on the server — build the hash right here; no
+    // need to trust the client.
     const fileHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
     const dupErr = await checkDuplicateUpload(shopId, fileHash, true);
     if (dupErr) return res.status(429).json({ error: dupErr });
@@ -8892,7 +8895,7 @@ app.post('/api/upload', upload.single('file'), handleUploadErrors, async (req, r
     res.json({ success:true, jobId, fileName:req.file.originalname, fileType, amount, copies:numCopies, totalPages:numPages, colorMode:colorMode||'bw' });
   } catch(err) {
     console.error('Upload error:', err.message);
-    // Galti hamari thi — customer ki retry par dukaan block na ho
+    // The mistake was ours — the customer's retry must not get the shop blocked
     pardonUploadFailure(req.body && req.body.shopId);
     res.status(500).json({ error: err.message });
   }
@@ -8909,12 +8912,12 @@ function parseSelectedPages(selectedPages, fallbackCount) {
 //  CASHFREE HELPERS
 // ═══════════════════════════════════════════════════════════════════
 
-// Sirf LIVE — sandbox nahi. Test karna ho to Cashfree dashboard ki
-// test keys nahi chalengi, live keys hi lagani hongi.
+// LIVE only — no sandbox. For testing, the Cashfree dashboard's
+// test keys will not work; live keys must be used.
 const CASHFREE_HOST = 'api.cashfree.com';
 const CASHFREE_API_VERSION = '2025-01-01';
 
-// Kabhi throw nahi karta — hamesha object deta hai (sendViaBrevo jaisa hi pattern)
+// Never throws — always returns an object (the same pattern as sendViaBrevo)
 function cashfreeRequest(method, path, appId, secretKey, body) {
   return new Promise((resolve) => {
     try {
@@ -8933,7 +8936,7 @@ function cashfreeRequest(method, path, appId, secretKey, body) {
         resp.on('data', c => d += c);
         resp.on('end', () => {
           try { resolve(JSON.parse(d)); }
-          catch (e) { resolve({ message: 'Cashfree ka jawab samajh nahi aaya (HTTP ' + resp.statusCode + ')' }); }
+          catch (e) { resolve({ message: 'Could not understand the Cashfree response (HTTP ' + resp.statusCode + ')' }); }
         });
       });
       r.on('error', e => resolve({ message: e.message }));
@@ -8945,7 +8948,7 @@ function cashfreeRequest(method, path, appId, secretKey, body) {
 }
 
 // Webhook signature: base64( HMAC-SHA256( secret, timestamp + rawBody ) )
-// RAW body chahiye — JSON.parse kiya hua object se signature KABHI match nahi karega.
+// The RAW body is required — a signature will NEVER match a JSON.parse'd object.
 function verifyCashfreeWebhook(secretKey, timestamp, rawBody, signature) {
   try {
     if (!secretKey || !timestamp || !signature) return false;
@@ -8953,13 +8956,13 @@ function verifyCashfreeWebhook(secretKey, timestamp, rawBody, signature) {
       .update(String(timestamp) + String(rawBody)).digest('base64');
     const a = Buffer.from(expected);
     const b = Buffer.from(String(signature));
-    // timingSafeEqual barabar length maangta hai — warna throw kar deta hai
+    // timingSafeEqual requires equal lengths — otherwise it throws
     return a.length === b.length && crypto.timingSafeEqual(a, b);
   } catch (e) { return false; }
 }
 
-// ─── ONLINE PAYMENT: Har shop apni Razorpay/Cashfree keys use karta hai ───
-// (Paisa seedha shop owner ke account mein jaata hai, system owner ke account mein nahi)
+// ─── ONLINE PAYMENT: every shop uses its own Razorpay/Cashfree keys ───
+// (The money goes straight to the shop owner's account, not the platform owner's account)
 
 app.post('/api/payment/online/create', async (req, res) => {
   try {
@@ -8972,13 +8975,13 @@ app.post('/api/payment/online/create', async (req, res) => {
        FROM print_jobs j JOIN shops s ON j.shop_id=s.id WHERE j.id=$1`, [jobId]
     );
     if (!jobCheck.rows.length) return res.status(404).json({ error:'Job not found' });
-    if (jobCheck.rows[0].paused) return res.status(403).json({ error: '🏪 Shop abhi band hai — baad mein try karo' });
-    if (!isSubscriptionActive(jobCheck.rows[0])) return res.status(403).json({ error: '⏸️ Shop inactive hai — owner ko subscription renew karni hai' });
+    if (jobCheck.rows[0].paused) return res.status(403).json({ error: '🏪 The shop is closed right now — try again later' });
+    if (!isSubscriptionActive(jobCheck.rows[0])) return res.status(403).json({ error: '⏸️ The shop is inactive — the owner needs to renew the subscription' });
 
     const job = jobCheck.rows[0];
 
-    // Demo limit — payment SHURU hone se pehle. Webhook par rokna galat
-    // hoga: paisa kat jaata aur print nahi milta.
+    // Demo limit — BEFORE the payment STARTS. Stopping it at the webhook would be
+    // wrong: the money would be debited and no print would come out.
     const allowOnline = await checkDemoAllowance(job.shop_id);
     if (!allowOnline.ok) {
       return res.status(403).json({
@@ -8989,25 +8992,25 @@ app.post('/api/payment/online/create', async (req, res) => {
     }
 
     if (job.payment_mode === 'counter_only') {
-      return res.status(400).json({ error: 'Yeh shop sirf Counter payment accept karta hai' });
+      return res.status(400).json({ error: 'This shop accepts Counter payment only' });
     }
     if (!job.payment_gateway) {
-      return res.status(400).json({ error: 'Is shop ne abhi online payment setup nahi kiya hai' });
+      return res.status(400).json({ error: 'This shop has not set up online payment yet' });
     }
 
     const finalColorMode = colorMode || job.color_mode;
-    // ── DUPLEX ── sirf tab jab shop ne enable kiya ho; manual duplex par
-    // copies zabardasti 1 (warna owner ko har copy pe front/back popup
-    // jhelna padta aur pages mix ho jate)
+    // ── DUPLEX ── only when the shop has enabled it; with manual duplex
+    // copies are forced to 1 (otherwise the owner would have to put up with a
+    // front/back popup for every copy and the pages would get mixed up)
     let finalDuplex = false;
     let dupShop = await pool.query(
       'SELECT duplex_mode, duplex_bw_enabled, duplex_color_enabled FROM shops WHERE id=$1',
       [job.shop_id]);
     const shopDuplexMode = dupShop.rows.length ? (dupShop.rows[0].duplex_mode || '') : '';
-    // Owner duplex ko sirf B&W ya sirf Color par chalu rakh sakta hai
-    // (aksar duplex ek hi printer par hota hai). Column NULL ho -- yaani
-    // purani row jise migration ne abhi chhua nahi -- to ON hi maano,
-    // taaki kisi chalu shop ka duplex chup-chaap band na ho jaye.
+    // The owner can keep duplex on for B&W only or Color only
+    // (duplex is often on just one printer). If the column is NULL -- meaning
+    // an old row the migration has not touched yet -- treat it as ON,
+    // so the duplex of a working shop is not silently switched off.
     const dupRow    = dupShop.rows[0] || {};
     const dupBwOk   = dupRow.duplex_bw_enabled !== false;
     const dupClOk   = dupRow.duplex_color_enabled !== false;
@@ -9015,44 +9018,44 @@ app.post('/api/payment/online/create', async (req, res) => {
     if (req.body.duplex === true && shopDuplexMode && dupModeOk) finalDuplex = true;
     const finalCopies = parseInt(copies) || job.copies;
     const finalPages = parseInt(totalPages) || job.total_pages;
-    // Manual duplex par copies HAMESHA 1 — print bhi aur BILL bhi (warna
-    // customer se N copies ka paisa, print 1 ka)
+    // With manual duplex, copies are ALWAYS 1 — for the print and for the BILL (otherwise
+    // the customer would pay for N copies and get 1 print)
     const effCopies = (finalDuplex && shopDuplexMode === 'manual') ? 1 : finalCopies;
     const finalSelectedPages = parseSelectedPages(selectedPages, job.total_pages);
 
-    // Kul kagaz ki rok. Yahan isliye ki copies ka pata YAHIN chalta hai —
-    // upload ke waqt customer ne copies chuni hi nahi hoti.
+    // The cap on total sheets. It lives here because the copies are known only HERE —
+    // at upload time the customer has not chosen copies yet.
     const _sheetErr = checkSheetLimit(finalPages, effCopies);
     if (_sheetErr) return res.status(400).json({ error: _sheetErr, sheetLimit: true });
-    // Duplex prices: agar owner ne set kiye hain (>0) to use, warna normal
-    // rate hi lagta hai (backwards-compat + accidentally 0 rakhna safe)
+    // Duplex prices: if the owner has set them (>0), use them; otherwise the normal
+    // rate applies (backwards compatible + setting 0 by accident is safe)
     const _dupBw     = finalDuplex && parseFloat(job.price_bw_duplex) > 0;
     const _dupColor  = finalDuplex && parseFloat(job.price_color_duplex) > 0;
     const _rateBw    = _dupBw    ? job.price_bw_duplex    : job.price_bw;
     const _rateColor = _dupColor ? job.price_color_duplex : job.price_color;
     const pricePerPage = finalColorMode === 'color' ? _rateColor : _rateBw;
-    // Duplex ka apna rate sach me laga ya nahi - slab usse upar nahi jaata
+    // Whether the duplex rate really applied - the slab does not override it
     const _dupRateUsed = finalColorMode === 'color' ? _dupColor : _dupBw;
 
     // -- PAGE-RANGE (SLAB) RATE --
-    // Owner "itne se itne page tak = itna" set kar sakta hai. Wo daam HAR
-    // PAGE ka rate hai, poore job ka nahi:
-    //     8 page aur range 6-10 ka rate 1.5  =>  8 x 1.5 = 12
+    // The owner can set "from this many pages to this many = this much". That price is
+    // the rate for EACH PAGE, not for the whole job:
+    //     8 pages and the 6-10 range rate is 1.5  =>  8 x 1.5 = 12
     //
-    // Pehle isay poore job ka flat daam maana jaata tha - isi wajah se 4
-    // page aur 8 page dono ka ek hi bill banta tha. Customer ne yahi pakda:
-    // "8 print karo to 50 rs. aur 4 print karo to 50 rs."
+    // It used to be treated as a flat price for the whole job - which is why 4
+    // pages and 8 pages produced the same bill. A customer caught exactly this:
+    // "printing 8 costs Rs 50 and printing 4 also costs Rs 50."
     //
-    // Owner ke apne khaas rate slab se UPAR rehte hain: duplex ka rate
-    // yahin dekh liya, aur Resume / 4x6 / A3 neeche apne branch me amount
-    // overwrite kar dete hain. customer.html ke getPerPageRate() me bilkul
-    // yahi tarteeb hai - dono ka hisaab ek jaisa rehna zaroori hai, warna
-    // customer ko dikhta kuch aur hai aur katta kuch aur.
+    // The owner's own special rates rank ABOVE the slab: the duplex rate is
+    // checked right here, and Resume / 4x6 / A3 overwrite the amount in their own
+    // branches below. customer.html's getPerPageRate() follows exactly the same
+    // order - both calculations must stay identical, otherwise
+    // the customer sees one amount and is charged another.
     let ratePerPage = pricePerPage;
     if (!_dupRateUsed) {
-      // Ginti = kitne KAGAZ nikal rahe hain (page x copies). 3 page ki
-      // 3 copy = 9 kagaz, isliye 6-10 wali range lagegi. customer.html
-      // ke getSlabPageCount() me bilkul yahi ginti banti hai.
+      // Count = how many SHEETS come out (pages x copies). 3 copies of
+      // 3 pages = 9 sheets, so the 6-10 range applies. customer.html's
+      // getSlabPageCount() computes exactly the same count.
       const _slab = slabPriceFor(job.page_slabs, finalColorMode,
                                  finalPages * effCopies);
       if (_slab !== null && _slab >= 0) ratePerPage = _slab;
@@ -9066,9 +9069,9 @@ app.post('/api/payment/online/create', async (req, res) => {
       const rRate = finalColorMode === 'color' ? (parseFloat(job.price_resume_color) || 0) : (parseFloat(job.price_resume_bw) || 0);
       if (rRate > 0) amount = rRate * effCopies;
     } else if (job.service === 'photo4x6') {
-      // 12 ko SABSE UPAR rakha hai. Pehle iska koi branch tha hi nahi,
-      // isliye 12-photo job aakhri fallback (4-photo rate) me gir jaati —
-      // customer ko 12 photo 4 ke daam me mil jaate.
+      // 12 is placed at the VERY TOP. It used to have no branch at all,
+      // so a 12-photo job fell into the last fallback (the 4-photo rate) —
+      // the customer got 12 photos for the price of 4.
       const pRate = job.photo_count === 12 ? (parseFloat(job.price_4x6_12) || 0)
                  : job.photo_count === 10 ? (parseFloat(job.price_4x6_10) || 0)
                  : job.photo_count === 8 ? (parseFloat(job.price_4x6_8) || 0)
@@ -9076,15 +9079,15 @@ app.post('/api/payment/online/create', async (req, res) => {
                  : (parseFloat(job.price_4x6_4) || 0);
       if (pRate > 0) amount = pRate * effCopies;
     } else {
-      // Big Size (A3/A2/A1) — owner ka apna per-page rate, set ho tabhi.
-      // Duplex ke saath bhi big-size rate hi jeetta hai: bada kagaz
-      // hi asli lagat hai, duplex uske andar aata hai.
+      // Big Size (A3/A2/A1) — the owner's own per-page rate, only when set.
+      // Even with duplex the big-size rate wins: the large paper
+      // is the real cost, and duplex is included in it.
       const bigRate = bigSizeRate(job, job.paper_size, finalColorMode);
       if (bigRate > 0) amount = bigRate * finalPages * effCopies;
     }
     amount = round2(amount);
 
-    // Common job update (gateway se pehle)
+    // Common job update (before the gateway)
     await pool.query(
       'UPDATE print_jobs SET color_mode=$1, copies=$2, total_pages=$3, selected_pages=$4, amount=$5, duplex=$6 WHERE id=$7',
       [finalColorMode, effCopies, finalPages, finalSelectedPages.join(','), amount, finalDuplex, jobId]
@@ -9092,7 +9095,7 @@ app.post('/api/payment/online/create', async (req, res) => {
 
     if (job.payment_gateway === 'razorpay') {
       if (!job.razorpay_key_id || !job.razorpay_key_secret) {
-        return res.status(400).json({ error: 'Shop ki Razorpay keys set nahi hain' });
+        return res.status(400).json({ error: 'The Razorpay keys of the shop are not set' });
       }
       const amountInPaise = Math.round(amount * 100);
       const orderData = JSON.stringify({
@@ -9125,15 +9128,15 @@ app.post('/api/payment/online/create', async (req, res) => {
       });
 
       if (!razorpayOrder.id) {
-        // Razorpay asli wajah `error.description` me bhejta hai. Pehle
-        // poora object `details` me jaata tha, jise client string me
-        // jodta tha — isliye screen par sirf "[object Object]" aata
-        // tha aur shop owner ko pata hi nahi chalta ki kya galat hai
-        // (aksar: key regenerate karne ke baad purana secret saved reh
-        // jaana → "Authentication failed").
+        // Razorpay sends the real reason in `error.description`. The whole
+        // object used to go into `details`, which the client concatenated into a
+        // string — so the screen showed only "[object Object]"
+        // and the shop owner never learned what was wrong
+        // (usually: after regenerating the key, the old secret remained
+        // saved → "Authentication failed").
         const rzErr = (razorpayOrder && razorpayOrder.error) || {};
         const why = rzErr.description || rzErr.reason || rzErr.code ||
-                    'Razorpay ne order nahi banaya';
+                    'Razorpay did not create the order';
         console.error('[razorpay/order]', job.shop_id, JSON.stringify(razorpayOrder).slice(0, 500));
         return res.status(400).json({ error: 'Razorpay: ' + why, details: String(why) });
       }
@@ -9155,34 +9158,34 @@ app.post('/api/payment/online/create', async (req, res) => {
 
     if (job.payment_gateway === 'cashfree') {
       if (!job.cashfree_app_id || !job.cashfree_secret_key) {
-        return res.status(400).json({ error: 'Shop ki Cashfree keys set nahi hain' });
+        return res.status(400).json({ error: 'The Cashfree keys of the shop are not set' });
       }
 
-      // DEBUG log — Render logs me dikhega ki create call hua aur kya bana
+      // DEBUG log — the Render logs show that the create call happened and what was created
       console.log('[Cashfree] create attempt job=' + jobId + ' shop=' + job.shop_id + ' amount=' + amount + ' appid_len=' + String(job.cashfree_app_id).length);
 
-      // ⚠️ SABSE ZAROORI FARAK: Razorpay PAISE leta hai (₹10 = 1000),
-      // Cashfree RUPEES leta hai (₹10 = 10). Yahan *100 kabhi mat karna —
-      // warna customer se 100 guna paisa kat jaayega.
-      // ⚠️ Cashfree order_id GLOBALLY UNIQUE hona chahiye — same id dobara
-      // bhejne par "order with same id is already present" error aata hai.
-      // Pehle 'QSP_'+jobId fixed tha, isliye customer ke DOBARA "Pay" dabane
-      // (retry / page reload / abandon) par same id jaata aur Cashfree reject
-      // kar deta tha (Razorpay me ye dikkat nahi kyunki wahan jobId sirf
-      // receipt hai, order id Razorpay khud unique banata hai). Ab har attempt
-      // ka fresh unique id. Webhook aur status dono STORED payment_id se job
-      // dhoondhte hain (order_id format se nahi), isliye kuch aur badalne ki
-      // zaroorat nahi. Length ~31 chars (Cashfree limit 50), sirf A-Z 0-9 _.
+      // ⚠️ THE MOST IMPORTANT DIFFERENCE: Razorpay takes PAISE (₹10 = 1000),
+      // Cashfree takes RUPEES (₹10 = 10). Never multiply by 100 here —
+      // otherwise the customer is charged 100 times the amount.
+      // ⚠️ The Cashfree order_id must be GLOBALLY UNIQUE — sending the same id
+      // again returns "order with same id is already present".
+      // It used to be a fixed 'QSP_'+jobId, so when the customer pressed "Pay" AGAIN
+      // (retry / page reload / abandon) the same id went out and Cashfree rejected
+      // it (Razorpay has no such problem because there jobId is only the
+      // receipt; Razorpay makes the order id unique itself). Now every attempt
+      // gets a fresh unique id. The webhook and status both find the job by the STORED
+      // payment_id (not by the order_id format), so nothing else needs to
+      // change. Length ~31 chars (Cashfree limit 50), only A-Z 0-9 _.
       const cfOrderId = 'QSP_' + jobId + '_' + Date.now().toString(36).toUpperCase()
         + crypto.randomBytes(4).toString('hex').toUpperCase();
-      // Cashfree ko customer_phone chahiye hi chahiye, par hum customer ka
-      // number lete hi nahi (QR scan karke seedha print — koi login nahi).
-      // Isliye placeholder. Payment par iska koi asar nahi padta.
+      // Cashfree absolutely requires customer_phone, but we never collect the customer's
+      // number (scan the QR and print directly — no login).
+      // Hence a placeholder. It has no effect on the payment.
       const customerPhone = '9999999999';
 
       const cfBody = JSON.stringify({
         order_id: cfOrderId,
-        order_amount: Number(amount),          // rupees, paise NAHI
+        order_amount: Number(amount),          // rupees, NOT paise
         order_currency: 'INR',
         customer_details: {
           customer_id: 'CUST_' + jobId,
@@ -9201,15 +9204,15 @@ app.post('/api/payment/online/create', async (req, res) => {
       if (!cfOrder || !cfOrder.payment_session_id) {
         console.error('[Cashfree] order FAILED job=' + jobId + ' resp=' + JSON.stringify(cfOrder).slice(0, 400));
         return res.status(400).json({
-          error: 'Cashfree order nahi bana — shop ki keys check karo',
+          error: 'Could not create the Cashfree order — check the keys of the shop',
           details: (cfOrder && (cfOrder.message || cfOrder.type || cfOrder.code)) || 'unknown'
         });
       }
 
       console.log('[Cashfree] order OK job=' + jobId + ' cfid=' + cfOrderId + ' session=' + String(cfOrder.payment_session_id).slice(0, 22) + '...');
 
-      // cf_order_id nahi, HAMARA order_id save karte hain — webhook aur
-      // status dono isi se job dhoondhte hain
+      // We save OUR order_id, not cf_order_id — the webhook and
+      // status both find the job by it
       await pool.query(
         'UPDATE print_jobs SET payment_id=$1, payment_method=$2 WHERE id=$3',
         [cfOrderId, 'online', jobId]
@@ -9232,7 +9235,7 @@ app.post('/api/payment/online/create', async (req, res) => {
   }
 });
 
-// Razorpay verify — frontend se signature check
+// Razorpay verify — signature check from the frontend
 app.post('/api/payment/razorpay/verify', async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, jobId } = req.body;
@@ -9265,8 +9268,8 @@ app.post('/api/payment/razorpay/verify', async (req, res) => {
   }
 });
 
-// Cashfree webhook — payment hone par Cashfree yahan call karta hai.
-// Signature RAW body par verify hoti hai (line 62 wala req.rawBody).
+// Cashfree webhook — Cashfree calls here when a payment happens.
+// The signature is verified over the RAW body (the req.rawBody from line 62).
 app.post('/api/payment/cashfree/webhook', async (req, res) => {
   try {
     const rawBody = req.rawBody ? req.rawBody.toString('utf8') : '';
@@ -9278,12 +9281,12 @@ app.post('/api/payment/cashfree/webhook', async (req, res) => {
     }
 
     const orderId = (payload.data && payload.data.order && payload.data.order.order_id) || '';
-    if (!orderId) return res.json({ success: true });   // koi aur event — ignore
+    if (!orderId) return res.json({ success: true });   // some other event — ignore
 
-    // Multi-tenant: har shop ki apni key hai. Isliye pehle order se shop
-    // dhoondho, tabhi uska secret milega jisse signature check hogi.
-    // Body sirf order_id nikalne ke liye padhi hai — VERIFY se pehle kuch
-    // bhi change nahi kiya jaata.
+    // Multi-tenant: every shop has its own key. So first find the shop from the
+    // order; only then do we have the secret to check the signature with.
+    // The body is read only to extract the order_id — nothing is changed
+    // before VERIFY.
     const jr = await pool.query(
       `SELECT j.id AS job_id, j.payment_status, s.cashfree_secret_key
        FROM print_jobs j JOIN shops s ON j.shop_id = s.id
@@ -9291,10 +9294,10 @@ app.post('/api/payment/cashfree/webhook', async (req, res) => {
     if (!jr.rows.length) return res.json({ success: true });
     const job = jr.rows[0];
 
-    // Replay guard: 5 minute se purana webhook nahi lenge
+    // Replay guard: webhooks older than 5 minutes are rejected
     const wts = parseInt(req.headers['x-webhook-timestamp'], 10);
     if (!wts || Math.abs(Date.now() / 1000 - wts) > 300) {
-      console.warn('Cashfree webhook: timestamp purana/galat |', orderId);
+      console.warn('Cashfree webhook: old/invalid timestamp |', orderId);
       return res.status(401).json({ error: 'stale timestamp' });
     }
 
@@ -9305,13 +9308,13 @@ app.post('/api/payment/cashfree/webhook', async (req, res) => {
       req.headers['x-webhook-signature']
     );
     if (!sigOk) {
-      console.warn('Cashfree webhook: signature match nahi hui |', orderId);
+      console.warn('Cashfree webhook: signature mismatch |', orderId);
       return res.status(401).json({ error: 'bad signature' });
     }
 
     const payStatus = (payload.data && payload.data.payment && payload.data.payment.payment_status) || '';
     if (payStatus === 'SUCCESS') {
-      // payment_id ko chhedte nahi — wahi hamara stable lookup key hai
+      // payment_id is not touched — it is our stable lookup key
       const upd = await pool.query(
         `UPDATE print_jobs SET payment_status='paid', status='queued'
          WHERE id=$1 AND payment_status <> 'paid' RETURNING id, shop_id`, [job.job_id]);
@@ -9327,8 +9330,8 @@ app.post('/api/payment/cashfree/webhook', async (req, res) => {
   }
 });
 
-// Cashfree se wapas aane ke baad status check (frontend polling ke liye).
-// Webhook late aaye ya na aaye, isse customer atakta nahi.
+// Status check after returning from Cashfree (for frontend polling).
+// Whether the webhook arrives late or never, the customer does not get stuck.
 app.get('/api/payment/cashfree/status/:jobId', async (req, res) => {
   try {
     const r = await pool.query(
@@ -9339,7 +9342,7 @@ app.get('/api/payment/cashfree/status/:jobId', async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ error: 'Job not found' });
     const job = r.rows[0];
 
-    // Webhook pehle aa gaya to DB me already paid hai — seedha bata do
+    // If the webhook arrived first, the DB already says paid — report that directly
     if (job.payment_status === 'paid') {
       return res.json({ success: true, status: 'PAID' });
     }
@@ -9376,10 +9379,10 @@ app.post('/api/payment/counter', async (req, res) => {
     if (!jobCheck.rows.length) return res.status(404).json({ error:'Job not found' });
 
     const job = jobCheck.rows[0];
-    if (job.paused) return res.status(403).json({ error: '🏪 Shop abhi band hai — baad mein try karo' });
-    if (!isSubscriptionActive(job)) return res.status(403).json({ error: '⏸️ Shop inactive hai — owner ko subscription renew karni hai' });
+    if (job.paused) return res.status(403).json({ error: '🏪 The shop is closed right now — try again later' });
+    if (!isSubscriptionActive(job)) return res.status(403).json({ error: '⏸️ The shop is inactive — the owner needs to renew the subscription' });
 
-    // Demo guards: expiry + free-print cap (dono ek hi helper se)
+    // Demo guards: expiry + free-print cap (both from one helper)
     const allow = await checkDemoAllowance(job.shop_id);
     if (!allow.ok) {
       return res.status(403).json({
@@ -9390,22 +9393,22 @@ app.post('/api/payment/counter', async (req, res) => {
     }
 
     if (job.payment_mode === 'online_only') {
-      return res.status(400).json({ error: 'Yeh shop sirf Online payment accept karta hai' });
+      return res.status(400).json({ error: 'This shop accepts Online payment only' });
     }
 
     const finalColorMode = colorMode || job.color_mode;
-    // ── DUPLEX ── sirf tab jab shop ne enable kiya ho; manual duplex par
-    // copies zabardasti 1 (warna owner ko har copy pe front/back popup
-    // jhelna padta aur pages mix ho jate)
+    // ── DUPLEX ── only when the shop has enabled it; with manual duplex
+    // copies are forced to 1 (otherwise the owner would have to put up with a
+    // front/back popup for every copy and the pages would get mixed up)
     let finalDuplex = false;
     let dupShop = await pool.query(
       'SELECT duplex_mode, duplex_bw_enabled, duplex_color_enabled FROM shops WHERE id=$1',
       [job.shop_id]);
     const shopDuplexMode = dupShop.rows.length ? (dupShop.rows[0].duplex_mode || '') : '';
-    // Owner duplex ko sirf B&W ya sirf Color par chalu rakh sakta hai
-    // (aksar duplex ek hi printer par hota hai). Column NULL ho -- yaani
-    // purani row jise migration ne abhi chhua nahi -- to ON hi maano,
-    // taaki kisi chalu shop ka duplex chup-chaap band na ho jaye.
+    // The owner can keep duplex on for B&W only or Color only
+    // (duplex is often on just one printer). If the column is NULL -- meaning
+    // an old row the migration has not touched yet -- treat it as ON,
+    // so the duplex of a working shop is not silently switched off.
     const dupRow    = dupShop.rows[0] || {};
     const dupBwOk   = dupRow.duplex_bw_enabled !== false;
     const dupClOk   = dupRow.duplex_color_enabled !== false;
@@ -9413,44 +9416,44 @@ app.post('/api/payment/counter', async (req, res) => {
     if (req.body.duplex === true && shopDuplexMode && dupModeOk) finalDuplex = true;
     const finalCopies = parseInt(copies) || job.copies;
     const finalPages = parseInt(totalPages) || job.total_pages;
-    // Manual duplex par copies HAMESHA 1 — print bhi aur BILL bhi (warna
-    // customer se N copies ka paisa, print 1 ka)
+    // With manual duplex, copies are ALWAYS 1 — for the print and for the BILL (otherwise
+    // the customer would pay for N copies and get 1 print)
     const effCopies = (finalDuplex && shopDuplexMode === 'manual') ? 1 : finalCopies;
     const finalSelectedPages = parseSelectedPages(selectedPages, job.total_pages);
 
-    // Kul kagaz ki rok. Yahan isliye ki copies ka pata YAHIN chalta hai —
-    // upload ke waqt customer ne copies chuni hi nahi hoti.
+    // The cap on total sheets. It lives here because the copies are known only HERE —
+    // at upload time the customer has not chosen copies yet.
     const _sheetErr = checkSheetLimit(finalPages, effCopies);
     if (_sheetErr) return res.status(400).json({ error: _sheetErr, sheetLimit: true });
-    // Duplex prices: agar owner ne set kiye hain (>0) to use, warna normal
-    // rate hi lagta hai (backwards-compat + accidentally 0 rakhna safe)
+    // Duplex prices: if the owner has set them (>0), use them; otherwise the normal
+    // rate applies (backwards compatible + setting 0 by accident is safe)
     const _dupBw     = finalDuplex && parseFloat(job.price_bw_duplex) > 0;
     const _dupColor  = finalDuplex && parseFloat(job.price_color_duplex) > 0;
     const _rateBw    = _dupBw    ? job.price_bw_duplex    : job.price_bw;
     const _rateColor = _dupColor ? job.price_color_duplex : job.price_color;
     const pricePerPage = finalColorMode === 'color' ? _rateColor : _rateBw;
-    // Duplex ka apna rate sach me laga ya nahi - slab usse upar nahi jaata
+    // Whether the duplex rate really applied - the slab does not override it
     const _dupRateUsed = finalColorMode === 'color' ? _dupColor : _dupBw;
 
     // -- PAGE-RANGE (SLAB) RATE --
-    // Owner "itne se itne page tak = itna" set kar sakta hai. Wo daam HAR
-    // PAGE ka rate hai, poore job ka nahi:
-    //     8 page aur range 6-10 ka rate 1.5  =>  8 x 1.5 = 12
+    // The owner can set "from this many pages to this many = this much". That price is
+    // the rate for EACH PAGE, not for the whole job:
+    //     8 pages and the 6-10 range rate is 1.5  =>  8 x 1.5 = 12
     //
-    // Pehle isay poore job ka flat daam maana jaata tha - isi wajah se 4
-    // page aur 8 page dono ka ek hi bill banta tha. Customer ne yahi pakda:
-    // "8 print karo to 50 rs. aur 4 print karo to 50 rs."
+    // It used to be treated as a flat price for the whole job - which is why 4
+    // pages and 8 pages produced the same bill. A customer caught exactly this:
+    // "printing 8 costs Rs 50 and printing 4 also costs Rs 50."
     //
-    // Owner ke apne khaas rate slab se UPAR rehte hain: duplex ka rate
-    // yahin dekh liya, aur Resume / 4x6 / A3 neeche apne branch me amount
-    // overwrite kar dete hain. customer.html ke getPerPageRate() me bilkul
-    // yahi tarteeb hai - dono ka hisaab ek jaisa rehna zaroori hai, warna
-    // customer ko dikhta kuch aur hai aur katta kuch aur.
+    // The owner's own special rates rank ABOVE the slab: the duplex rate is
+    // checked right here, and Resume / 4x6 / A3 overwrite the amount in their own
+    // branches below. customer.html's getPerPageRate() follows exactly the same
+    // order - both calculations must stay identical, otherwise
+    // the customer sees one amount and is charged another.
     let ratePerPage = pricePerPage;
     if (!_dupRateUsed) {
-      // Ginti = kitne KAGAZ nikal rahe hain (page x copies). 3 page ki
-      // 3 copy = 9 kagaz, isliye 6-10 wali range lagegi. customer.html
-      // ke getSlabPageCount() me bilkul yahi ginti banti hai.
+      // Count = how many SHEETS come out (pages x copies). 3 copies of
+      // 3 pages = 9 sheets, so the 6-10 range applies. customer.html's
+      // getSlabPageCount() computes exactly the same count.
       const _slab = slabPriceFor(job.page_slabs, finalColorMode,
                                  finalPages * effCopies);
       if (_slab !== null && _slab >= 0) ratePerPage = _slab;
@@ -9464,9 +9467,9 @@ app.post('/api/payment/counter', async (req, res) => {
       const rRate = finalColorMode === 'color' ? (parseFloat(job.price_resume_color) || 0) : (parseFloat(job.price_resume_bw) || 0);
       if (rRate > 0) amount = rRate * effCopies;
     } else if (job.service === 'photo4x6') {
-      // 12 ko SABSE UPAR rakha hai. Pehle iska koi branch tha hi nahi,
-      // isliye 12-photo job aakhri fallback (4-photo rate) me gir jaati —
-      // customer ko 12 photo 4 ke daam me mil jaate.
+      // 12 is placed at the VERY TOP. It used to have no branch at all,
+      // so a 12-photo job fell into the last fallback (the 4-photo rate) —
+      // the customer got 12 photos for the price of 4.
       const pRate = job.photo_count === 12 ? (parseFloat(job.price_4x6_12) || 0)
                  : job.photo_count === 10 ? (parseFloat(job.price_4x6_10) || 0)
                  : job.photo_count === 8 ? (parseFloat(job.price_4x6_8) || 0)
@@ -9474,9 +9477,9 @@ app.post('/api/payment/counter', async (req, res) => {
                  : (parseFloat(job.price_4x6_4) || 0);
       if (pRate > 0) amount = pRate * effCopies;
     } else {
-      // Big Size (A3/A2/A1) — owner ka apna per-page rate, set ho tabhi.
-      // Duplex ke saath bhi big-size rate hi jeetta hai: bada kagaz
-      // hi asli lagat hai, duplex uske andar aata hai.
+      // Big Size (A3/A2/A1) — the owner's own per-page rate, only when set.
+      // Even with duplex the big-size rate wins: the large paper
+      // is the real cost, and duplex is included in it.
       const bigRate = bigSizeRate(job, job.paper_size, finalColorMode);
       if (bigRate > 0) amount = bigRate * finalPages * effCopies;
     }
@@ -9488,7 +9491,7 @@ app.post('/api/payment/counter', async (req, res) => {
       ['paid', 'queued', txnId, finalColorMode, effCopies, finalPages, finalSelectedPages.join(','), amount, 'counter', finalDuplex, jobId]
     );
 
-    markShopHasWork(job.shop_id);   // agla poll turant utha lega
+    markShopHasWork(job.shop_id);   // the next poll picks it up immediately
     console.log(`Counter payment: ${jobId} | Rs.${amount} | Pages: ${finalSelectedPages.join(',')}`);
     res.json({ success:true, txnId, amount });
   } catch(err) {
@@ -9498,16 +9501,16 @@ app.post('/api/payment/counter', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// AGENT AUTO-UPDATE — Print Agent khud check karta hai naya version hai ya nahi
+// AGENT AUTO-UPDATE — the Print Agent checks by itself whether there is a new version
 // ═══════════════════════════════════════════════
 
 // ─── VERSION LABEL HELPERS (2.0 → 2.1 → ... → 2.10 → 3.0) ───────────
-// Series rule: minor 0 se 10 tak jaata hai, 2.10 ke baad agla major (3.0).
-// Internal integer counter isse alag hai aur sirf +1 hota rehta hai.
+// Series rule: the minor goes from 0 to 10; after 2.10 comes the next major (3.0).
+// The internal integer counter is separate and only ever goes +1.
 const VERSION_LABEL_RE = /^\d{1,3}\.\d{1,3}$/;
 
 function parseVersionLabel(label) {
-  // "2.10" → [2, 10].  Galat/khaali input par null.
+  // "2.10" → [2, 10].  null for invalid/empty input.
   if (typeof label !== 'string') return null;
   const s = label.trim().replace(/^[vV]\.?/, '');
   if (!VERSION_LABEL_RE.test(s)) return null;
@@ -9517,7 +9520,7 @@ function parseVersionLabel(label) {
 }
 
 function compareVersionLabels(a, b) {
-  // -1 / 0 / 1. String compare use MAT karo: "2.9" > "2.10" aa jaata hai.
+  // -1 / 0 / 1. Do NOT use a string compare: "2.9" would come out greater than "2.10".
   const pa = parseVersionLabel(a), pb = parseVersionLabel(b);
   if (!pa && !pb) return 0;
   if (!pa) return -1;
@@ -9528,7 +9531,7 @@ function compareVersionLabels(a, b) {
 }
 
 function nextVersionLabel(current) {
-  // Pehla push hamesha 2.0 hota hai (V29 ke baad naya scheme yahin se shuru).
+  // The first push is always 2.0 (the new scheme starts here, after V29).
   const p = parseVersionLabel(current);
   if (!p) return '2.0';
   const [maj, min] = p;
@@ -9544,8 +9547,8 @@ async function getAgentVersionInfo() {
   const version = map.agent_version ? parseInt(map.agent_version.value, 10) || 1 : 1;
   const rawLabel = map.agent_version_label ? (map.agent_version_label.value || '') : '';
   const label = parseVersionLabel(rawLabel) ? rawLabel.trim() : '';
-  // "What's in the Update" — super admin push ke waqt likhta hai, shop owner
-  // ko download button ke paas dikhta hai. Khali ho sakta hai (optional).
+  // "What's in the Update" — the super admin writes it at push time; shop owners
+  // see it next to the download button. It can be empty (optional).
   const notes = map.agent_version_notes ? String(map.agent_version_notes.value || '').trim() : '';
   const updatedAt = (map.agent_version_label && map.agent_version_label.updated_at)
     || (map.agent_version && map.agent_version.updated_at) || null;
@@ -9555,28 +9558,28 @@ async function getAgentVersionInfo() {
 app.get('/api/agent/version', async (req, res) => {
   try {
     const info = await getAgentVersionInfo();
-    // `version` purane agents ke liye hai (integer compare) — isko kabhi
-    // hatana mat. `versionLabel` naye agents display ke liye padhte hain.
+    // `version` is for old agents (integer compare) — never
+    // remove it. New agents read `versionLabel` for display.
     res.json({
       version: info.version,
       versionLabel: info.label,
-      // Agar label abhi set nahi hua to agent apna hi label dikhata rahega.
+      // If the label is not set yet, the agent keeps showing its own label.
       displayVersion: info.label || String(info.version),
-      // Shop owner ke panel me "What's in Update" isi se dikhta hai.
-      // Purane agents is field ko ignore kar denge — kuch toota nahi.
+      // The "What's in Update" in the shop owner's panel comes from this.
+      // Old agents ignore this field — nothing breaks.
       notes: info.notes,
       notesUpdatedAt: info.updatedAt
     });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Agent apni system pe installed printers ki list yahan bhejta hai (har
-// startup pe aur har 30 min mein) — taaki dashboard mein owner ko dropdown
-// se sahi printer naam dikh sakein, bina manually type kiye (typo-proof).
+// The agent sends the list of printers installed on its system here (on every
+// startup and every 30 min) — so the owner can pick the correct printer name from
+// a dropdown in the dashboard instead of typing it manually (typo-proof).
 app.post('/api/agent/printers/:shopId', verifyAgent, async (req, res) => {
   try {
     const { printers } = req.body;
-    if (!Array.isArray(printers)) return res.status(400).json({ error: 'printers array chahiye' });
+    if (!Array.isArray(printers)) return res.status(400).json({ error: 'A printers array is required' });
     await pool.query(
       `INSERT INTO system_settings (key, value) VALUES ($1, $2)
        ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`,
@@ -9586,7 +9589,7 @@ app.post('/api/agent/printers/:shopId', verifyAgent, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Dashboard yeh endpoint se agent ki reported printer list fetch karta hai
+// The dashboard fetches the agent's reported printer list from this endpoint
 app.get('/api/admin/printers', verifyToken, async (req, res) => {
   try {
     const r = await pool.query("SELECT value FROM system_settings WHERE key=$1", [`printers_${req.shopId}`]);
@@ -9595,21 +9598,21 @@ app.get('/api/admin/printers', verifyToken, async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Agent yeh endpoint se naya code download karta hai (Shop ID/Server URL khud
-// agent fill karega apni current values se, hum sirf raw template bhejte hain)
+// The agent downloads new code from this endpoint (the agent fills in the Shop ID/Server URL
+// from its own current values; we only send the raw template)
 app.get('/api/agent/download-latest', async (req, res) => {
   try {
     const agentCode = fs.readFileSync(path.join(__dirname, 'agent-template', 'print_agent.py'), 'utf8');
     res.setHeader('Content-Type', 'text/plain');
     res.send(agentCode);
   } catch(err) {
-    res.status(500).json({ error: 'Agent code load nahi hua: ' + err.message });
+    res.status(500).json({ error: 'Could not load the agent code: ' + err.message });
   }
 });
 
-// .exe mode agents ke liye — naya installer .exe seedha bhejte hain (silent
-// install ke liye, .py code download karne ka koi matlab nahi exe mode mein
-// kyunki compiled binary ko replace nahi kar sakte source se)
+// For agents in .exe mode — the new installer .exe is sent directly (for a silent
+// install; downloading .py code makes no sense in exe mode,
+// because a compiled binary cannot be replaced with source)
 app.get('/api/agent/download-latest-exe', async (req, res) => {
   try {
     const r = await pool.query("SELECT value FROM system_settings WHERE key='easy_installer_url'");
@@ -9624,37 +9627,37 @@ app.get('/api/agent/download-latest-exe', async (req, res) => {
 
 app.get('/api/jobs/pending/:shopId', verifyAgent, async (req, res) => {
   try {
-    // Agent heartbeat — dashboard ka Online/Offline indicator isi se chalta hai.
-    // Agent apna version bhi bhejta hai (?v=), taaki superadmin dekh sake kis
-    // shop par kaun sa version chal raha hai.
-    // Heartbeat + shop info EK HI query me (pehle do alag queries thi).
-    // Har agent har 5 second me poll karta hai — ek query kam matlab
-    // roz lakhon round-trip kam, aur utna hi bandwidth bacha.
+    // Agent heartbeat — the dashboard's Online/Offline indicator runs on this.
+    // The agent also sends its version (?v=), so the superadmin can see which
+    // version runs on which shop.
+    // Heartbeat + shop info in ONE query (they used to be two separate queries).
+    // Every agent polls every 5 seconds — one query less means
+    // hundreds of thousands fewer round-trips per day, and that much bandwidth saved.
     const _av = parseInt(req.query.v, 10);
-    // Naye agents apna display label bhi bhejte hain (?vl=2.0). Purane
-    // agents yeh nahi bhejte — tab column ko chhed-chhaad se bachao.
+    // New agents also send their display label (?vl=2.0). Old
+    // agents do not — in that case leave the column untouched.
     const _avl = (typeof req.query.vl === 'string' && VERSION_LABEL_RE.test(req.query.vl.trim()))
       ? req.query.vl.trim() : null;
 
     const _shopId = req.params.shopId;
 
-    // ── HEARTBEAT: DB write nahi, memory me jama karo ──
-    // Pehle har poll par ek UPDATE chalta tha (72 agents x har 5-12 sec).
-    // Ab har 2 min me sabka ek saath batch UPDATE hota hai. Dashboard ka
-    // Online/Offline 5 min ki window dekhta hai, isliye farak nahi padta.
+    // ── HEARTBEAT: no DB write, collect it in memory ──
+    // An UPDATE used to run on every poll (72 agents x every 5-12 sec).
+    // Now everything is written in one batch UPDATE every 2 min. The dashboard's
+    // Online/Offline uses a 5-min window, so it makes no difference.
     pendingHeartbeats.set(_shopId, {
       at: Date.now(),
       version: (Number.isInteger(_av) && _av > 0 && _av < 100000) ? _av : null,
       label: _avl
     });
 
-    // ── FAST PATH 1: khatam ho chuka demo ──
+    // ── FAST PATH 1: an expired demo ──
     if (expiredDemoShops.has(_shopId)) {
       return res.json({ jobs: [], demo_expired: true });
     }
 
-    // ── FAST PATH 2: is shop ka koi kaam hi nahi ──
-    // YAHI SABSE BADI BACHAT HAI — 99.97% polls yahin khatam, DB chhue bina.
+    // ── FAST PATH 2: this shop has no work at all ──
+    // THIS IS THE BIGGEST SAVING — 99.97% of polls end here, without touching the DB.
     if (!shopsWithWork.has(_shopId)) {
       const info = await getShopInfoCached(_shopId);
       if (info && info.demo &&
@@ -9664,9 +9667,9 @@ app.get('/api/jobs/pending/:shopId', verifyAgent, async (req, res) => {
       }
 
       // ── LONG POLL ──
-      // Agent `?lp=30` bheje to line pakde rakho. PURANA agent ye nahi
-      // bhejta (uska timeout sirf 20 sec hai) — use turant khaali jawab
-      // milta hai, bilkul pehle jaisa.
+      // If the agent sends `?lp=30`, hold the line. An OLD agent does not send
+      // it (its timeout is only 20 sec) — it gets an empty answer
+      // immediately, exactly as before.
       const _lp = Math.min(LP_MAX_SEC, parseInt(req.query.lp, 10) || 0);
       if (_lp > 0) {
         const woke = await waitForWork(_shopId, _lp, req);
@@ -9676,14 +9679,14 @@ app.get('/api/jobs/pending/:shopId', verifyAgent, async (req, res) => {
       }
     }
 
-    // ── Yahan se aage: sach me koi job hai. Ab DB kaam ki hai. ──
+    // ── From here on: there really is a job. Now the DB is needed. ──
     const shopRow = await pool.query(
       'SELECT demo, demo_expires_at FROM shops WHERE id = $1', [_shopId]);
     if (shopRow.rows.length && shopRow.rows[0].demo) {
       const sh = shopRow.rows[0];
-      // Layer 3: ek machine = ek demo PERMANENT. Agent ?m=MachineGuid bhejta
-      // hai; is machine par pehle KISI AUR demo ka record hai to yeh demo
-      // turant expire — naya number/IP kuch kaam nahi aayega.
+      // Layer 3: one machine = one demo PERMANENTLY. The agent sends ?m=MachineGuid;
+      // if this machine already has a record for ANY OTHER demo, this demo
+      // expires immediately — a new number/IP will not help.
       const m = String(req.query.m || '').trim().slice(0, 90);
       if (m) {
         const mc = await pool.query('SELECT shop_id FROM demo_machines WHERE machine_id=$1', [m]);
@@ -9691,21 +9694,21 @@ app.get('/api/jobs/pending/:shopId', verifyAgent, async (req, res) => {
           await pool.query('INSERT INTO demo_machines (machine_id, shop_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [m, req.params.shopId]);
         } else if (mc.rows[0].shop_id !== req.params.shopId) {
           await pool.query('UPDATE shops SET demo_expires_at=NOW() WHERE id=$1', [req.params.shopId]);
-          console.log(`Demo machine-lock: ${req.params.shopId} expired (machine pehle ${mc.rows[0].shop_id} use kar chuki)`);
+          console.log(`Demo machine-lock: ${req.params.shopId} expired (the machine was already used by ${mc.rows[0].shop_id})`);
           return res.json({ jobs: [], demo_expired: true });
         }
       }
       if (isDemoExpired({ demo: true, demo_expires_at: sh.demo_expires_at })) {
-        expiredDemoShops.add(_shopId);   // agla poll DB tak aayega hi nahi
+        expiredDemoShops.add(_shopId);   // the next poll will not even reach the DB
         return res.json({ jobs: [], demo_expired: true });
       }
     }
 
-    // ATOMIC CLAIM: job dete hi status 'printing' ho jata hai. Pehle jobs
-    // 'queued' hi rehte the fetch ke baad — bade PDF ke print ke दौरान agla
-    // poll wahi job dobara utha ke DOUBLE PRINT kar deta tha, aur crashed
-    // agent ka job detect karne ka koi tarika nahi tha. FOR UPDATE SKIP
-    // LOCKED se do parallel polls me bhi ek job do baar claim nahi hota.
+    // ATOMIC CLAIM: as soon as the job is handed out its status becomes 'printing'. Jobs
+    // used to stay 'queued' after the fetch — while a large PDF was printing, the next
+    // poll picked up the same job again and caused a DOUBLE PRINT, and there was no way
+    // to detect the job of a crashed agent. With FOR UPDATE SKIP
+    // LOCKED, even two parallel polls never claim one job twice.
     const r = await pool.query(
       `UPDATE print_jobs j SET status='printing', printing_at=NOW()
        FROM shops s
@@ -9715,14 +9718,14 @@ app.get('/api/jobs/pending/:shopId', verifyAgent, async (req, res) => {
            AND (
                 j2.status='queued'
                 -- ORPHAN RECOVERY:
-                -- Job 'printing' me hai par kaafi der se koi halchal nahi.
-                -- Aisa tab hota hai jab claim to ho gaya par response agent
-                -- tak pahuncha hi nahi (idle ke baad socket mar jaana,
-                -- timeout, ya agent restart). Pehle aisa job kabhi dobara
-                -- nahi milta tha aur 120s baad file delete ho jaati thi —
-                -- customer ka paisa lag jaata, print kabhi nahi nikalta.
-                -- Ek shop par ek hi agent hota hai, isliye dobara dena safe
-                -- hai; agent apni taraf se duplicate print rok leta hai.
+                -- The job is in 'printing' but nothing has happened for quite a while.
+                -- This happens when the claim succeeded but the response never reached
+                -- the agent (the socket died after idling,
+                -- a timeout, or an agent restart). Such a job used to never be handed
+                -- out again, and the file was deleted after 120s —
+                -- the customer paid, but the print never came out.
+                -- A shop has only one agent, so handing it out again is safe;
+                -- the agent itself prevents a duplicate print.
                 OR (j2.status='printing'
                     AND j2.printing_at < NOW() - ($2 || ' seconds')::interval)
                )
@@ -9745,18 +9748,18 @@ app.get('/api/jobs/pending/:shopId', verifyAgent, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// DIRECT CLOUDINARY DOWNLOAD — Render PDF proxy NAHI hai
+// DIRECT CLOUDINARY DOWNLOAD — Render is NOT a PDF proxy
 // ═══════════════════════════════════════════════
-// Architecture (pehle se aisa hi hai, ab authorize bhi hota hai):
+// Architecture (it already worked like this; now it is also authorized):
 //
-//   Customer → Cloudinary        (browser se seedha, /upload/sign)
-//   Render   → sirf metadata     (job id, settings, status)
-//   Agent    → Cloudinary        (PDF seedha, Render se hoke NAHI)
+//   Customer → Cloudinary        (straight from the browser, /upload/sign)
+//   Render   → metadata only     (job id, settings, status)
+//   Agent    → Cloudinary        (the PDF directly, NOT through Render)
 //
-// PDF bytes kabhi Render se nahi guzarte. Ye endpoint sirf AUTHORIZATION
-// deta hai: agent poochta hai "is job ki file kahan hai?", server job ka
-// maalik/paid/claimed status verify karke URL deta hai. Bytes Cloudinary
-// se seedha shop PC par jaate hain.
+// PDF bytes never pass through Render. This endpoint only grants
+// AUTHORIZATION: the agent asks "where is this job's file?", the server verifies
+// the job's owner/paid/claimed status and returns the URL. The bytes go straight from
+// Cloudinary to the shop PC.
 const DOWNLOAD_URL_TTL_SEC = parseInt(process.env.DOWNLOAD_URL_TTL_SEC || '900', 10);
 
 app.get('/api/jobs/:shopId/:jobId/download-url', verifyAgent, async (req, res) => {
@@ -9769,17 +9772,17 @@ app.get('/api/jobs/:shopId/:jobId/download-url', verifyAgent, async (req, res) =
     if (!r.rows.length) return res.status(404).json({ error: 'Job not found' });
     const j = r.rows[0];
 
-    // Doosri shop ka job kabhi mat do
+    // Never hand out another shop's job
     if (j.shop_id !== shopId) {
       await logSecurityEvent({ ip: clientIp(req), shopId, endpoint: '/download-url', method: 'GET',
         action: 'FILE_ACCESS', reason: 'WRONG_SHOP:' + jobId, userAgent: req.headers['user-agent'] });
       return res.status(403).json({ error: 'This job does not belong to this shop' });
     }
-    // Bina payment ke file kabhi nahi
+    // Never a file without payment
     if (j.payment_status !== 'paid') {
       return res.status(403).json({ error: 'Job is not paid yet' });
     }
-    // Sirf claimed job ('printing') — printed/failed job dobara download na ho
+    // Only a claimed job ('printing') — a printed/failed job must not be downloaded again
     if (j.status !== 'printing') {
       return res.status(409).json({ error: `Job is not claimed (status: ${j.status})`, status: j.status });
     }
@@ -9789,7 +9792,7 @@ app.get('/api/jobs/:shopId/:jobId/download-url', verifyAgent, async (req, res) =
 
     res.json({
       jobId: j.id,
-      downloadUrl: j.file_url,          // Cloudinary ka seedha URL
+      downloadUrl: j.file_url,          // the direct Cloudinary URL
       fileType: j.file_type || 'pdf',
       expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_SEC * 1000).toISOString()
     });
@@ -9799,17 +9802,17 @@ app.get('/api/jobs/:shopId/:jobId/download-url', verifyAgent, async (req, res) =
 // ═══════════════════════════════════════════════
 // DEMO → PAID SHOP CONVERSION
 // ═══════════════════════════════════════════════
-// Ye purely BACKEND-controlled hai. Client sirf DEMO_xxx ko SHOP_xxx se
-// badal kar apne aap paid nahi ban sakta — server har cheez verify karta
-// hai aur agent ka token bhi wahi transfer karta hai.
+// This is purely BACKEND-controlled. A client cannot become paid just by
+// swapping DEMO_xxx for SHOP_xxx — the server verifies everything
+// and transfers the agent token itself.
 //
-// Sabse badi security baat: sirf Shop ID kaafi NAHI hai.
-// Shop ID customer ke QR/poster par chhapa hota hai — dusre ki shop ka ID
-// dekh kar koi bhi uski shop apne PC se hijack kar leta. Isliye conversion
-// ke liye us paid shop ka PASSWORD bhi maangte hain (wahi jo shop owner
-// dashboard login me use karta hai).
+// The most important security point: the Shop ID alone is NOT enough.
+// The Shop ID is printed on the customer QR/poster — by looking at another shop's ID
+// anyone could hijack that shop from their own PC. So the conversion
+// also requires the PASSWORD of that paid shop (the same one the shop owner
+// uses to log in to the dashboard).
 
-/** Paid Shop ID + password verify karo — abhi kuch badla nahi jaata. */
+/** Verify the paid Shop ID + password — nothing is changed yet. */
 app.post('/api/agent/verify-paid-shop', verifyAgent, async (req, res) => {
   const ip = clientIp(req);
   try {
@@ -9821,7 +9824,7 @@ app.post('/api/agent/verify-paid-shop', verifyAgent, async (req, res) => {
     if (!paidShopId) return res.status(400).json({ error: 'Please enter your paid Shop ID' });
     if (!password)   return res.status(400).json({ error: 'Please enter your shop password' });
 
-    // Brute force guard — Shop ID public hai, password guessing rokna zaroori
+    // Brute force guard — the Shop ID is public, so password guessing must be stopped
     const blocked = isBlocked('convert:' + ip);
     if (blocked) {
       return res.status(429).json({ error: `Too many attempts. Please try again in ${blocked} minute(s).` });
@@ -9842,7 +9845,7 @@ app.post('/api/agent/verify-paid-shop', verifyAgent, async (req, res) => {
       _convertFail(ip, paidShopId, 'BAD_PASSWORD');
       return res.status(403).json({ error: 'Shop ID or password is incorrect.' });
     }
-    // Password sahi — attempts reset
+    // Password correct — reset the attempts
     convertAttempts.delete(ip);
 
     if (shop.demo) {
@@ -9855,8 +9858,8 @@ app.post('/api/agent/verify-paid-shop', verifyAgent, async (req, res) => {
       return res.status(400).json({ error: 'This is already the shop you are using.' });
     }
 
-    // Ek short-lived ticket — actual switch isi ke saath hoga, taaki
-    // password dobara na bhejna pade aur switch call ko replay na kiya ja sake.
+    // A short-lived ticket — the actual switch happens with it, so the
+    // password does not have to be sent again and the switch call cannot be replayed.
     const ticket = jwt.sign(
       { demoShopId, paidShopId, act: 'demo-convert' }, JWT_SECRET, { expiresIn: '10m' });
 
@@ -9865,7 +9868,7 @@ app.post('/api/agent/verify-paid-shop', verifyAgent, async (req, res) => {
       success: true, ticket,
       shopId: shop.id, shopName: shop.name,
       planType: shop.plan_type || 'monthly',
-      alreadyLinked: !!shop.agent_token   // us shop par pehle se koi PC juda hai
+      alreadyLinked: !!shop.agent_token   // a PC is already bound to that shop
     });
   } catch(err) {
     console.error('verify-paid-shop error:', err.message);
@@ -9873,7 +9876,7 @@ app.post('/api/agent/verify-paid-shop', verifyAgent, async (req, res) => {
   }
 });
 
-// Password guessing par escalating temporary block (permanent ban kabhi nahi)
+// An escalating temporary block on password guessing (never a permanent ban)
 const convertAttempts = new Map();
 function _convertFail(ip, shopId, reason) {
   const n = (convertAttempts.get(ip) || 0) + 1;
@@ -9883,15 +9886,15 @@ function _convertFail(ip, shopId, reason) {
                      action: 'DEMO_CONVERT', reason, uploadCount: n });
 }
 
-/** Ticket ke saath actual switch. Agent token demo se paid shop par move hota hai. */
+/** The actual switch, with the ticket. The agent token moves from the demo to the paid shop. */
 app.post('/api/agent/convert-to-paid', verifyAgent, async (req, res) => {
   const client = await pool.connect();
   try {
-    // Pehle yahan `req.params.shopId` tha -- par is route me koi :shopId
-    // param hai hi nahi, to ye HAMESHA khaali aata tha aur neeche wala
-    // check hamesha fail hota tha ("Verification does not match this
-    // installation"). verifyAgent ab shopId nikaal kar req.agentShopId
-    // me rakh deta hai (params / body / ticket -- jo mile).
+    // This used to read `req.params.shopId` -- but this route has no :shopId
+    // param at all, so it was ALWAYS empty and the check below
+    // always failed ("Verification does not match this
+    // installation"). verifyAgent now extracts the shopId and puts it in
+    // req.agentShopId (from params / body / ticket -- whichever is present).
     const demoShopId = String(req.agentShopId || req.params.shopId || '').trim();
     let payload;
     try {
@@ -9913,21 +9916,21 @@ app.post('/api/agent/convert-to-paid', verifyAgent, async (req, res) => {
       return res.status(403).json({ error: 'This shop can no longer be linked. Please contact support.' });
     }
 
-    // Agent token demo shop se hata kar paid shop par lagao — isi se ye PC
-    // paid shop ka authorized agent ban jaata hai.
+    // Move the agent token from the demo shop to the paid shop — this is what makes this PC
+    // the authorized agent of the paid shop.
     const sentToken = agentTokenFromReq(req);
     if (sentToken && /^[A-Za-z0-9_-]{16,64}$/.test(sentToken)) {
       await client.query('UPDATE shops SET agent_token=$2 WHERE id=$1', [paidShopId, sentToken]);
       await client.query('UPDATE shops SET agent_token=NULL WHERE id=$1', [demoShopId]);
-      invalidateAgentToken(demoShopId);   // cache saaf — warna disconnect ka asar nahi hoga
+      invalidateAgentToken(demoShopId);   // clear the cache — otherwise the disconnect has no effect
     }
 
-    // Demo ko abhi khatam kar do — wo PC ab paid shop chala raha hai
+    // End the demo right now — that PC now runs the paid shop
     await client.query(
       "UPDATE shops SET demo_expires_at = NOW() WHERE id=$1 AND demo=true", [demoShopId]);
 
-    // Demo ke bache hue queued jobs cancel — warna purane demo jobs
-    // naye paid shop ke printer par nikal sakte hain
+    // Cancel the demo's remaining queued jobs — otherwise old demo jobs
+    // could come out on the new paid shop's printer
     const cancelled = await client.query(
       `UPDATE print_jobs SET status='cancelled',
               failure_reason='Demo converted to paid shop'
@@ -9954,16 +9957,16 @@ app.post('/api/agent/convert-to-paid', verifyAgent, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// SHOP ID CLAIM — ek Shop ID sirf EK PC par
+// SHOP ID CLAIM — one Shop ID on only ONE PC
 // ═══════════════════════════════════════════════
-// Pehle agent Shop ID verify karne ke liye /api/shop/:id call karta tha.
-// Wo PUBLIC endpoint hai (customer bhi use karta hai) — use pata hi nahi
-// hota ki kaunsa PC hai. Isliye koi bhi QR poster se Shop ID padh kar
-// apne PC me daal deta aur "verified" ho jaata.
+// The agent used to call /api/shop/:id to verify the Shop ID.
+// That is a PUBLIC endpoint (customers use it too) — it has no idea
+// which PC is calling. So anyone could read a Shop ID from a QR poster,
+// put it into their own PC, and get "verified".
 //
-// Job polling to pehle se protected thi (galat token = 403), par user ko
-// wo error baad me ajeeb tarike se dikhta tha. Ab shuru me hi saaf mana
-// kar dete hain.
+// Job polling was already protected (wrong token = 403), but the user saw
+// that error later in a confusing way. Now it is refused clearly right
+// at the start.
 app.post('/api/agent/claim/:shopId', async (req, res) => {
   try {
     const shopId = String(req.params.shopId || '').trim().toUpperCase();
@@ -9982,7 +9985,7 @@ app.post('/api/agent/claim/:shopId', async (req, res) => {
       return res.status(400).json({ error: 'Please install the latest Echel print agent.' });
     }
 
-    // Pehle se isi PC par juda hai — dobara install/kholne par sab theek
+    // Already bound to this PC — reinstalling/reopening is fine
     if (shop.agent_token && shop.agent_token === sent) {
       await pool.query(
         'UPDATE shops SET agent_machine=COALESCE(NULLIF($2,\'\'), agent_machine) WHERE id=$1',
@@ -9990,7 +9993,7 @@ app.post('/api/agent/claim/:shopId', async (req, res) => {
       return res.json({ success: true, shopId: shop.id, shopName: shop.name, rebound: false });
     }
 
-    // Kisi DOOSRE PC par juda hua hai — mana kar do
+    // Bound to ANOTHER PC — refuse
     if (shop.agent_token && shop.agent_token !== sent) {
       await logSecurityEvent({
         ip: clientIp(req), shopId, endpoint: '/api/agent/claim', method: 'POST',
@@ -10007,7 +10010,7 @@ app.post('/api/agent/claim/:shopId', async (req, res) => {
       });
     }
 
-    // Khaali hai — ye PC bind ho jaye
+    // It is free — bind this PC
     await pool.query(
       'UPDATE shops SET agent_token=$2, agent_machine=$3, agent_bound_at=NOW() WHERE id=$1 AND agent_token IS NULL',
       [shopId, sent, machine || null]);
@@ -10019,22 +10022,22 @@ app.post('/api/agent/claim/:shopId', async (req, res) => {
   }
 });
 
-// Superadmin kisi bhi shop ka PC hata sakta hai — shop owner ka computer
-// achanak kharab ho jaye to wo aapko call karke turant naya PC laga sake.
-// Demo aur paid dono par chalta hai.
+// The superadmin can remove any shop's PC — if a shop owner's computer
+// suddenly breaks, they can call you and set up a new PC right away.
+// Works for both demo and paid shops.
 // ══════════════════════════════════════════════════════════════
-//  UNBLOCK — abuse-block hata do (server restart ki zaroorat nahi)
-//  Block in-memory Maps me rehta hai, DB me nahi. Pehle ise hatane ka
-//  EK HI tarika tha: poora Render restart — jo baaki sab shops ka print
-//  bhi kuch second rok deta tha.
+//  UNBLOCK — remove an abuse block (no server restart needed)
+//  Blocks live in in-memory Maps, not in the DB. There used to be ONLY ONE
+//  way to remove one: a full Render restart — which also paused printing for
+//  every other shop for a few seconds.
 // ══════════════════════════════════════════════════════════════
 app.post('/api/superadmin/shop/:shopId/unblock', verifySuperAdmin, async (req, res) => {
   try {
     const shopId = req.params.shopId;
     const wasBlocked = isBlocked('shop:' + shopId);
     abuseBlocks.delete('shop:' + shopId);
-    uploadHits.delete(shopId);          // quota ginti bhi zero
-    console.log(`Unblocked by superadmin: ${shopId} (pehle ${wasBlocked} min baaki the)`);
+    uploadHits.delete(shopId);          // the quota count goes to zero too
+    console.log(`Unblocked by superadmin: ${shopId} (${wasBlocked} min were left)`);
     res.json({ success: true, shopId, wasBlockedMinutes: wasBlocked });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -10045,54 +10048,54 @@ app.post('/api/superadmin/shop/:shopId/agent-disconnect', verifySuperAdmin, asyn
       `UPDATE shops SET agent_token=NULL, agent_machine=NULL, agent_bound_at=NULL
         WHERE id=$1 RETURNING id, name, agent_machine`, [req.params.shopId]);
     if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
-    invalidateAgentToken(req.params.shopId);   // cache saaf — warna disconnect ka asar nahi
+    invalidateAgentToken(req.params.shopId);   // clear the cache — otherwise the disconnect has no effect
     console.log(`Agent disconnected by SUPERADMIN: ${req.params.shopId} (${r.rows[0].name})`);
     res.json({ success: true, shopId: r.rows[0].id, wasOn: r.rows[0].agent_machine || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Shop owner apna PC hata sakta hai (naya computer, Windows reinstall)
+// A shop owner can remove their own PC (new computer, Windows reinstall)
 app.post('/api/admin/agent/disconnect', verifyToken, async (req, res) => {
   try {
     const r = await pool.query(
       `UPDATE shops SET agent_token=NULL, agent_machine=NULL, agent_bound_at=NULL
         WHERE id=$1 RETURNING id, agent_machine`, [req.shopId]);
     if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
-    invalidateAgentToken(req.shopId);   // cache saaf — warna disconnect ka asar nahi
+    invalidateAgentToken(req.shopId);   // clear the cache — otherwise the disconnect has no effect
     console.log(`Agent disconnected by shop owner: ${req.shopId}`);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ─── DESKTOP PANEL SESSION ───────────────────────────────────────
-// Desktop panel ko shop settings/pricing/payment sab dikhane hain. Wahi
-// business logic dobara likhne ke bajaye, agent apne agent_token ko ek
-// SHORT-LIVED admin session token se exchange karta hai aur wahi existing
-// admin APIs call karta hai jo website ka dashboard call karta hai.
-// Zero duplicate logic, zero naya database.
+// The desktop panel has to show the shop settings/pricing/payment. Instead of
+// re-implementing that business logic, the agent exchanges its agent_token for a
+// SHORT-LIVED admin session token and calls the same existing
+// admin APIs that the website dashboard calls.
+// Zero duplicated logic, zero new database.
 app.post('/api/jobs/:shopId/panel-session', verifyAgent, async (req, res) => {
   try {
     const shopId = req.params.shopId;
     const r = await pool.query('SELECT id, name, demo, demo_expires_at FROM shops WHERE id=$1', [shopId]);
     if (!r.rows.length) return res.status(404).json({ error: 'Shop not found' });
 
-    // 2 ghante — panel khula reh sakta hai, par token hamesha ke liye valid nahi.
+    // 2 hours — the panel may stay open, but the token is not valid forever.
     const token = jwt.sign({ shopId, via: 'agent-panel' }, JWT_SECRET, { expiresIn: '2h' });
     res.json({
       token,
       expiresInSec: 7200,
       shopId,
       shopName: r.rows[0].name,
-      // shop_type backend se aata hai — client sirf DEMO_ prefix dekh kar
-      // decide na kare (spec: backend is the source of truth)
+      // shop_type comes from the backend — the client must not decide just by looking
+      // at the DEMO_ prefix (spec: backend is the source of truth)
       shopType: r.rows[0].demo ? 'demo' : 'paid',
       demoExpiresAt: r.rows[0].demo_expires_at
     });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// Agent bolta hai "download ho gaya" — sirf metadata, koi file nahi.
-// Isse admin panel me pata chalta hai ki file shop PC tak pahunchi ya nahi.
+// The agent reports "downloaded" — metadata only, no file.
+// This lets the admin panel know whether the file reached the shop PC.
 app.post('/api/jobs/:shopId/:jobId/downloaded', verifyAgent, async (req, res) => {
   try {
     const { shopId, jobId } = req.params;
@@ -10121,11 +10124,11 @@ app.get('/api/shop/:shopId/agent-status', async (req, res) => {
     const row = r.rows[0];
     const last = row.agent_last_seen;
     const secondsAgo = last ? Math.round((Date.now() - new Date(last).getTime()) / 1000) : null;
-    // `installed` = agent kabhi bhi is shop se juda tha kya. Ye sthir cheez
-    // hai — PC band ho ya net gaya ho, tab bhi badalti nahi. Panel ka chip
-    // isi par chalta hai, taaki owner ko har 10 second par status badalta
-    // hua na dikhe. online/seconds_ago waise ke waise hain (purana code
-    // aur agent dono inhe abhi bhi padhte hain).
+    // `installed` = whether an agent was ever bound to this shop. This is a stable
+    // fact — it does not change when the PC is off or the network drops. The panel's chip
+    // runs on it, so the owner does not see the status flipping every
+    // 10 seconds. online/seconds_ago are unchanged (old code
+    // and the agent both still read them).
     const installed = !!(row.agent_bound_at || row.agent_version || last);
     res.json({
       installed,
@@ -10138,10 +10141,10 @@ app.get('/api/shop/:shopId/agent-status', async (req, res) => {
 
 app.post('/api/jobs/complete/:jobId', async (req, res) => {
   try {
-    // Sirf active job hi 'printed' ban sakta hai. Late/duplicate report par
-    // (job pehle hi printed/failed) chupchaap success — agent retry karta
-    // hai, use error nahi chahiye. Requeued ('queued') job ka late complete
-    // aana ACHHA hai — matlab print asal me ho chuka tha, dubara nahi hoga.
+    // Only an active job can become 'printed'. On a late/duplicate report
+    // (the job is already printed/failed) quietly return success — the agent retries
+    // and does not want an error. A late complete for a requeued ('queued') job
+    // is GOOD — it means the print actually happened and will not happen again.
     const result = await pool.query(
       `UPDATE print_jobs SET status=$1, printed_at=NOW()
        WHERE id=$2 AND status NOT IN ('printed','failed','abandoned')
@@ -10167,8 +10170,8 @@ app.post('/api/jobs/failed/:jobId', async (req, res) => {
        RETURNING file_public_id`,
       ['failed', reason.slice(0, 200), req.params.jobId]);
     if (!result.rows.length) return res.json({ success: true, already: true });
-    // Deny/fail par bhi customer ki file Cloudinary se saaf — warna orphan
-    // files jama hoti rehti (privacy + storage dono)
+    // On deny/fail too the customer's file is cleaned from Cloudinary — otherwise orphan
+    // files would keep piling up (both privacy + storage)
     if (result.rows.length && result.rows[0].file_public_id) {
       await deleteFromCloudinary(result.rows[0].file_public_id);
       await pool.query('UPDATE print_jobs SET file_deleted=true WHERE id=$1', [req.params.jobId]);
@@ -10186,22 +10189,22 @@ app.get('/api/jobs/status/:jobId', async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Setup ke baad Print Agent Package Download ───
-// Sirf paid (setup_paid=true) shops ke liye kaam karta hai
-// ─── EASY INSTALLER (.exe) — Non-technical shop owners ke liye ───
-// Yeh single .exe deta hai jisme Python + SumatraPDF + Agent sab bundled hain.
-// Shop ID ko exe ke saath ek chhoti config file (shop_config.txt) mein bhejte
-// hain jise installer khud padh ke print_agent ko configure kar dega.
+// ─── Print Agent Package Download after setup ───
+// Works only for paid (setup_paid=true) shops
+// ─── EASY INSTALLER (.exe) — for non-technical shop owners ───
+// This delivers a single .exe with Python + SumatraPDF + the Agent all bundled.
+// The Shop ID is sent next to the exe in a small config file (shop_config.txt),
+// which the installer reads to configure print_agent itself.
 app.get('/api/download/easy-installer/:shopId', async (req, res) => {
   try {
     const shopId = req.params.shopId;
     const r = await pool.query('SELECT id, setup_paid FROM shops WHERE id=$1', [shopId]);
     if (!r.rows.length) return res.status(404).send('Shop not found');
-    if (!r.rows[0].setup_paid) return res.status(403).send('Setup fee pehle complete karo');
+    if (!r.rows[0].setup_paid) return res.status(403).send('Complete the setup fee payment first');
 
     const urlResult = await pool.query("SELECT value FROM system_settings WHERE key='easy_installer_url'");
     if (!urlResult.rows.length || !urlResult.rows[0].value) {
-      return res.status(404).send('Easy Installer abhi available nahi hai. ZIP wala (Python+INSTALL.bat) version use karo neeche se, ya thodi der baad try karo.');
+      return res.status(404).send('The Easy Installer is not available right now. Use the ZIP version (Python+INSTALL.bat) below, or try again a little later.');
     }
 
     res.redirect(urlResult.rows[0].value);
@@ -10215,13 +10218,13 @@ app.get('/api/download/agent-package/:shopId', async (req, res) => {
     const shopId = req.params.shopId;
     const r = await pool.query('SELECT id, name, setup_paid FROM shops WHERE id=$1', [shopId]);
     if (!r.rows.length) return res.status(404).send('Shop not found');
-    if (!r.rows[0].setup_paid) return res.status(403).send('Setup fee pehle complete karo');
+    if (!r.rows[0].setup_paid) return res.status(403).send('Complete the setup fee payment first');
 
     const shopName = r.rows[0].name;
 
-    // print_agent.py template padhke us mein Shop ID fill karo
+    // Read the print_agent.py template and fill in the Shop ID
     let agentCode = fs.readFileSync(path.join(__dirname, 'agent-template', 'print_agent.py'), 'utf8');
-    agentCode = agentCode.replace('AAPKA_SHOP_ID', shopId);
+    agentCode = agentCode.replace('YOUR_SHOP_ID', shopId);
     agentCode = agentCode.replace(
       'SERVER_URL         = "https://echel.in"',
       `SERVER_URL         = "${BASE_URL}"`
@@ -10262,7 +10265,7 @@ Support: ${BASE_URL}/contact
     archive.append(readme, { name: 'README.txt' });
     archive.append(JSON.stringify({ serverUrl: BASE_URL }), { name: 'echel-server.json' });
 
-    // QR code image bhi add karo (base64 se PNG banake)
+    // Add the QR code image too (a PNG built from base64)
     const qrResult = await pool.query('SELECT qr_code FROM shops WHERE id=$1', [shopId]);
     if (qrResult.rows.length && qrResult.rows[0].qr_code) {
       const base64Data = qrResult.rows[0].qr_code.replace(/^data:image\/png;base64,/, '');
@@ -10272,14 +10275,14 @@ Support: ${BASE_URL}/contact
     archive.finalize();
   } catch(err) {
     console.error('Download package error:', err.message);
-    res.status(500).send('Package banane mein error: ' + err.message);
+    res.status(500).send('Error while building the package: ' + err.message);
   }
 });
 
 
 
 // ═══════════════════════════════════════════════
-// SUPER ADMIN APIs — Rupesh ka khud ka panel, sab shops dekhne ke liye
+// SUPER ADMIN APIs — the platform owner's own panel, to see all shops
 // ═══════════════════════════════════════════════
 
 function verifySuperAdmin(req, res, next) {
@@ -10299,29 +10302,29 @@ function verifySuperAdmin(req, res, next) {
 
 app.post('/api/superadmin/login', loginLimiter, async (req, res) => {
   try {
-    // Captcha — band ho to ye line chup-chaap nikal jaati hai
+    // Captcha — when it is disabled, this line passes through silently
     if (!(await captchaGuard(req, res))) return;
     if (!SUPER_ADMIN_ID || !SUPER_ADMIN_PASSWORD) {
-      return res.status(500).json({ error: 'Super Admin abhi configure nahi hua hai. Render environment variables check karo.' });
+      return res.status(500).json({ error: 'Super Admin is not configured yet. Check the Render environment variables.' });
     }
     const { adminId, password } = req.body;
     if (adminId !== SUPER_ADMIN_ID || password !== SUPER_ADMIN_PASSWORD) {
-      return res.status(401).json({ error: 'ID ya Password galat hai' });
+      return res.status(401).json({ error: 'Wrong ID or password' });
     }
     const token = jwt.sign({ role: 'super_admin', adminId }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ success: true, token });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ═══ ADMIN BROADCAST (superadmin → sabhi shops ko dikhne wala message) ═══
-// Superadmin ek message likhta hai, wo har shop ke Overview par dikhta hai.
-// system_settings (key/value) table reuse — koi nayi table nahi.
+// ═══ ADMIN BROADCAST (a message from the superadmin shown to all shops) ═══
+// The superadmin writes a message and it appears on every shop's Overview.
+// Reuses the system_settings (key/value) table — no new table.
 
-// Shop panel isse fetch karta hai (public, token nahi chahiye)
+// The shop panel fetches this (public, no token needed)
 app.get('/api/admin-broadcast', async (req, res) => {
   try {
-    // White-label ki shop ko RESELLER ka message dikhega, hamara nahi —
-    // warna do alag brand ke message ek hi dashboard me mix ho jaate.
+    // A white-label shop sees the RESELLER's message, not ours —
+    // otherwise messages from two different brands would mix on one dashboard.
     const shopId = String(req.query.shopId || '').trim();
     if (shopId) {
       const s = await pool.query('SELECT whitelabel_id FROM shops WHERE id=$1', [shopId]);
@@ -10336,7 +10339,7 @@ app.get('/api/admin-broadcast', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Superadmin isse save karta hai (khali bhejo to message hat jayega)
+// The superadmin saves it here (send it empty to remove the message)
 app.post('/api/superadmin/admin-broadcast', verifySuperAdmin, async (req, res) => {
   try {
     const message = (req.body && typeof req.body.message === 'string') ? req.body.message.trim().slice(0, 500) : '';
@@ -10349,12 +10352,12 @@ app.post('/api/superadmin/admin-broadcast', verifySuperAdmin, async (req, res) =
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ═══ QR REGENERATE (sabhi shops ke QR current BASE_URL se naye banao) ═══
-// Kyun: purane QR tab bane the jab BASE_URL onrender.com tha — us image ke
-// andar purana URL encode hai. Ye route har shop ka QR dobara banata hai
-// current BASE_URL se. Jinke QR pehle se sahi (echel.in) hain, unka
-// naya QR bilkul same banega — koi nuksaan nahi. Jinke purane onrender
-// wale hain, wo sahi ho jayenge.
+// ═══ QR REGENERATE (rebuild every shop's QR from the current BASE_URL) ═══
+// Why: the old QR codes were made when BASE_URL was onrender.com — the old URL is
+// encoded inside that image. This route rebuilds every shop's QR
+// from the current BASE_URL. For shops whose QR is already correct (echel.in) the
+// new QR comes out exactly the same — no harm. The old onrender
+// ones get corrected.
 app.post('/api/superadmin/regenerate-qrs', verifySuperAdmin, async (req, res) => {
   try {
     const shops = await pool.query('SELECT id FROM shops');
@@ -10374,11 +10377,11 @@ app.post('/api/superadmin/regenerate-qrs', verifySuperAdmin, async (req, res) =>
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Superadmin -> shop agent notification (counter-popup jaisa)
+// Superadmin -> shop agent notification (like the counter popup)
 app.post('/api/superadmin/notify-shop', verifySuperAdmin, async (req, res) => {
   try {
     const { shop_id, message } = req.body || {};
-    if (!shop_id) return res.status(400).json({ error: 'shop_id chahiye' });
+    if (!shop_id) return res.status(400).json({ error: 'shop_id is required' });
     await pool.query(
       `INSERT INTO system_settings (key, value) VALUES ($1, $2)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -10386,7 +10389,7 @@ app.post('/api/superadmin/notify-shop', verifySuperAdmin, async (req, res) => {
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// Agent isse poll ke saath uthata hai, dikha ke ack karta hai
+// The agent picks this up with its poll, shows it and acknowledges it
 app.get('/api/agent/notification/:shopId', async (req, res) => {
   try {
     const r = await pool.query("SELECT value FROM system_settings WHERE key=$1", ['notify_' + req.params.shopId]);
@@ -10402,14 +10405,14 @@ app.post('/api/agent/notification-ack/:shopId', async (req, res) => {
 
 app.get('/api/superadmin/overview', verifySuperAdmin, async (req, res) => {
   try {
-    // Overview ab sirf shop ki ginti dikhata hai — paisa Analytics me hai,
-    // do jagah same number rakhne se confusion hota hai.
-    // AHEM: white-label ki shops HAMARI shops nahi hain — wo reseller ki
-    // hain aur unka setup fee seedha reseller ke Razorpay me jaata hai.
-    // Pehle ye 'pending' me gin li jaati thi (setup_paid=false hone ki
-    // wajah se) jabki Shops list unhe dikhati hi nahi thi — isliye
-    // "Pending 5" dikhta tha par list khali rehti thi.
-    // Ab har jagah ek hi niyam: WL = alag, apne tab me.
+    // The Overview now shows only shop counts — the money lives in Analytics;
+    // keeping the same number in two places causes confusion.
+    // NOTE: white-label shops are NOT OUR shops — they belong to the reseller
+    // and their setup fee goes straight to the reseller's Razorpay.
+    // They used to be counted as 'pending' (because setup_paid=false)
+    // while the Shops list did not show them at all — which is why it showed
+    // "Pending 5" while the list was empty.
+    // Now the same rule applies everywhere: WL = separate, in its own tab.
     const WL = `COALESCE(whitelabel_id,'') = ''`;
     const shopCount = await pool.query(`
       SELECT
@@ -10424,23 +10427,23 @@ app.get('/api/superadmin/overview', verifySuperAdmin, async (req, res) => {
         COUNT(*) FILTER (WHERE COALESCE(whitelabel_id,'') <> '')::int AS whitelabel_shops
       FROM shops`);
 
-    // Revenue: sirf WO paisa jo HUMARE account me aaya.
-    // White-label shops ka setup fee reseller ka hai — isliye total me nahi.
+    // Revenue: only the money that reached OUR account.
+    // The setup fee of white-label shops belongs to the reseller — so it is not in the total.
     const earnings = await pool.query(`
       SELECT
         COALESCE(SUM(setup_amount) FILTER (WHERE setup_paid AND ${WL}), 0)::int as total_setup_revenue,
         COUNT(*) FILTER (WHERE setup_paid AND ${WL})::int as paid_shops
       FROM shops
     `);
-    // Advanced unlock + renewal + WL license — ab ledger se aata hai
+    // Advanced unlock + renewal + WL license — now comes from the ledger
     const ledger = await pool.query(`
       SELECT kind, COALESCE(SUM(amount),0)::int AS amt, COUNT(*)::int AS cnt
       FROM platform_payments GROUP BY kind`);
     const byKind = {};
     ledger.rows.forEach(r => { byKind[r.kind] = { amount: r.amt, count: r.cnt }; });
 
-    // Print volume = shop owner ka customer se aaya paisa. Ye HUMARI
-    // kamai nahi hai — isliye alag field me jaata hai, total me nahi.
+    // Print volume = the money shop owners received from customers. That is NOT
+    // OUR earnings — so it goes into a separate field, not the total.
     const printEarnings = await pool.query(
       `SELECT COALESCE(SUM(amount),0) as total FROM print_jobs WHERE ${JOB_COUNTS}`);
 
@@ -10466,11 +10469,11 @@ app.get('/api/superadmin/overview', verifySuperAdmin, async (req, res) => {
 
 app.get('/api/superadmin/shops', verifySuperAdmin, async (req, res) => {
   try {
-    // whitelabel_id ab zaroori hai — UI ko pata hona chahiye kaun si shop
-    // reseller ki hai (wo alag tab me jaati hai, Active me nahi).
-    // onboarded_by_name se agent ka naam list me hi dikh jaata hai, taaki
-    // agent wali shop ko chhupana na pade (pehle chhupti thi — isi wajah
-    // se uska payment superadmin me kabhi dikhta hi nahi tha).
+    // whitelabel_id is now required — the UI needs to know which shop belongs to a
+    // reseller (it goes to a separate tab, not Active).
+    // With onboarded_by_name the agent's name shows right in the list, so
+    // an agent's shop no longer has to be hidden (it used to be hidden — which
+    // is why its payment never showed up in superadmin).
     const r = await pool.query(`
       SELECT s.id, s.name, s.address, s.phone, s.printer_model, s.price_bw, s.price_color,
              s.payment_mode, s.payment_gateway, s.setup_paid, s.setup_amount, s.created_at,
@@ -10478,12 +10481,12 @@ app.get('/api/superadmin/shops', verifySuperAdmin, async (req, res) => {
              EXTRACT(EPOCH FROM (NOW() - s.agent_last_seen))::int AS agent_seconds_ago,
              s.agent_version, s.agent_version_label, s.onboarded_by,
              s.agent_machine, (s.agent_token IS NOT NULL) AS agent_bound,
-             -- owned_features YAHAN NAHI THA - aur superadmin.html ka
-             -- saShopHasScan() isi par tika hai. Iske bina wo hamesha
-             -- undefined padhta tha, yaani HAR non-premium shop
-             -- "Scanner OFF" dikhti thi - chahe usne 49 rupaye diye hon.
-             -- Isi wajah se pata hi nahi chalta tha kiske paas Smart
-             -- Scanner hai, aur "wapas lo" wala button kabhi aata hi nahi tha.
+             -- owned_features WAS NOT HERE - and superadmin.html's
+             -- saShopHasScan() depends on it. Without it, it always
+             -- read undefined, so EVERY non-premium shop
+             -- showed "Scanner OFF" - even if it had paid 49 rupees.
+             -- That is why there was no way to tell who had the Smart
+             -- Scanner, and the "take back" button never appeared.
              COALESCE(s.owned_features,'{}'::text[]) AS owned_features,
              s.adv_scan_active,
              COALESCE(s.whitelabel_id,'') AS whitelabel_id,
@@ -10499,9 +10502,9 @@ app.get('/api/superadmin/shops', verifySuperAdmin, async (req, res) => {
 });
 
 // ─── Superadmin: PAYMENTS LEDGER ───
-// Har payment jo hamare account me aayi. Pehle sirf setup fee ka flag tha
-// aur advanced/renewal ka koi record hi nahi banta tha.
-// ?kind=setup|advanced|renewal|wl_license se filter, ?q= se search.
+// Every payment that reached our account. There used to be only the setup fee flag
+// and no record at all was created for advanced/renewal.
+// Filter with ?kind=setup|advanced|renewal|wl_license, search with ?q=.
 app.get('/api/superadmin/payments', verifySuperAdmin, async (req, res) => {
   try {
     const kind = String(req.query.kind || '').trim();
@@ -10521,8 +10524,8 @@ app.get('/api/superadmin/payments', verifySuperAdmin, async (req, res) => {
        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
        ORDER BY created_at DESC LIMIT $${args.length}`, args);
 
-    // Totals: white-label shop ka setup fee reseller ka paisa hai —
-    // isliye "hamara" total usko chhod kar banta hai.
+    // Totals: a white-label shop's setup fee is the reseller's money —
+    // so "our" total is calculated without it.
     const tot = await pool.query(`
       SELECT
         COALESCE(SUM(amount),0)::int AS all_amount,
@@ -10533,8 +10536,8 @@ app.get('/api/superadmin/payments', verifySuperAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Superadmin: WHITE-LABEL ki shops (alag tab) ───
-// Ye shops reseller ki hain — hamare Active/Pending count me nahi aatin.
+// ─── Superadmin: WHITE-LABEL shops (a separate tab) ───
+// These shops belong to resellers — they are not in our Active/Pending counts.
 app.get('/api/superadmin/whitelabel-shops', verifySuperAdmin, async (req, res) => {
   try {
     const r = await pool.query(`
@@ -10553,8 +10556,8 @@ app.get('/api/superadmin/whitelabel-shops', verifySuperAdmin, async (req, res) =
 });
 
 // ─── Superadmin: BULK CLEANUP ───
-// Ek click me saare expired demo accounts hatao.
-// Protected shop (SHOP_ECB1AB8A) kabhi delete nahi hoti.
+// Remove all expired demo accounts in one click.
+// The protected shop (SHOP_ECB1AB8A) is never deleted.
 app.post('/api/superadmin/bulk/delete-expired-demos', verifySuperAdmin, async (req, res) => {
   try {
     const find = await pool.query(
@@ -10572,8 +10575,8 @@ app.post('/api/superadmin/bulk/delete-expired-demos', verifySuperAdmin, async (r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Ek click me saare pending-payment (register hua, paisa nahi aaya) hatao.
-// Demo aur white-label shops ko haath nahi lagate.
+// Remove all pending-payment shops (registered, no payment received) in one click.
+// Demo and white-label shops are not touched.
 app.post('/api/superadmin/bulk/delete-pending', verifySuperAdmin, async (req, res) => {
   try {
     const find = await pool.query(
@@ -10592,10 +10595,10 @@ app.post('/api/superadmin/bulk/delete-pending', verifySuperAdmin, async (req, re
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Superadmin: kisi bhi shop (paid ya demo) ka PC printer list + selection ───
-// Agent har 30 min apni printer list bhejta hai (system_settings.printers_<id>).
-// Superadmin yahan se dekh sakta hai aur kaun sa printer kis kaam ke liye
-// use hoga wo save kar sakta hai.
+// ─── Superadmin: any shop's (paid or demo) PC printer list + selection ───
+// The agent sends its printer list every 30 min (system_settings.printers_<id>).
+// The superadmin can view it here and save which printer is used
+// for which job.
 app.get('/api/superadmin/shop/:shopId/printers', verifySuperAdmin, async (req, res) => {
   try {
     const shopId = req.params.shopId;
@@ -10604,7 +10607,7 @@ app.get('/api/superadmin/shop/:shopId/printers', verifySuperAdmin, async (req, r
               EXTRACT(EPOCH FROM (NOW() - agent_last_seen))::int AS agent_seconds_ago,
               printer_name_bw, printer_name_color, printer_name_4x6, printer_name_a3
        FROM shops WHERE id=$1`, [shopId]);
-    if (!s.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!s.rows.length) return res.status(404).json({ error: 'Shop not found' });
     const p = await pool.query(
       'SELECT value, updated_at FROM system_settings WHERE key=$1', [`printers_${shopId}`]);
     let available = [];
@@ -10618,15 +10621,15 @@ app.get('/api/superadmin/shop/:shopId/printers', verifySuperAdmin, async (req, r
 });
 
 // Printer selection + payment mode save.
-// SAKHT NIYAM: superadmin sirf 'counter_only' set kar sakta hai. Online/Both
-// shop owner ko khud apne login se karna hoga (kyunki usme uski apni
-// Razorpay/Cashfree keys chahiye hoti hain).
+// STRICT RULE: the superadmin can only set 'counter_only'. Online/Both
+// must be set by the shop owner from their own login (because it requires their
+// own Razorpay/Cashfree keys).
 app.put('/api/superadmin/shop/:shopId/printers', verifySuperAdmin, async (req, res) => {
   try {
     const shopId = req.params.shopId;
     const b = req.body || {};
     const chk = await pool.query('SELECT id FROM shops WHERE id=$1', [shopId]);
-    if (!chk.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
+    if (!chk.rows.length) return res.status(404).json({ error: 'Shop not found' });
 
     const clean = v => (typeof v === 'string' ? v.trim().slice(0, 300) : null);
     const bw = clean(b.printer_name_bw);
@@ -10638,7 +10641,7 @@ app.put('/api/superadmin/shop/:shopId/printers', verifySuperAdmin, async (req, r
     if (b.payment_mode !== undefined && b.payment_mode !== null && b.payment_mode !== '') {
       if (b.payment_mode !== 'counter_only') {
         return res.status(403).json({
-          error: 'Superadmin sirf "Counter par payment" set kar sakta hai. Online/Both ke liye shop owner ko khud login karke apni payment keys daalni hongi.'
+          error: 'The superadmin can only set "Payment at the counter". For Online/Both the shop owner must log in and add their own payment keys.'
         });
       }
       setPayment = true;
@@ -10661,28 +10664,28 @@ app.put('/api/superadmin/shop/:shopId/printers', verifySuperAdmin, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Owner ka apna pehla shop — kabhi delete nahi hoga, chahe UI/API se kuch
-// bhi bheja jaye. Server-side hardcoded taaki koi bypass na kar sake.
+// The owner's own first shop — it is never deleted, whatever the UI/API
+// sends. Hardcoded server-side so nobody can bypass it.
 const PROTECTED_SHOP_IDS = ['SHOP_ECB1AB8A'];
 
-// ─── Shop delete — paid amount 0 wali shops delete ho sakti hain ───
-// Rule: setup_amount 0 (ya null) wali koi bhi shop delete ho sakti hai
-// (pending + purane jinme amount capture nahi hua tha). Jisne ASLI paisa
-// diya (setup_amount > 0) wo protected. Owner ka pehla shop hamesha safe.
+// ─── Shop delete — shops with a paid amount of 0 can be deleted ───
+// Rule: any shop with setup_amount 0 (or null) can be deleted
+// (pending + old ones whose amount was not captured). A shop that paid REAL money
+// (setup_amount > 0) is protected. The owner's first shop is always safe.
 app.delete('/api/superadmin/shop/:shopId', verifySuperAdmin, async (req, res) => {
   try {
     const shopId = req.params.shopId;
     if (PROTECTED_SHOP_IDS.includes(shopId)) {
-      return res.status(403).json({ error: 'Ye shop protected hai — delete nahi ho sakti' });
+      return res.status(403).json({ error: 'This shop is protected — it cannot be deleted' });
     }
     const chk = await pool.query('SELECT setup_paid, setup_amount FROM shops WHERE id=$1', [shopId]);
-    if (!chk.rows.length) return res.status(404).json({ error: 'Shop nahi mila' });
-    // Delete-able: PENDING (setup_paid=false — naye ho ya purane) YA
-    // legacy paid-₹0. setup_amount register par hi store hota hai (payment
-    // se pehle), isliye amount>0 hona payment ka saboot NAHI — setup_paid hai.
+    if (!chk.rows.length) return res.status(404).json({ error: 'Shop not found' });
+    // Deletable: PENDING (setup_paid=false — new or old) OR
+    // legacy paid-₹0. setup_amount is stored at registration (before the
+    // payment), so amount>0 is NOT proof of payment — setup_paid is.
     const deletable = !chk.rows[0].setup_paid || (chk.rows[0].setup_amount || 0) === 0;
     if (!deletable) {
-      return res.status(403).json({ error: 'Paid/Active shop delete nahi ho sakti' });
+      return res.status(403).json({ error: 'A paid/active shop cannot be deleted' });
     }
     await pool.query('DELETE FROM print_jobs WHERE shop_id=$1', [shopId]);
     await pool.query("DELETE FROM shops WHERE id=$1 AND (setup_paid=false OR COALESCE(setup_amount,0)=0)", [shopId]);
@@ -10700,7 +10703,7 @@ app.get('/api/superadmin/shop/:shopId/earnings', verifySuperAdmin, async (req, r
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Setup Fee / Offer Price Management — Super Admin live change kar sake ───
+// ─── Setup Fee / Offer Price Management — so the Super Admin can change them live ───
 app.get('/api/superadmin/homepage-config', verifySuperAdmin, async (req, res) => {
   try {
     const r = await pool.query("SELECT value FROM system_settings WHERE key='homepage_config'");
@@ -10710,7 +10713,7 @@ app.get('/api/superadmin/homepage-config', verifySuperAdmin, async (req, res) =>
 
 app.put('/api/superadmin/homepage-config', verifySuperAdmin, async (req, res) => {
   try {
-    // Sanitize: sirf known keys, arrays ko string-array me force
+    // Sanitize: only known keys, arrays forced into string arrays
     const cur = await pool.query("SELECT value FROM system_settings WHERE key='homepage_config'");
     const cfg = cur.rows.length ? JSON.parse(cur.rows[0].value) : {};
     const b = req.body || {};
@@ -10719,12 +10722,12 @@ app.put('/api/superadmin/homepage-config', verifySuperAdmin, async (req, res) =>
     Object.assign(cfg, branding);
     for(const key of ['statShops','statPrints']) if(typeof b[key] === 'string') cfg[key] = b[key].slice(0,300);
     if (typeof b.showStats === 'boolean') cfg.showStats = b.showStats;
-    // Review badge — Google aur Justdial. Rating 0-5, count sirf ginti,
-    // link http(s) ka hi.
+    // Review badge — Google and Justdial. Rating 0-5, count is just a number,
+    // link must be http(s).
     //
-    // Link ki jaanch zaroori hai: ye seedha homepage ke href me jaata
-    // hai. Koi galti se "javascript:" jaisa kuch daal de to wo visitor
-    // ke browser me chalega.
+    // Checking the link is essential: it goes straight into a homepage
+    // href. If someone accidentally enters something like "javascript:" it would run
+    // in the visitor's browser.
     [['gRating', 'gCount', 'gUrl'], ['jdRating', 'jdCount', 'jdUrl']].forEach(k => {
       const [kr, kc, ku] = k;
       if (b[kr] !== undefined) {
@@ -10738,10 +10741,10 @@ app.put('/api/superadmin/homepage-config', verifySuperAdmin, async (req, res) =>
       }
     });
 
-    // Official Partner list — homepage ke neeche logo strip.
-    // Har partner: { name, logo, url }. Link http(s) ka hi maanenge, aur
-    // logo ya to poora link ho ya site ke andar ka raasta (/img/...).
-    // Baaki sab chhod dete hain — ye seedha homepage par lagta hai.
+    // Official Partner list — the logo strip at the bottom of the homepage.
+    // Each partner: { name, logo, url }. Only http(s) links are accepted, and the
+    // logo is either a full link or a path within the site (/img/...).
+    // Everything else is dropped — this goes straight onto the homepage.
     if (Array.isArray(b.partners)) {
       cfg.partners = b.partners
         .filter(p => p && typeof p === 'object')
@@ -10755,15 +10758,15 @@ app.put('/api/superadmin/homepage-config', verifySuperAdmin, async (req, res) =>
         .slice(0, 12);
     }
 
-    // WhatsApp To Print ka daam. waPriceActual = kaat kar dikhane wala,
-    // waPrice = jo sach me lena hai. Dono khali = homepage par abhi
-    // "Price revealing soon" hi dikhega.
+    // The WhatsApp To Print price. waPriceActual = the one shown struck through,
+    // waPrice = what is actually charged. Both empty = the homepage keeps showing
+    // "Price revealing soon".
     for (const k of ['waPriceActual', 'waPrice']) {
       if (b[k] !== undefined && b[k] !== null) {
         cfg[k] = String(b[k]).replace(/\D/g, '').slice(0, 9);
       }
     }
-    // Homepage ke saare button/text (data-cfg keys) — ek hi object me
+    // All homepage buttons/text (data-cfg keys) — in one object
     if (b.texts && typeof b.texts === 'object' && !Array.isArray(b.texts)) {
       const t = {};
       let n = 0;
@@ -10777,8 +10780,8 @@ app.put('/api/superadmin/homepage-config', verifySuperAdmin, async (req, res) =>
       }
       cfg.texts = t;
     }
-    // planMonthly/planOnetime purane homepage ke liye rakhe hain —
-    // naye teen card planStarter/planPro/planPremium padhte hain.
+    // planMonthly/planOnetime are kept for the old homepage —
+    // the new three cards read planStarter/planPro/planPremium.
     for (const k of ['planDemo','planMonthly','planOnetime',
                      'planStarter','planPro','planPremium','planDemoMtei','planStarterMtei','planProMtei','planPremiumMtei']) {
       if (Array.isArray(b[k])) cfg[k] = b[k].filter(x => typeof x === 'string').map(x => x.slice(0,120)).slice(0, 20);
@@ -10797,10 +10800,10 @@ app.put('/api/superadmin/homepage-config', verifySuperAdmin, async (req, res) =>
 
 app.post('/api/superadmin/upload-logo', verifySuperAdmin, upload.single('logo'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Koi file nahi' });
+    if (!req.file) return res.status(400).json({ error: 'No file' });
     if (!['image/png','image/jpeg','image/webp','image/svg+xml'].includes(req.file.mimetype))
-      return res.status(400).json({ error: 'Sirf PNG/JPG/WEBP/SVG' });
-    if (req.file.size > 2 * 1024 * 1024) return res.status(400).json({ error: 'Logo 2MB se kam ho' });
+      return res.status(400).json({ error: 'Only PNG/JPG/WEBP/SVG' });
+    if (req.file.size > 2 * 1024 * 1024) return res.status(400).json({ error: 'The logo must be smaller than 2MB' });
     const url = await uploadImageToCloudinary(req.file.buffer, req.file.mimetype);
     const cur = await pool.query("SELECT value FROM system_settings WHERE key='homepage_config'");
     const cfg = cur.rows.length ? JSON.parse(cur.rows[0].value) : {};
@@ -10818,9 +10821,9 @@ app.get('/api/superadmin/setup-fee', verifySuperAdmin, async (req, res) => {
       offerPrice: pricing.offerPrice,
       actualPrice: pricing.actualPrice,
       monthlyFee: pricing.monthlyFee,
-      // Starter/Pro/Premium ke price. Ye pehle chhoot gaye the,
-      // isliye superadmin me save karne ke baad refresh par input
-      // khaali dikhte the (save theek tha, load hi nahi ho raha tha).
+      // The Starter/Pro/Premium prices. These were missed before,
+      // so after saving in superadmin the inputs showed empty on refresh
+      // (the save was fine; they simply were not loaded).
       plans: await getPlanPricing(),
       advancedFee: await getAdvancedFee(),
       monthlyActualPrice: await getMonthlyActualFee(),
@@ -10856,12 +10859,12 @@ app.put('/api/superadmin/setup-fee', verifySuperAdmin, async (req,res)=>{
   }catch(e){res.status(500).json({error:e.message});}
 });
 
-// ─── Agent Version Management — Super Admin yahan se naya update push karta hai ───
-// Do numbers hain, dono ka kaam alag:
-//   agent_version       (INT)  → INTERNAL trigger. Har push par +1. Purane
-//                                agents (v27/v28/v29) isi ko compare karte
-//                                hain. Ise kabhi "2.0" mat banao.
-//   agent_version_label (TEXT) → Jo sab jagah DIKHTA hai: 2.0, 2.1 ... 2.10, 3.0
+// ─── Agent Version Management — the Super Admin pushes a new update from here ───
+// There are two numbers, each with its own job:
+//   agent_version       (INT)  → the INTERNAL trigger. +1 on every push. Old
+//                                agents (v27/v28/v29) compare this
+//                                one. Never turn it into "2.0".
+//   agent_version_label (TEXT) → what is SHOWN everywhere: 2.0, 2.1 ... 2.10, 3.0
 app.get('/api/superadmin/agent-version', verifySuperAdmin, async (req, res) => {
   try {
     const info = await getAgentVersionInfo();
@@ -10869,7 +10872,7 @@ app.get('/api/superadmin/agent-version', verifySuperAdmin, async (req, res) => {
       version: info.version,          // internal counter (legacy field name)
       versionLabel: info.label,       // "2.0"
       displayVersion: info.label || String(info.version),
-      nextLabel: info.nextLabel,      // agla suggested label
+      nextLabel: info.nextLabel,      // the next suggested label
       notes: info.notes,              // "What's in the Update" box ka current text
       updatedAt: info.updatedAt
     });
@@ -10881,29 +10884,29 @@ app.post('/api/superadmin/agent-version/bump', verifySuperAdmin, async (req, res
   try {
     const info = await getAgentVersionInfo();
 
-    // Label: body se aaya to use karo, warna auto next (2.0 → 2.1 → ... → 2.10 → 3.0)
+    // Label: use the one from the body if present, otherwise the automatic next one (2.0 → 2.1 → ... → 2.10 → 3.0)
     const requested = (req.body && typeof req.body.label === 'string') ? req.body.label.trim() : '';
     const newLabel = requested || info.nextLabel;
 
-    // "What's in the Update" — optional. Khali chhoda to shop owner ke panel
-    // me "What's in Update" button dikhega hi nahi (khali popup se accha hai).
-    // 2000 char cap taaki koi galti se poora changelog paste na kar de.
+    // "What's in the Update" — optional. If left empty, the "What's in Update" button
+    // does not appear in the shop owner's panel at all (better than an empty popup).
+    // A 2000-char cap so nobody pastes a whole changelog by mistake.
     const newNotes = (req.body && typeof req.body.notes === 'string')
       ? req.body.notes.trim().slice(0, 2000)
       : '';
 
     if (!parseVersionLabel(newLabel)) {
-      return res.status(400).json({ error: 'Version format galat hai. Aise likho: 2.0, 2.1, 2.10, 3.0' });
+      return res.status(400).json({ error: 'Invalid version format. Use: 2.0, 2.1, 2.10, 3.0' });
     }
-    // Peeche mat jao — warna sab shops "update available" dikhate rahenge
-    // aur kabhi settle nahi honge.
+    // Never go backwards — otherwise every shop would keep showing "update available"
+    // and never settle.
     if (info.label && compareVersionLabels(newLabel, info.label) <= 0) {
       return res.status(400).json({
-        error: `Version ${newLabel} current ${info.label} se aage hona chahiye. Suggested: ${info.nextLabel}`
+        error: `Version ${newLabel} must be newer than the current ${info.label}. Suggested: ${info.nextLabel}`
       });
     }
 
-    const newVersion = info.version + 1;   // internal counter hamesha +1
+    const newVersion = info.version + 1;   // the internal counter always +1
 
     await client.query('BEGIN');
     await client.query(
@@ -10916,9 +10919,9 @@ app.post('/api/superadmin/agent-version/bump', verifySuperAdmin, async (req, res
        ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=NOW()`,
       [newLabel]
     );
-    // Notes hamesha likho — khali bhejne par purane version ke notes hat jaate
-    // hain. Warna naya version push karne par shop owner ko pichhle update ka
-    // text dikhta rehta, jo galat hai.
+    // Always write the notes — sending them empty removes the notes of the old version.
+    // Otherwise, after a new version is pushed, shop owners would keep seeing the text
+    // of the previous update, which is wrong.
     await client.query(
       `INSERT INTO system_settings (key, value, updated_at) VALUES ('agent_version_notes', $1, NOW())
        ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=NOW()`,
@@ -10926,7 +10929,7 @@ app.post('/api/superadmin/agent-version/bump', verifySuperAdmin, async (req, res
     );
     await client.query('COMMIT');
 
-    console.log(`Agent version pushed → v${newLabel} (internal ${newVersion}) by super admin — sab customers ke PC 1 ghante mein update ho jayenge`);
+    console.log(`Agent version pushed → v${newLabel} (internal ${newVersion}) by super admin — all customer PCs will update within 1 hour`);
     res.json({
       success: true,
       version: newVersion,
@@ -10943,10 +10946,10 @@ app.post('/api/superadmin/agent-version/bump', verifySuperAdmin, async (req, res
   }
 });
 
-// ─── Easy Installer (.exe) URL Management — Cloudinary pe hosted ───
-// GitHub/Render dono ki file-size limits avoid karne ke liye, naya .exe
-// build hone par usko Cloudinary pe manually upload karke yahan se URL
-// set/update kiya jaata hai. Code change/redeploy ki zaroorat nahi.
+// ─── Easy Installer (.exe) URL Management — hosted externally ───
+// To avoid the file-size limits of both GitHub and Render, when a new .exe is
+// built it is uploaded manually and its URL is
+// set/updated here. No code change/redeploy is needed.
 app.get('/api/superadmin/easy-installer-url', verifySuperAdmin, async (req, res) => {
   try {
     const r = await pool.query("SELECT value, updated_at FROM system_settings WHERE key='easy_installer_url'");
@@ -10961,7 +10964,7 @@ app.put('/api/superadmin/easy-installer-url', verifySuperAdmin, async (req, res)
   try {
     const { url } = req.body;
     if (!url || !url.trim().startsWith('http')) {
-      return res.status(400).json({ error: 'Valid URL daalo (https:// se shuru honi chahiye)' });
+      return res.status(400).json({ error: 'Enter a valid URL (it must start with https://)' });
     }
     await pool.query(
       `INSERT INTO system_settings (key, value, updated_at) VALUES ('easy_installer_url', $1, NOW())
@@ -10977,17 +10980,17 @@ app.put('/api/superadmin/easy-installer-url', verifySuperAdmin, async (req, res)
 
 // ══════════════════════════════════════════════════════════════════
 // RAZORPAY WEBHOOK — server-side payment confirmation
-// Customer browser band kar de payment ke turant baad, tab bhi payment
-// confirm hoti hai. NOTE: yeh sirf OWNER (setup fee) Razorpay account ke
-// webhooks ke liye hai — Razorpay dashboard mein webhook URL + secret set
-// karo, secret ko RAZORPAY_WEBHOOK_SECRET env mein daalo.
-// Shop owners ke apne accounts ke liye niche wali RECONCILIATION chalti
-// hai (unke dashboards mein webhook configure karwana practical nahi).
+// Even if the customer closes the browser right after paying, the payment
+// is confirmed. NOTE: this is only for the webhooks of the OWNER (setup fee) Razorpay
+// account — set the webhook URL + secret in the Razorpay dashboard and
+// put the secret in the RAZORPAY_WEBHOOK_SECRET env.
+// For the shop owners' own accounts the RECONCILIATION below runs
+// (having them configure webhooks in their dashboards is not practical).
 // ══════════════════════════════════════════════════════════════════
 app.post('/api/webhook/razorpay', async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (!secret) return res.status(503).json({ error: 'Webhook secret configured nahi' });
+    if (!secret) return res.status(503).json({ error: 'The webhook secret is not configured' });
     const signature = req.headers['x-razorpay-signature'];
     const expected = crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
     if (signature !== expected) return res.status(400).json({ error: 'Invalid signature' });
@@ -11001,18 +11004,18 @@ app.post('/api/webhook/razorpay', async (req, res) => {
         // 1) Setup fee?
         const sh = await pool.query(
           'SELECT id, setup_paid FROM shops WHERE setup_order_id=$1', [orderId]);
-        // Renewal order? (setup match na ho to)
+        // A renewal order? (if it does not match a setup)
         if (!sh.rows.length) {
           const rn = await pool.query('SELECT id FROM shops WHERE renewal_order_id=$1', [orderId]);
           if (rn.rows.length) {
             await extendShop(rn.rows[0].id, orderId, paymentId || 'WEBHOOK');
             return res.json({ status: 'ok' });
           }
-          // ⚠️ Ye block pehle tha hi nahi. Webhook setup / renewal /
-          // advanced teeno dekhta tha par ADD-ON (₹49) ka order nahi —
-          // yaani us payment ka koi safety net hi nahi tha. Browser band
-          // ho jaye, net kat jaye, ya login token expire ho jaye to paisa
-          // kat jaata tha aur feature kabhi unlock nahi hota.
+          // ⚠️ This block used to not exist at all. The webhook looked at setup / renewal /
+          // advanced but not at ADD-ON (₹49) orders —
+          // so that payment had no safety net at all. If the browser was closed,
+          // the network dropped, or the login token expired, the money
+          // was debited and the feature was never unlocked.
           const ft = await pool.query(
             'SELECT id FROM shops WHERE feature_order_id=$1', [orderId]);
           if (ft.rows.length) {
@@ -11037,7 +11040,7 @@ app.post('/api/webhook/razorpay', async (req, res) => {
         if (sh.rows.length && !sh.rows[0].setup_paid) {
           await activateShop(sh.rows[0].id, paymentId);
         }
-        // 2) Customer print job? (agar owner account se aaya ho)
+        // 2) A customer print job? (if it came through the owner account)
         const _u = await pool.query(
           `UPDATE print_jobs SET payment_status='paid', payment_id=$1
            WHERE razorpay_order_id=$2 AND payment_status='pending'
@@ -11049,20 +11052,20 @@ app.post('/api/webhook/razorpay', async (req, res) => {
     res.json({ received: true });
   } catch(err) {
     console.error('Webhook error:', err.message);
-    res.status(200).json({ received: true }); // 5xx par Razorpay retry-storm karta hai
+    res.status(200).json({ received: true }); // on a 5xx Razorpay starts a retry storm
   }
 });
 
 // ══════════════════════════════════════════════════════════════════
-// BACKGROUND JOBS (har 2 min)
-// 1) STUCK-JOB CLEANUP: agent print ke beech crash ho jaye to job
-//    'printing' mein hamesha atka rehta tha. 10 min baad wapas 'queued',
-//    2 retries ke baad 'failed' — poison job (corrupt PDF jo har baar
-//    agent crash kare) infinite loop nahi banayega.
-// 2) RAZORPAY RECONCILIATION: pending payments ko seedha Razorpay Orders
-//    API se check karo — shop ki apni stored keys se. Customer browser
-//    band kar de to bhi 2 min ke andar payment paid mark ho jati hai,
-//    kisi webhook config ke bina.
+// BACKGROUND JOBS (every 2 min)
+// 1) STUCK-JOB CLEANUP: if the agent crashed in the middle of a print, the job
+//    stayed stuck in 'printing' forever. After 10 min it goes back to 'queued',
+//    and after 2 retries to 'failed' — a poison job (a corrupt PDF that crashes the
+//    agent every time) can never create an infinite loop.
+// 2) RAZORPAY RECONCILIATION: check pending payments directly with the Razorpay Orders
+//    API — using the shop's own stored keys. Even if the customer closes
+//    the browser, the payment is marked paid within 2 min,
+//    without any webhook configuration.
 // ══════════════════════════════════════════════════════════════════
 async function razorpayOrderStatus(orderId, keyId, keySecret) {
   const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
@@ -11075,16 +11078,16 @@ async function razorpayOrderStatus(orderId, keyId, keySecret) {
 
 // ═══════════════════════════════════════════════
 // STUCK PRINT JOB SWEEPER
-// Job 'printing' me STUCK_JOB_TIMEOUT_SEC (default 120s) se zyada atka
-// raha = shop PC/printer ne respond nahi kiya. Us file ko Cloudinary se
-// delete karke job fail kar do, aur admin panel me saaf reason dikhao.
+// A job stuck in 'printing' for longer than STUCK_JOB_TIMEOUT_SEC (default 120s)
+// = the shop PC/printer did not respond. Delete that file from Cloudinary,
+// fail the job, and show a clear reason in the admin panel.
 // ═══════════════════════════════════════════════
 let sweepRunning = false;
 async function sweepStuckJobs() {
   if (sweepRunning) return;          // overlap guard
   sweepRunning = true;
   try {
-    // Optional retry (STUCK_JOB_RETRIES=1) — default 0 yaani seedha fail.
+    // Optional retry (STUCK_JOB_RETRIES=1) — default 0 means fail immediately.
     if (STUCK_JOB_RETRIES > 0) {
       const requeued = await pool.query(
         `UPDATE print_jobs SET status='queued', printing_at=NULL, retry_count=retry_count+1
@@ -11113,8 +11116,8 @@ async function sweepStuckJobs() {
           await deleteFromCloudinary(fj.file_public_id);
           await pool.query('UPDATE print_jobs SET file_deleted=true WHERE id=$1', [fj.id]);
         } catch (e) {
-          // Cloudinary delete fail ho to job phir bhi failed hi rahega —
-          // TTL cleanup baad me file uthha lega.
+          // Even if the Cloudinary delete fails, the job stays failed —
+          // the TTL cleanup will pick up the file later.
           console.warn(`Cloudinary delete failed for ${fj.id}: ${e.message}`);
         }
       }
@@ -11130,7 +11133,7 @@ async function sweepStuckJobs() {
   }
 }
 
-// Timeout se aadha interval — taaki detection deri se na ho.
+// Half of the timeout as the interval — so detection is never late.
 setInterval(sweepStuckJobs, Math.max(15, Math.floor(STUCK_JOB_TIMEOUT_SEC / 4)) * 1000).unref();
 
 let bgRunning = false;
@@ -11138,19 +11141,19 @@ async function backgroundMaintenance() {
   if (bgRunning) return; // overlap guard
   bgRunning = true;
   try {
-    // 0) Security log retention — 7 din se purane events hata do
+    // 0) Security log retention — remove events older than 7 days
     try {
       const del = await pool.query(
         "DELETE FROM security_events WHERE created_at < NOW() - INTERVAL '7 days' RETURNING id");
       if (del.rows.length) console.log(`Security log cleanup: ${del.rows.length} old rows removed`);
     } catch (e) { console.warn('security log cleanup skipped:', e.message); }
 
-    // 1) Stuck printing jobs — ab sweepStuckJobs() alag tez loop me chalta
-    //    hai (har 30s), taaki 120 second ki limit sach me 120 second rahe.
-    //    Yahan sirf ek extra safety pass.
+    // 1) Stuck printing jobs — sweepStuckJobs() now runs in its own faster loop
+    //    (every 30s), so the 120-second limit really is 120 seconds.
+    //    This is just one extra safety pass.
     await sweepStuckJobs();
 
-    // 2a) Customer job payments reconcile (shop ki apni keys)
+    // 2a) Reconcile customer job payments (with the shop's own keys)
     const pending = await pool.query(
       `SELECT j.id, j.razorpay_order_id, s.razorpay_key_id, s.razorpay_key_secret
        FROM print_jobs j JOIN shops s ON j.shop_id=s.id
@@ -11162,9 +11165,9 @@ async function backgroundMaintenance() {
       try {
         const order = await razorpayOrderStatus(job.razorpay_order_id, job.razorpay_key_id, job.razorpay_key_secret);
         if (order && order.status === 'paid') {
-          // payment_status ke saath status bhi 'queued' karo — warna agent
-          // (jo queued+paid uthata hai) is job ko KABHI nahi uthata aur
-          // customer ka paisa kat ke bhi print nahi nikalta.
+          // Set the status to 'queued' together with payment_status — otherwise the agent
+          // (which picks up queued+paid) would NEVER pick up this job and
+          // the customer would pay without getting a print.
           const _u = await pool.query(
             `UPDATE print_jobs
              SET payment_status='paid',
@@ -11175,7 +11178,7 @@ async function backgroundMaintenance() {
           if (_u.rows.length) markShopHasWork(_u.rows[0].shop_id);
           console.log('💰 Reconciled payment for job:', job.id);
         }
-      } catch(e) { /* agla cycle try karega */ }
+      } catch(e) { /* the next cycle will retry */ }
     }
 
     // 2b) Setup fee reconcile (owner keys)
@@ -11191,10 +11194,10 @@ async function backgroundMaintenance() {
             await activateShop(shop.id, order.id);
             console.log('💰 Reconciled setup fee:', shop.id);
           }
-        } catch(e) { /* agla cycle */ }
+        } catch(e) { /* next cycle */ }
       }
     }
-    // 2b-ii) Renewal reconcile — renewal order bana par verify nahi pahuncha
+    // 2b-ii) Renewal reconcile — the renewal order was created but the verify never arrived
     if (OWNER_RAZORPAY_KEY_ID && OWNER_RAZORPAY_KEY_SECRET) {
       const renews = await pool.query(
         `SELECT id, renewal_order_id FROM shops
@@ -11206,7 +11209,7 @@ async function backgroundMaintenance() {
             await extendShop(shop.id, shop.renewal_order_id, 'RECONCILE');
             console.log('💰 Reconciled renewal:', shop.id);
           }
-        } catch(e) { /* agla cycle */ }
+        } catch(e) { /* next cycle */ }
       }
     }
 
@@ -11232,10 +11235,10 @@ async function backgroundMaintenance() {
       }
     }
 
-    // 2c) ABANDONED uploads — customer ne upload kiya par payment complete
-    // nahi kiya. Pehle ye files Cloudinary par HAMESHA padi rehti thi
-    // (storage leak + customer ki private file server par). Ab 60 min baad
-    // file delete + job abandoned mark.
+    // 2c) ABANDONED uploads — the customer uploaded but did not complete
+    // the payment. These files used to stay on Cloudinary FOREVER
+    // (a storage leak + the customer's private file on a server). Now after 60 min
+    // the file is deleted + the job is marked abandoned.
     const abandoned = await pool.query(
       `SELECT id, file_public_id FROM print_jobs
        WHERE status='pending' AND payment_status='pending'
@@ -11245,14 +11248,14 @@ async function backgroundMaintenance() {
       if (j.file_public_id) await deleteFromCloudinary(j.file_public_id);
       await pool.query(
         "UPDATE print_jobs SET status='abandoned', file_deleted=true, failure_reason=$1 WHERE id=$2",
-        ['Customer ne payment complete nahi kiya', j.id]);
+        ['The customer did not complete the payment', j.id]);
       console.log('🧹 Abandoned upload cleaned:', j.id);
     }
 
     // ══════════ SAFETY LAYER 1: VERIFY SWEEP ══════════
-    // Job complete/fail/abandon ho gayi par file_deleted flag false hai
-    // (matlab delete call silently fail hua tha — network, API error).
-    // 5 min baad dobara delete maaro. Cloudinary destroy idempotent hai.
+    // The job completed/failed/was abandoned but the file_deleted flag is false
+    // (meaning the delete call failed silently — network, API error).
+    // After 5 min, delete again. Cloudinary destroy is idempotent.
     const unverified = await pool.query(
       `SELECT id, file_public_id FROM print_jobs
        WHERE status IN ('printed','failed','abandoned')
@@ -11267,10 +11270,10 @@ async function backgroundMaintenance() {
     }
 
     // ══════════ SAFETY LAYER 2: CLOUDINARY ORPHAN SWEEP ══════════
-    // Har ~10 min: Cloudinary se ASLI list lo. Jo file 90+ min purani hai
-    // aur kisi ACTIVE job ki nahi hai — uda do. Ye un files ko bhi pakadta
-    // hai jinka DB me row hi nahi (upload hua par insert fail, ya row delete
-    // ho gaya) — DB-based cleanup unhe kabhi nahi dekh sakta.
+    // Every ~10 min: get the REAL list from Cloudinary. Any file older than 90 min
+    // that does not belong to an ACTIVE job — delete it. This also catches
+    // files that have no DB row at all (uploaded but the insert failed, or the row
+    // was deleted) — a DB-based cleanup can never see them.
     _sweepTick++;
     if (_sweepTick % 5 === 0) {
       let cursor = '';
@@ -11280,12 +11283,12 @@ async function backgroundMaintenance() {
         if (!resources.length) break;
         for (const r of resources) {
           const ageMin = (Date.now() - new Date(r.created_at).getTime()) / 60000;
-          if (ageMin < 90) continue;   // fresh file — abhi koi use kar raha ho sakta hai
-          // Active job to nahi hai iski?
+          if (ageMin < 90) continue;   // a fresh file — someone may still be using it
+          // Does it belong to an active job?
           const active = await pool.query(
             `SELECT 1 FROM print_jobs
              WHERE file_public_id=$1 AND status IN ('queued','printing')`, [r.public_id]);
-          if (active.rows.length) continue;   // print hone wali hai — chhod do
+          if (active.rows.length) continue;   // about to be printed — leave it
           await deleteFromCloudinary(r.public_id);
           await pool.query('UPDATE print_jobs SET file_deleted=true WHERE file_public_id=$1', [r.public_id]);
           swept++;
@@ -11296,7 +11299,7 @@ async function backgroundMaintenance() {
       if (swept) console.log(`🧹 Cloudinary orphan sweep: ${swept} file(s) deleted`);
     }
 
-    // 3) Purane demo shops saaf (7 din baad) — DB junk-free rahe
+    // 3) Clean up old demo shops (after 7 days) — keeps the DB free of junk
     const oldDemos = await pool.query(
       "SELECT id FROM shops WHERE demo=true AND demo_expires_at < NOW() - INTERVAL '7 days' LIMIT 20");
     for (const d of oldDemos.rows) {
@@ -11320,10 +11323,12 @@ app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'public','admin.
 app.get('/superadmin', (req,res) => res.sendFile(path.join(__dirname,'public','superadmin.html')));
 app.get('/print-success', (req,res) => res.sendFile(path.join(__dirname,'public','success.html')));
 
-// ═══ SEO: sub-pages ke ASLI URL (Google me alag page + sitelinks ke liye) ═══
-// index.html hi serve hota hai, par har URL ka apna title/description/canonical
-// inject karke bhejte hain — tabhi Google inhe alag page maanta hai.
-// Frontend JS pathname dekh kar wahi section khol deta hai.
+// ═══ SEO: REAL URLs for sub-pages (separate pages + sitelinks in Google) ═══
+// index.html is always served, but each URL gets its own title/description/canonical
+// injected — only then does Google treat them as separate pages.
+// The frontend JS looks at the pathname and opens the matching section.
+/* i18n-ignore: <title> and <meta> text for search engines — it is never shown
+   inside the page, so it has no Manipuri entry. */
 const SEO_PAGES = {
   '/features': {
     title: 'Features — Echel | Cyber Cafe Auto Print Software',
@@ -11360,8 +11365,8 @@ const SEO_PAGES = {
 };
 
 let _indexHtmlCache = null;
-// Canonical hamesha asli domain ka hona chahiye (BASE_URL default onrender.com hai,
-// use canonical me daalna SEO ke liye galat hoga)
+// The canonical must always use the real domain (BASE_URL defaults to onrender.com;
+// putting that into the canonical would be wrong for SEO)
 const SITE_URL = deployment.siteUrl;
 function loadIndexHtml() {
   if (_indexHtmlCache === null) {
@@ -11382,7 +11387,7 @@ Object.keys(SEO_PAGES).forEach(function (route) {
   app.get(route, function (req, res) {
     const meta = SEO_PAGES[route];
     let html = loadIndexHtml();
-    // index.html padh nahi paaye to normal file bhej do (site kabhi na toote)
+    // If index.html cannot be read, send the plain file (the site must never break)
     if (!html) return res.sendFile(path.join(__dirname, 'public', 'index.html'));
     const url = SITE_URL + route;
     const t = esc(meta.title), d = esc(meta.desc);
@@ -11406,7 +11411,7 @@ Object.keys(SEO_PAGES).forEach(function (route) {
     res.send(html);
   });
 });
-// Purane / alternate path — asli URL par 301 bhej do (link juice na tootey)
+// Old / alternate paths — 301 to the real URL (so link equity is not lost)
 const SEO_ALIASES = { '/feature': '/features', '/guide': '/setup-guide', '/faq': '/disclaimer', '/declaration': '/disclaimer' };
 Object.keys(SEO_ALIASES).forEach(function (from) {
   app.get(from, function (req, res) { res.redirect(301, SEO_ALIASES[from]); });
@@ -11422,7 +11427,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Homepage social-proof — ASLI numbers, 5 min cache
+// Homepage social proof — REAL numbers, 5 min cache
 let _statsCache = { t: 0, data: null };
 let _hpCfgCache = { t: 0, data: null };
 app.get('/api/homepage-config', async (req, res) => {
@@ -11449,6 +11454,7 @@ app.get('/api/public-stats', async (req, res) => {
 });
 
 
+/* i18n-ignore: robots.txt is read by crawlers, not by people. */
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain').send(`User-agent: *
 Allow: /
@@ -11466,6 +11472,7 @@ Sitemap: ${SITE_URL}/sitemap.xml
 `);
 });
 
+/* i18n-ignore: a plain-text file for security researchers, not page text. */
 app.get('/.well-known/security.txt', (req, res) => {
   res.type('text/plain').send(`Contact: ${SITE_URL}/contact
 Expires: 2027-08-04T00:00:00.000Z
@@ -11501,8 +11508,8 @@ app.get('/sitemap.xml', (req, res) => {
 app.get('/setup-payment/:shopId', (req,res) => res.sendFile(path.join(__dirname,'public','setup-payment.html')));
 app.get('/resume/:shopId', (req,res) => res.sendFile(path.join(__dirname,'public','resume.html')));
 
-// Kram maayne rakhta hai: schema -> data -> TAB port kholo.
-// Isi se agent ko kabhi khaali DB nahi milta.
+// The order matters: schema -> data -> THEN open the port.
+// That way the agent never gets an empty DB.
 app.get('/healthz', async (req, res) => {
   try {
     await pool.query('SELECT 1');

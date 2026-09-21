@@ -39,20 +39,21 @@ class NativeAgentUiTests(unittest.TestCase):
         self.assertEqual(login('Enter your paid Shop ID and password.'), ('SHOP_TEST', ' password with spaces '))
         for script in scripts:
             self.assertIn("$ok.Text = 'Continue'", script)
-            self.assertNotRegex(script, r'Shuru karo|Aage badho|daalo|nahi')
+            self.assertNotRegex(script, r'Shuru karo|Aage badho|daalo|nahi')  # hinglish-sample: these must never reach a dialog
         self.assertIn('UseSystemPasswordChar = $true', scripts[1])
 
     def test_other_computer_warning_stays_english_with_a_legacy_server(self):
         inputs = iter(['SHOP_TEST', ''])
         messages = []
-        response = SimpleNamespace(status_code=409, json=lambda: {'error': 'Purana PC hata kar dobara try karein.'})
+        # An old server can still answer in Hinglish; the agent must not repeat it.
+        response = SimpleNamespace(status_code=409, json=lambda: {'error': 'Purana PC hata kar dobara try karein.'})  # hinglish-sample
         prompt = load_function('_shop_id_without_tkinter', _ask_shop_id_once=lambda: next(inputs),
                                requests=SimpleNamespace(post=lambda *a, **kw: response),
                                SERVER_URL='https://example.test', auth_headers=lambda: {},
                                _machine_name=lambda: 'Test PC', _msgbox=lambda text, *a: messages.append(text), input=lambda _: '')
         self.assertEqual(prompt(), '')
         self.assertIn('disconnect the previous computer', messages[0])
-        self.assertNotIn('Purana', messages[0])
+        self.assertNotIn('Purana', messages[0])  # hinglish-sample
 
     def test_print_approval_and_duplex_dialogs(self):
         dialogs = []

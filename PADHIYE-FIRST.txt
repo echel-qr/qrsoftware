@@ -1,0 +1,79 @@
+ECHEL — ENGLISH WEBSITE + MANIPURI (ꯃꯤꯇꯩꯂꯣꯟ) SECOND LANGUAGE
+=============================================================
+
+Ye folder GitHub repo (rupeshkr73/qrsoftware) me upload karna hai.
+Folder structure bilkul repo jaisa hi hai — wahi jagah par daaliye.
+
+-------------------------------------------------------------
+STEP 1 — Ye 36 files upload kijiye (drag & drop)
+-------------------------------------------------------------
+GitHub repo -> "Add file" -> "Upload files" -> is folder ke
+andar ki saari files/folders drag kar dijiye -> Commit.
+
+NOTE 1: public/downloads/Echel-Agent-V2.exe (44 MB) is ZIP me
+        JAANBOOJH KAR nahi hai — wo alag bheja hai (Step 3).
+
+NOTE 2: Ye file (PADHIYE-FIRST.txt) upload MAT kijiye — ye sirf
+        aapke padhne ke liye hai, website ka hissa nahi hai.
+
+-------------------------------------------------------------
+STEP 2 — Ye 14 purani files GitHub par DELETE kijiye
+-------------------------------------------------------------
+(GitHub par file kholiye -> upar right me "..." -> Delete file)
+
+   public/echel-english.js
+   public/echel-mayek.js
+   public/i18n-extra.js
+   test/audit-copy.py
+   test/build-manipuri.js
+   test/build-ui-catalog.py
+   test/english-base.json
+   test/extract-ui-catalog.js
+   test/redesign-desktop.py
+   test/remaining-english.json
+   test/translate-catalog.py
+   test/ui-catalog.json
+   test/ui-strings-raw.json
+   test/update-client-assets.py
+
+Ye purani translation files hain. Inke bina website theek chalegi;
+inhe rakhne se purana Hinglish wapas aa sakta hai.
+
+-------------------------------------------------------------
+STEP 3 — Naya Agent EXE (alag se bheja hai)
+-------------------------------------------------------------
+Echel-Agent-V2.exe (44 MB) — GitHub "Releases" me upload kijiye:
+
+   GitHub repo -> Releases -> "Draft a new release"
+   -> file attach kijiye -> Publish
+
+Phir us file ka link copy karke:
+   Superadmin -> Agents/Settings -> "Easy Installer (.exe) URL"
+   me paste karke Save kijiye.
+
+VERSION NAHI BADLA HAI (v2.0 hi hai) — matlab jin shops me agent
+pehle se laga hai, unme auto-update NAHI jayega. Jo naya download
+karega usko naya (English) agent milega. Ye jaanbujh kar aisa hai.
+
+-------------------------------------------------------------
+STEP 4 — Upload ke baad
+-------------------------------------------------------------
+Render apne aap deploy karega (2-3 minute).
+Phir www.echel.in kholiye aur neeche-left ke language box se
+"ꯃꯤꯇꯩꯂꯣꯟ" chuniye — poori website Manipuri me ho jayegi.
+Wapas "English" chunne par sab English.
+
+-------------------------------------------------------------
+KYA BADLA — chhota saar
+-------------------------------------------------------------
+* Poori website ab English me hai — page, button, error, log,
+  report, email, aur source code ke comments tak. Hinglish 0.
+* Doosri bhasha: Manipuri (Meitei Mayek) — 3,201 lines translate
+  ki gayi hain. Har jagah jahan English text hai, wahan Manipuri
+  available hai.
+* Manipuri file sirf tab download hoti hai jab koi Manipuri
+  chunta hai — English wale customers par koi extra load nahi.
+* Koi bhi line galat lage to: Superadmin -> 🌐 Languages ->
+  usko wahin edit karke Save (deploy ki zaroorat nahi).
+* Aage ke liye guard lag gaya hai: naya Hinglish word ya bina
+  translation wala naya text aaya to "npm test" fail hoga.

@@ -1,26 +1,26 @@
 """
 Echel — Desktop Control Panel
 ====================================
-Ye module SIRF UI layer hai. Printing, tray, Shop ID verification, update —
-sab kuch print_agent.py me jaisa tha waisa hi chalta rahega. Panel unhi
-functions ko call karta hai, apna alag logic nahi rakhta.
+This module is ONLY the UI layer. Printing, tray, Shop ID verification, updates —
+everything in print_agent.py keeps running exactly as before. The panel calls those
+same functions and keeps no logic of its own.
 
-Design rules (jaan-boojh kar):
+Design rules (deliberate):
 
-1. Panel FAIL karta hai to printing kabhi nahi rukti.
-   WebView2 na ho, pywebview install na ho, window crash ho — agent
-   background me chalta rehta hai. Panel optional hai, zaroori nahi.
+1. If the panel FAILS, printing never stops.
+   No WebView2, pywebview not installed, a window crash — the agent
+   keeps running in the background. The panel is optional, not required.
 
-2. Business logic duplicate nahi.
-   Settings wahi server APIs se aati/jaati hain jo website ka dashboard
-   use karta hai. Agent apne agent_token ko short-lived admin token se
-   exchange karta hai (/api/jobs/<shop>/panel-session).
+2. No duplicated business logic.
+   Settings go through the same server APIs the website dashboard
+   uses. The agent exchanges its agent_token for a short-lived admin token
+   (/api/jobs/<shop>/panel-session).
 
-3. Token kabhi JavaScript me nahi jaata.
-   Panel ka JS sirf pywebview.api.* call karta hai; asli HTTP request
-   Python karta hai. Panel ke HTML me koi secret nahi hota.
+3. The token never reaches JavaScript.
+   The panel's JS only calls pywebview.api.*; Python makes the real HTTP
+   requests. The panel's HTML contains no secrets.
 
-4. Close (X) = tray me chhupao. Sirf Exit se agent band hota hai.
+4. Close (X) = hide into the tray. Only Exit stops the agent.
 """
 
 import os
@@ -30,12 +30,12 @@ import time
 import threading
 import webbrowser
 
-# ── Ye print_agent.py se inject hote hain (circular import se bachne ke liye) ──
+# ── These are injected from print_agent.py (to avoid a circular import) ──
 _AGENT = None          # print_agent module reference
 
 
 def bind(agent_module):
-    """print_agent.py startup par ye call karta hai."""
+    """print_agent.py calls this at startup."""
     global _AGENT
     _AGENT = agent_module
 
@@ -49,9 +49,9 @@ def _log(msg, level="INFO"):
 
 def _runtime_dir():
     """
-    %APPDATA%\\EchelPrint\\runtime — print_agent.py startup par yahan bundle ki
-    zaroori files ki ek pakki copy rakhta hai. Wahi path yahan bhi banate hain
-    (import kar ke nahi lete, kyunki panel ko print_agent par depend nahi karna).
+    %APPDATA%\\EchelPrint\\runtime — at startup print_agent.py keeps a persistent copy
+    of the essential bundle files here. The same path is built here too
+    (not imported, because the panel must not depend on print_agent).
     """
     try:
         import tempfile
@@ -63,12 +63,12 @@ def _runtime_dir():
 
 def panel_html_path():
     """
-    agent_panel.html dhundo — .exe (PyInstaller _MEIPASS), APPDATA ki safe
-    copy, aur normal script, teeno mode me.
+    Find agent_panel.html — in all three modes: .exe (PyInstaller _MEIPASS), the safe
+    copy in APPDATA, and a normal script.
 
-    Safe copy isliye: onefile ka _MEI folder chalte-chalte saaf ho sakta hai
-    (22 Aug 2026 ko hua tha). Tab _MEIPASS wali HTML gayab hoti hai aur panel
-    khulna band ho jaata tha.
+    Why the safe copy: onefile's _MEI folder can be cleaned while the agent runs
+    (it happened on 22 Aug 2026). Then the _MEIPASS HTML vanished and the panel
+    stopped opening.
     """
     base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     for cand in (os.path.join(base, "agent_panel.html"),
@@ -84,8 +84,8 @@ def panel_html_path():
 # ══════════════════════════════════════════════════════════════
 class _Session:
     """
-    Admin token cache. 2 ghante valid hota hai; expiry se pehle hi
-    refresh kar lete hain taaki panel ke beech me 401 na aaye.
+    Admin token cache. Valid for 2 hours; it is refreshed before it
+    expires so no 401 appears in the middle of using the panel.
     """
 
     def __init__(self):
@@ -122,7 +122,7 @@ _session = _Session()
 
 
 def shop_type():
-    """'demo' ya 'paid' — backend se. Tray menu isi se decide karta hai."""
+    """'demo' or 'paid' — from the backend. The tray menu decides based on this."""
     try:
         _session.get()
         return _session.shop_type
@@ -132,8 +132,8 @@ def shop_type():
 
 def _api(method, path, payload=None, retry_auth=True):
     """
-    Existing admin API call karo, admin token ke saath.
-    Wahi endpoints jo website dashboard use karta hai — koi naya API nahi.
+    Call an existing admin API with the admin token.
+    The same endpoints the website dashboard uses — no new API.
     """
     import requests
     token = _session.get()
@@ -150,7 +150,7 @@ def _api(method, path, payload=None, retry_auth=True):
             r = requests.post(url, headers=headers, json=payload or {}, timeout=20)
 
         if r.status_code == 401 and retry_auth:
-            _session.get(force=True)                    # token expire — ek baar refresh
+            _session.get(force=True)                    # token expired — refresh once
             return _api(method, path, payload, retry_auth=False)
 
         try:
@@ -169,25 +169,25 @@ def _api(method, path, payload=None, retry_auth=True):
 
 class _SavedPrinters:
     """
-    Shop ne B&W aur Color ke liye kaun sa printer chuna hai — wahi jo
-    server par saved hai. Windows ka default printer NAHI.
+    Which printer the shop chose for B&W and Color — the one
+    saved on the server. NOT the Windows default printer.
 
-    Khaali string ka matlab hai "kuch nahi chuna, Windows ka default
-    chalega" — ye apne aap me ek jawab hai, isliye use kisi naam se
-    bharte nahi hain.
+    An empty string means "nothing chosen, the Windows default
+    applies" — that is an answer in itself, so it is never filled
+    with a name.
 
-    Teen jagah se bharti hai:
-      * server (/api/admin/profile) — har 30 second me, alag thread me
-        taaki panel kabhi ruke nahi
-      * save_printers() — save hote hi turant, bina server ka intezaar
-      * disk — net gaya ho to bhi pichhli maalum value haath me rahe
+    It is filled from three places:
+      * the server (/api/admin/profile) — every 30 seconds, in a separate thread
+        so the panel never blocks
+      * save_printers() — immediately after a save, without waiting for the server
+      * disk — so the last known value is still at hand when the network is down
     """
     TTL = 30          # second
 
     def __init__(self):
         self.bw = ""
         self.color = ""
-        self.known = False        # kabhi sach me pata chala hai?
+        self.known = False        # has it ever really been known?
         self._at = 0
         self._busy = False
         self._lock = threading.Lock()
@@ -244,8 +244,8 @@ class _SavedPrinters:
                     self._at = time.time()
                 self._save_disk()
             else:
-                # Fail hone par purani value mat phenko — bas thodi der
-                # baad phir koshish karo.
+                # On failure do not throw away the old value — just try again
+                # a little later.
                 self._at = time.time() - self.TTL + 8
         except Exception as e:
             _log(f"saved printers fetch fail: {e}", "WARN")
@@ -254,7 +254,7 @@ class _SavedPrinters:
             self._busy = False
 
     def touch(self):
-        """Purani ho gayi ho to peeche-peeche taaza kar lo. Rukta nahi."""
+        """If it is stale, refresh it in the background. Never blocks."""
         if self._busy or (time.time() - self._at) < self.TTL:
             return
         self._busy = True
@@ -264,7 +264,7 @@ class _SavedPrinters:
             self._busy = False
 
     def set(self, bw, color):
-        """Save safal — ab server par yahi hai, cache turant badal do."""
+        """The save succeeded — this is now what the server holds; update the cache immediately."""
         with self._lock:
             self.bw = str(bw or "")
             self.color = str(color or "")
@@ -278,7 +278,7 @@ _saved_printers = _SavedPrinters()
 
 # ══════════════════════════════════════════════════════════════
 # JS ↔ PYTHON API
-# Panel ka har button yahin aata hai.
+# Every panel button ends up here.
 # ══════════════════════════════════════════════════════════════
 class PanelAPI:
 
@@ -303,7 +303,7 @@ class PanelAPI:
         return {"ok": True}
 
     def win_close(self):
-        """X = tray me chhupao. Agent BAND NAHI hota."""
+        """X = hide into the tray. The agent does NOT stop."""
         try:
             self._window.hide()
             _log("Panel hidden to tray — agent still running")
@@ -314,18 +314,18 @@ class PanelAPI:
     # ── state ──
     def get_state(self):
         try:
-            # Session pehle ensure karo — shopType/shopName wahin se aate hain.
-            # Warna pehli baar panel khulte hi DEMO shop bhi "paid" dikhta hai
-            # aur upgrade banner gayab ho jaata hai.
+            # Ensure the session first — shopType/shopName come from it.
+            # Otherwise the very first time the panel opens, even a DEMO shop shows as "paid"
+            # and the upgrade banner disappears.
             _session.get()
-            # Chuna hua printer server se — background me taaza hota
-            # rehta hai, ye call kabhi rukti nahi.
+            # The chosen printer from the server — it keeps being refreshed
+            # in the background; this call never blocks.
             _saved_printers.touch()
             st = _AGENT.agent_state
             conn = st.get("connection", "connecting")
             remote = _AGENT.REMOTE_VERSION_LABEL
-            # Compare INTEGER build numbers, labels nahi — "2.9" > "2.10"
-            # string compare me galat aata hai.
+            # Compare INTEGER build numbers, not labels — "2.9" > "2.10"
+            # comes out wrong in a string compare.
             update_available = bool(getattr(_AGENT, "REMOTE_VERSION_INT", 0) > _AGENT.VERSION)
             return {
                 "ok": True,
@@ -336,19 +336,19 @@ class PanelAPI:
                 "version": _AGENT.VERSION_LABEL,
                 "latestVersion": remote or _AGENT.VERSION_LABEL,
                 "updateAvailable": update_available,
-                # ⚠️ Yahan pehle agent_state ka "printer" lautaya jaata tha —
-                # wo Windows ka DEFAULT printer hai, shop ka chuna hua nahi.
-                # Usi wajah se Refresh Printer List dabate hi dropdown
-                # default par chala jaata tha. Ab server wali saved value.
+                # ⚠️ This used to return agent_state's "printer" —
+                # that is the Windows DEFAULT printer, not the one the shop chose.
+                # That is why pressing Refresh Printer List switched the dropdown
+                # to the default. Now it is the value saved on the server.
                 "printerBw": _saved_printers.bw,
                 "printerColor": _saved_printers.color,
-                # Panel ko pata hona chahiye ki ye value maalum hai ya abhi
-                # tak pata hi nahi chala (net band). Pata na ho to panel
-                # dropdown ko haath nahi lagata.
+                # The panel needs to know whether this value is known or not
+                # known yet (network down). If it is not known, the panel
+                # does not touch the dropdown.
                 "printersKnown": _saved_printers.known,
                 "defaultPrinter": st.get("printer") or "",
-                # Khaali = Windows ka default chalega, yaani print phir bhi
-                # ho jayega — isliye ye tabhi false hai jab printer hai hi nahi.
+                # Empty = the Windows default applies, meaning printing still
+                # works — so this is false only when there is no printer at all.
                 "printerBwReady": bool(_saved_printers.bw or st.get("printer")),
                 "printerColorReady": bool(_saved_printers.color or _saved_printers.bw or st.get("printer")),
                 "lastSync": time.strftime("%I:%M:%S %p"),
@@ -357,7 +357,7 @@ class PanelAPI:
             return {"ok": False, "error": str(e)}
 
     def get_stats(self):
-        """Dashboard ke numbers — wahi endpoint jo website use karta hai."""
+        """The dashboard numbers — the same endpoint the website uses."""
         d = _api("GET", "/api/admin/stats")
         if not d.get("ok"):
             return {"ok": False, "error": d.get("error")}
@@ -377,10 +377,10 @@ class PanelAPI:
             "prevPrints": d.get("prevPrints", 0) or 0,
             "prevEarnings": d.get("prevEarnings", 0) or 0,
             "shopOpen": not bool(d.get("paused")),
-            # Server 'low_ink' / 'no_paper' bhejta hai, panel ke button
-            # 'ink' / 'paper' samajhte hain. Pehle ye seedha pass ho jaata
-            # tha, isliye Low Ink / No Paper chuna hua kabhi highlight
-            # nahi hota tha — panel hamesha "All Good" dikhata rehta tha.
+            # The server sends 'low_ink' / 'no_paper', but the panel buttons
+            # understand 'ink' / 'paper'. This used to be passed straight through,
+            # so a chosen Low Ink / No Paper was never highlighted
+            # — the panel always kept showing "All Good".
             "supply": self._SUPPLY_FROM_SERVER.get(
                 str(d.get("supply_warning") or ""), "ok"),
             "activity": acts,
@@ -392,8 +392,8 @@ class PanelAPI:
         if not d.get("ok"):
             return {"ok": False, "error": d.get("error")}
         d["hasKeys"] = bool(d.get("has_razorpay_secret") or d.get("has_cashfree_secret"))
-        # Secrets kabhi panel tak nahi jaate. Naam se nahi, SUFFIX se hataate
-        # hain — kal koi naya secret column add ho to wo bhi apne aap ruk jaye.
+        # Secrets never reach the panel. They are removed by SUFFIX, not by name
+        # — so if a new secret column is added tomorrow, it is held back automatically too.
         for k in list(d.keys()):
             lk = str(k).lower()
             if (lk.endswith("_secret") or lk.endswith("secret_key")
@@ -414,7 +414,7 @@ class PanelAPI:
                 "payment_gateway": payload.get("payment_gateway")}
         gw = (payload.get("payment_gateway") or "").lower()
         key, secret = payload.get("key") or "", payload.get("secret") or ""
-        # Khaali chhoda = purani value rehne do
+        # Left empty = keep the old value
         if key:
             body["razorpay_key_id" if gw == "razorpay" else "cashfree_app_id"] = key
         if secret:
@@ -433,15 +433,15 @@ class PanelAPI:
             return {"ok": False, "error": str(e)}
 
     def refresh_printers(self):
-        # Ye sirf LIST dobara padhta hai. Shop ka chuna hua printer isse
-        # kabhi nahi badalta — wo server par saved rehta hai aur
-        # _saved_printers se aata hai.
+        # This only reads the LIST again. The shop's chosen printer
+        # never changes through this — it stays saved on the server and
+        # comes from _saved_printers.
         self._printers_cache, self._printers_at = [], 0
         try:
             ok, name = _AGENT.check_printer()
             if ok and name:
-                # Ye Windows ka default hai — sirf tray ki "Printer: ..."
-                # line ke liye. Dropdown par iska koi asar nahi.
+                # This is the Windows default — only for the tray's "Printer: ..."
+                # line. It has no effect on the dropdown.
                 _AGENT.agent_state["printer"] = name
             _AGENT.report_printers_to_server()
             return {"ok": True}
@@ -451,9 +451,9 @@ class PanelAPI:
     def save_printers(self, bw, color):
         r = _api("PUT", "/api/admin/settings",
                  {"printer_name_bw": bw or "", "printer_name_color": color or ""})
-        # Save ho gaya to cache abhi ke abhi badal do. Warna agle 30
-        # second tak get_state purani value lautata rehta aur panel me
-        # naya printer "wapas badal gaya" jaisa lagta.
+        # If the save succeeded, update the cache right now. Otherwise for the next 30
+        # seconds get_state would keep returning the old value and in the panel
+        # the new printer would look like it "changed back".
         if r.get("ok"):
             _saved_printers.set(bw, color)
         return r
@@ -470,19 +470,19 @@ class PanelAPI:
 
     # ── shop controls ──
     #
-    # WAJAH KI YE DO ALAG ENDPOINT PAR JAATE HAIN:
-    # Pehle dono /api/admin/settings par jaate the. Us endpoint me `paused`
-    # aur `supply_warning` ka koi handler tha hi nahi — server
-    # { success:true } lauta deta tha par DB me kuch likhta NAHI tha.
-    # Panel refresh par purani value wapas aa jaati thi, isliye "Shop
-    # Close" dabate hi toggle wapas apni jagah chala jaata tha (website se
-    # wahi kaam theek chalta tha, kyunki website in dedicated endpoints ko
-    # call karti hai). Ab panel bhi wahi endpoint use karta hai jo website
-    # karti hai — ek hi raasta, ek hi vyavhaar.
+    # WHY THESE TWO GO TO SEPARATE ENDPOINTS:
+    # Both used to go to /api/admin/settings. That endpoint had no handler at all
+    # for `paused` and `supply_warning` — the server
+    # returned { success:true } but wrote NOTHING to the DB.
+    # The old value came back on panel refresh, so pressing "Shop
+    # Close" made the toggle snap back to where it was (the same action from
+    # the website worked, because the website calls these dedicated
+    # endpoints). Now the panel uses the same endpoints as the
+    # website — one path, one behaviour.
     def set_shop_open(self, is_open):
         return _api("POST", "/api/shop/pause", {"paused": (not bool(is_open))})
 
-    # Panel ki bhasha aur DB ki bhasha alag hai — yahin badal dete hain.
+    # The panel vocabulary and the DB vocabulary differ — they are converted right here.
     #   panel: ok / ink / paper      DB: '' / low_ink / no_paper
     _SUPPLY_TO_SERVER = {"ok": "", "ink": "low_ink", "paper": "no_paper"}
     _SUPPLY_FROM_SERVER = {"": "ok", "ok": "ok", "low_ink": "ink", "no_paper": "paper"}
@@ -496,15 +496,15 @@ class PanelAPI:
     # ── agent actions (existing functions) ──
     def sync_now(self):
         """
-        Statusbar ka 'Sync Now'.
+        The status bar's 'Sync Now'.
 
-        Reconnect se HALKA hai: socket reset nahi hota, printer dobara
-        detect nahi hota. Bas server se poochte hain ki pahunch me hai ya
-        nahi, connection state theek karte hain, aur print loop ko jaga
-        dete hain taaki pending job poll ka intezaar na kare.
+        LIGHTER than Reconnect: the socket is not reset and the printer is not
+        re-detected. It only asks the server whether it is reachable,
+        corrects the connection state, and wakes the print loop
+        so a pending job does not have to wait for the poll.
 
-        Numbers dobara laane ka kaam panel ka refresh() karta hai — yahan
-        sirf connection ki sachchai set hoti hai.
+        Reloading the numbers is the panel's refresh() job — only the
+        truth about the connection is set here.
         """
         try:
             connected = bool(_AGENT.ping_server())
@@ -515,26 +515,26 @@ class PanelAPI:
 
         if not connected:
             _AGENT.update_tray_status("Offline — click Reconnect to Server")
-            _log("Sync Now — server tak nahi pahunche", "WARN")
+            _log("Sync Now — could not reach the server", "WARN")
             return {"ok": False, "connected": False,
-                    "error": "Server tak nahi pahunche — internet check karo"}
+                    "error": "Could not reach the server — check the internet connection"}
 
         _AGENT.update_tray_status("Running — waiting for jobs")
         try:
-            _AGENT.wake_print_loop()      # pending job turant nikle
+            _AGENT.wake_print_loop()      # so a pending job comes out immediately
         except Exception:
             pass
-        _log("Sync Now — server se taaza data liya")
+        _log("Sync Now — fetched fresh data from the server")
         return {"ok": True, "connected": True}
 
     def reconnect(self):
         """
-        Reconnect — result TURANT.
+        Reconnect — the result IMMEDIATELY.
 
-        Ab HTTP check yahan dobara nahi hota. reconnect_to_server() khud
-        socket reset karta hai, print loop ko jagata hai, server ping
-        karta hai aur True/False lautata hai. Ek hi jagah logic — tray se
-        dabao ya panel se, dono ka vyavhaar bilkul same.
+        The HTTP check no longer happens again here. reconnect_to_server() itself
+        resets the socket, wakes the print loop, pings the server
+        and returns True/False. The logic lives in one place — pressed from the tray
+        or from the panel, the behaviour is exactly the same.
         """
         try:
             connected = _AGENT.reconnect_to_server()
@@ -545,7 +545,7 @@ class PanelAPI:
         if connected:
             return {"ok": True, "connected": True, "printer": printer}
         return {"ok": True, "connected": False,
-                "error": "Server tak nahi pahunch paye — internet check karo"}
+                "error": "Could not reach the server — check the internet connection"}
 
     def open_logs(self):
         try:
@@ -629,8 +629,8 @@ class PanelAPI:
     # ── DEMO → PAID CONVERSION ──
     def verify_paid_shop(self, paid_shop_id, password):
         """
-        Step 1: paid Shop ID + password server par verify karo.
-        Yahan kuch badalta NAHI — sirf check hota hai.
+        Step 1: verify the paid Shop ID + password on the server.
+        Nothing changes here — it is only a check.
         """
         import requests
         pid = str(paid_shop_id or "").strip().upper()
@@ -647,7 +647,7 @@ class PanelAPI:
             d = r.json() if r.content else {}
             if r.status_code != 200 or not d.get("success"):
                 return {"ok": False, "error": d.get("error") or f"Verification failed ({r.status_code})"}
-            # Ticket Python me rakho — JS ko kabhi nahi dete
+            # Keep the ticket in Python — it is never given to JS
             self._convert_ticket = d.get("ticket")
             return {"ok": True, "shopId": d.get("shopId"), "shopName": d.get("shopName"),
                     "planType": d.get("planType"), "alreadyLinked": bool(d.get("alreadyLinked"))}
@@ -656,8 +656,8 @@ class PanelAPI:
 
     def convert_to_paid(self):
         """
-        Step 2: switch. Server agent token transfer karta hai, phir agent
-        apna Shop ID live badal leta hai — koi reinstall, koi restart nahi.
+        Step 2: switch. The server transfers the agent token, then the agent
+        changes its Shop ID live — no reinstall, no restart.
         """
         import requests
         ticket = getattr(self, "_convert_ticket", None)
@@ -677,14 +677,14 @@ class PanelAPI:
                 return {"ok": False,
                         "error": "Your shop was linked on the server, but the Shop ID could not be applied "
                                  "on this PC. Use 'Change Shop ID' from the tray and enter: " + str(new_id)}
-            # "memory-only" = switch ho gaya aur printing chal rahi hai, bas
-            # config file save nahi hui. Customer ko batao, par fail mat karo.
+            # "memory-only" = the switch happened and printing is running, only the
+            # config file was not saved. Tell the customer, but do not fail.
             warn = None
             if switched == "memory-only":
                 warn = ("Connected, but the Shop ID could not be saved on this PC. "
                         "If it asks again after a restart, enter: " + str(new_id))
 
-            # Session reset — ab paid shop ka data aana chahiye
+            # Reset the session — the paid shop's data should come in now
             self._convert_ticket = None
             _session.token = None
             _session.expires_at = 0
@@ -698,7 +698,7 @@ class PanelAPI:
             return {"ok": False, "error": f"Could not reach the server: {e}"}
 
     def open_upgrade(self):
-        """Panel ko upgrade page par le jao."""
+        """Take the panel to the upgrade page."""
         try:
             if self._window:
                 self._window.evaluate_js("go('upgrade')")
@@ -713,18 +713,18 @@ API = PanelAPI()
 # ══════════════════════════════════════════════════════════════
 # WINDOW LIFECYCLE
 #
-# ZAROORI (Windows): pywebview ka window SIRF main thread par ban sakta
-# hai. Background thread se banane par ye error aata hai:
+# IMPORTANT (Windows): a pywebview window can be created ONLY on the main
+# thread. Creating it from a background thread fails with:
 #     "pywebview must be run on a main thread"
 #
-# Udhar pystray (tray icon) ka icon.run() bhi main thread chahta hai.
-# Dono ek hi thread nahi le sakte, isliye kaam ese baanta hai:
+# Meanwhile pystray's (tray icon) icon.run() also wants the main thread.
+# Both cannot take the same thread, so the work is split like this:
 #
 #     MAIN thread      ->  pywebview  (webview.start(), blocking)
 #     Background thread->  pystray    (icon.run_detached())
 #
-# Window ek hi baar banti hai aur chhupi rehti hai. Tray ka "Settings"
-# use sirf show/hide karta hai — har baar nayi window nahi banti.
+# The window is created only once and stays hidden. The tray's "Settings"
+# only shows/hides it — a new window is not created every time.
 # ══════════════════════════════════════════════════════════════
 _window = None
 _ui_running = False
@@ -733,7 +733,7 @@ _pending_page = None
 
 
 def _goto_pending_page():
-    """Tray se 'upgrade' bola gaya ho to panel wahin khule."""
+    """If the tray asked for 'upgrade', the panel opens right there."""
     global _pending_page
     if not _pending_page or _window is None:
         return
@@ -746,9 +746,9 @@ def _goto_pending_page():
 
 def panel_available():
     """
-    pywebview + agent_panel.html dono chahiye. Purane Windows 10 par
-    WebView2 runtime na ho to panel nahi chalega — tab agent tray me
-    pehle jaisa hi chalta rahega, printing par koi asar nahi.
+    Needs both pywebview + agent_panel.html. On an old Windows 10 without the
+    WebView2 runtime the panel will not run — the agent then keeps running in the
+    tray exactly as before; printing is not affected.
     """
     global _unavailable_reason
     try:
@@ -764,11 +764,11 @@ def panel_available():
 
 def start_ui_loop(show_now=True):
     """
-    MAIN THREAD se hi call karo. Window banata hai aur webview ka loop
-    chalata hai — ye call block ho jaata hai (jaise pehle icon.run() hota tha).
+    Call this ONLY from the MAIN THREAD. It creates the window and runs the webview
+    loop — this call blocks (as icon.run() used to).
 
-    True  = loop theek chala aur ab band ho gaya (Exit)
-    False = shuru hi nahi ho paaya (caller tray-only mode me chale)
+    True  = the loop ran fine and has now ended (Exit)
+    False = it could not even start (the caller should run in tray-only mode)
     """
     global _window, _ui_running
 
@@ -782,9 +782,9 @@ def start_ui_loop(show_now=True):
             "Echel — Print Agent",
             panel_html_path(),
             js_api=API,
-            # v2.3: panel ab ek hi chhoti screen hai (9 page nahi), isliye
-            # window bhi chhoti. 760 height jaan-boojh kar — 1366x768 wale
-            # purane shop PC par bhi taskbar ke saath poori dikh jaati hai.
+            # v2.3: the panel is now a single small screen (not 9 pages), so the
+            # window is smaller too. The height of 760 is deliberate — even on an
+            # old 1366x768 shop PC it fits completely together with the taskbar.
             width=900, height=720,
             min_size=(700, 600),
             background_color="#12131a",
@@ -794,7 +794,7 @@ def start_ui_loop(show_now=True):
         API._window = _window
 
         def _on_closing():
-            """X = chhupao, band mat karo. Sirf Exit se agent rukta hai."""
+            """X = hide, do not close. Only Exit stops the agent."""
             try:
                 _window.hide()
                 _log("Panel hidden to tray — agent still running")
@@ -814,7 +814,7 @@ def start_ui_loop(show_now=True):
 
         _ui_running = True
         _log("Panel UI loop starting on the main thread")
-        webview.start(debug=False)          # yahan block hota hai
+        webview.start(debug=False)          # blocks here
         _log("Panel UI loop ended")
         return True
 
@@ -829,9 +829,9 @@ def start_ui_loop(show_now=True):
 
 def open_panel(icon=None, item=None, page=None):
     """
-    Tray ka '⚙ Settings' / double-click yahan aate hain.
-    Window pehle se bani hui hai — bas dikha dete hain.
-    Ye tray ke thread se call hota hai, isliye yahan window BANATE nahi.
+    The tray's '⚙ Settings' / double-click lands here.
+    The window already exists — it is just shown.
+    This is called from the tray thread, so the window is NOT CREATED here.
     """
     global _pending_page
     if page:
@@ -858,7 +858,7 @@ def open_panel(icon=None, item=None, page=None):
 
 
 def shutdown():
-    """Exit ke waqt window band karo taaki main thread ka loop khatam ho."""
+    """Close the window on Exit so the main thread's loop ends."""
     try:
         if _window is not None:
             _window.destroy()

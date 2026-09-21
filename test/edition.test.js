@@ -4,12 +4,16 @@ test('retired products and other language bundles are unavailable',()=>{
   for(const route of ['/whitelabel','/whitelabel.html','/wl-admin','/migrate','/partner','/api/whitelabel/branding','/api/superadmin/whitelabels','/api/superadmin/migrate-db','/i18n/bn.js','/i18n/ta.js'])assert.equal(retiredRoute(route),true,route);
   for(const route of ['/','/about','/setup-guide','/api/homepage-config','/i18n/mni-mtei.js'])assert.equal(retiredRoute(route),false,route);
 });
-test('each public page loads the language engine before its dictionaries',()=>{
+test('every public page loads the language engine, and nothing else',()=>{
   const root=path.join(__dirname,'../public');
+  const gone=['/i18n-extra.js','/echel-english.js','/echel-mayek.js','/i18n/mni-mtei.js'];
   for(const file of fs.readdirSync(root).filter(f=>f.endsWith('.html'))){
     const html=fs.readFileSync(path.join(root,file),'utf8');
     const sources=[...html.matchAll(/<script\s+src="([^"]+)"[^>]*>/g)].map(m=>m[1]);
-    const order=['/i18n.js','/i18n-extra.js','/i18n/mni-mtei.js','/echel-english.js','/echel-mayek.js'].map(s=>sources.indexOf(s));
-    assert.ok(order[0]>=0&&order.every((n,i)=>!i||n>order[i-1]),file);
+    assert.ok(sources.includes('/i18n.js'),file+' must load /i18n.js');
+    // The Manipuri dictionary is downloaded by the engine only when a visitor
+    // picks Manipuri — a page that loads it directly would cost every English
+    // visitor the download.
+    for(const old of gone)assert.ok(!sources.includes(old),file+' must not load '+old);
   }
 });

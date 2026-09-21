@@ -65,13 +65,13 @@ input:focus{border-color:#1c6fff}
 <style>
 /* ══════════════════════════════════════════════════════════════
    Login screen — V2.0 look (soft grey canvas, white card, blue/violet).
-   Sab kuch #loginScreen ke andar scoped hai, panel ko haath nahi lagta.
+   Everything is scoped inside #loginScreen; the panel is not touched.
 
-   !important jaan-boojh kar: neeche wala "Panel retheme" block
-   .card/.login-card/.btn-primary/input par !important lagata hai. Wo
-   baad me aata hai, isliye yahan bhi !important chahiye — par selector
-   #loginScreen se shuru hota hai, to jeet sirf login screen par hoti
-   hai, panel par nahi.
+   !important on purpose: the "Panel retheme" block below puts
+   !important on .card/.login-card/.btn-primary/input. It comes
+   later, so !important is needed here too — but the selector
+   starts with #loginScreen, so it wins only on the login screen,
+   not on the panel.
    ══════════════════════════════════════════════════════════════ */
 #loginScreen{position:fixed;inset:0;z-index:500;background:#f5f6f8;overflow-y:auto;
   display:flex;align-items:center;justify-content:center;padding:24px;margin:0;max-width:none;
@@ -86,7 +86,7 @@ input:focus{border-color:#1c6fff}
   border-radius:20px !important;
   box-shadow:0 1px 2px rgba(16,24,40,.04),0 12px 32px rgba(16,24,40,.08) !important;
   padding:34px 28px 28px;width:100%;max-width:420px;position:relative}
-/* Shield tile — ye Super Admin ka gate hai, shop wala printer nahi */
+/* Shield tile — this is the Super Admin gate, not the shop's printer */
 #loginScreen .login-card::before{content:'🛡️';position:absolute;top:-26px;left:50%;translate:-50% 0;
   width:52px;height:52px;background:linear-gradient(135deg,#8b5cf6,#c81e28);border-radius:16px;
   display:flex;align-items:center;justify-content:center;font-size:24px;
@@ -109,8 +109,8 @@ input:focus{border-color:#1c6fff}
   box-shadow:0 6px 16px rgba(37,99,235,.28) !important;transition:.15s !important}
 #loginScreen .btn-primary:hover{background:#1d4ed8 !important;transform:translateY(-1px)}
 #loginScreen .btn-primary:focus-visible{outline:3px solid #101828;outline-offset:2px}
-/* .err-msg display:none rehta hai — JS use inline block karta hai, isliye
-   yahan display ko chhua NAHI gaya. */
+/* .err-msg stays display:none — the JS sets an inline block, so
+   display was NOT touched here. */
 #loginScreen .err-msg{background:#fef3f2;border:1px solid #fecdca;color:#b42318;
   border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-top:12px}
 #loginScreen .help-text{font-size:12.5px;color:#667085;margin-top:16px;line-height:1.6}
@@ -129,11 +129,11 @@ nav .logo span{color:#c81e28 !important}
   border-radius:20px !important;font-weight:700 !important;transition:.15s}
 .nav-link:hover{background:#111 !important;color:#fff !important}
 .hero h1,.card h2,.card h3{font-family:'Plus Jakarta Sans',sans-serif !important;letter-spacing:-.6px;color:#111}
-/* ── PURANE !important overrides ──
-   Ye block naye redesign (#qsp-sa-redesign) se ladta tha. !important
-   ki wajah se naya design lag hi nahi pata tha — isliye jo rules ab
-   redesign block me hain wo yahan se hata diye gaye hain.
-   Sirf wahi bacha hai jo redesign cover nahi karta (login card, buttons). */
+/* ── OLD !important overrides ──
+   This block fought with the new redesign (#qsp-sa-redesign). Because of
+   !important the new design could not apply at all — so the rules that
+   now live in the redesign block were removed from here.
+   Only what the redesign does not cover remains (login card, buttons). */
 .login-card{border:1.5px solid #ecedf2 !important;border-radius:20px !important;
   box-shadow:0 8px 30px rgba(17,17,17,.06) !important;background:#fff !important}
 .stat-val{font-family:'Plus Jakarta Sans',sans-serif !important}
@@ -141,7 +141,7 @@ nav .logo span{color:#c81e28 !important}
   font-family:'Plus Jakarta Sans',sans-serif !important;font-weight:800 !important;
   box-shadow:0 8px 20px rgba(255,46,99,.3) !important;transition:.15s !important}
 .btn-primary:hover,.btn-save:hover{background:#a8121b !important;transform:translateY(-1px)}
-/* background yahan se hataya — warna topbar/search ka soft bg nahi lag pata */
+/* background removed here — otherwise the soft bg of the topbar/search cannot apply */
 input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
   font-family:'Inter',sans-serif}
 .gateway-tab.active,.payment-opt.selected{border-color:#c81e28 !important;
@@ -194,10 +194,10 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
 <style id="qsp-sa-analytics">
 /* ═══════════════════════════════════════════════════════════════
-   ANALYTICS — premium dashboard redesign. Ek chhota token system
-   (ink/muted/line + 6 accent colors) jo KPI cards, donuts, funnel
-   aur table sabme consistently reuse hota hai — yehi cheez isko
-   "ek studio se aaya" jaisa cohesive feel deti hai.
+   ANALYTICS — premium dashboard redesign. A small token system
+   (ink/muted/line + 6 accent colours) reused consistently across the
+   KPI cards, donuts, funnel and table — that is what gives it the
+   cohesive "designed by one studio" feel.
    ═══════════════════════════════════════════════════════════════ */
 .an-wrap{--sa-ink:#14121f;--sa-muted:#8b8794;--sa-line:#ececf1;--sa-soft:#fbfbfc;
   --sa-pink:#c81e28;--sa-purple:#b51c26;--sa-amber:#f59e0b;--sa-emerald:#0f9d70;--sa-blue:#2563eb;--sa-teal:#0f766e;}
@@ -310,13 +310,13 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 <style id="qsp-sa-redesign">
 /* ═══════════════════════════════════════════════════════════════════
    SUPERADMIN REDESIGN — 2026
-   Ye stylesheet SABSE AAKHIR me aati hai, isliye upar wale purane
-   rules ko override kar deti hai.
+   This stylesheet comes LAST, so it overrides the old rules
+   above.
 
-   Poore panel ke 20+ tab ek hi set of classes use karte hain
-   (.card / .stat / .shop-table / .nav-it / .filter-tab), isliye
-   yahan ek jagah badalne se HAR tab ka look ek saath badal jaata hai —
-   kisi tab ka HTML dobara likhne ki zaroorat nahi padti.
+   All 20+ tabs of the panel use the same set of classes
+   (.card / .stat / .shop-table / .nav-it / .filter-tab), so
+   changing them in one place updates the look of EVERY tab at once —
+   no tab's HTML needs to be rewritten.
    ═══════════════════════════════════════════════════════════════════ */
 
 #panel{
@@ -352,7 +352,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
   background:linear-gradient(135deg,var(--brand),var(--brand2));
   box-shadow:0 6px 16px rgba(255,77,28,.30);font-size:17px;
 }
-/* brand ke neeche chhota "Super Admin" — JS se inject hota hai */
+/* a small "Super Admin" below the brand — injected by JS */
 #panel .side-brand small{
   display:block;font-size:10.5px;font-weight:700;color:var(--muted);
   letter-spacing:.3px;margin-top:2px;
@@ -392,7 +392,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 #panel .page-title{
   font-size:20px;letter-spacing:-.5px;color:var(--ink);line-height:1.2;
 }
-/* breadcrumb — JS bharta hai */
+/* breadcrumb — filled by JS */
 #panel .page-crumb{
   font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px;
   display:flex;align-items:center;gap:6px;
@@ -434,7 +434,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
 #panel .app-content{padding:22px 26px 70px;max-width:1320px}
 
-/* ───────────── CARD — sab tabs ka base container ───────────── */
+/* ───────────── CARD — the base container of every tab ───────────── */
 #panel .card{
   background:var(--surface);border:1px solid var(--line);
   border-radius:var(--radius);box-shadow:var(--shadow);
@@ -459,7 +459,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
   transition:transform .18s ease, box-shadow .18s ease;
 }
 #panel .stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
-/* har stat ke upar ek colored circle — content JS/CSS se aata hai */
+/* a coloured circle above each stat — content comes from JS/CSS */
 #panel .stat::before{
   content:attr(data-ico);
   width:42px;height:42px;border-radius:13px;margin-bottom:11px;
@@ -527,7 +527,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 #panel .status-pill.active {background:#ecfdf5;color:#047857;border-color:#a7f3d0}
 #panel .status-pill.pending{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
 
-/* Action buttons — table me bahut saare hain, unhe ek jaisa rakho */
+/* Action buttons — the table has many of them; keep them consistent */
 #panel .shop-table td button{
   font-family:'Inter',sans-serif;border-radius:9px !important;
   font-size:11.5px !important;font-weight:700 !important;
@@ -593,7 +593,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 <script src="/echel-brand.js?v=1" defer></script>
 
 
-<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<script src="/i18n.js" defer></script></head>
 <body class="echel-panel">
 
 <nav>
@@ -622,11 +622,11 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
       <div style="display:flex;gap:8px;align-items:center;">
         <img id="capImg" alt="Captcha" width="160" height="52"
              style="height:52px;width:160px;flex:none;border:1px solid #e5e7eb;border-radius:9px;background:#f4f6fb;">
-        <button type="button" onclick="loadCaptcha()" title="Naya captcha"
+        <button type="button" onclick="loadCaptcha()" title="New captcha"
                 style="height:52px;width:44px;flex:none;border:1px solid #e5e7eb;background:#fff;
                        border-radius:9px;font-size:18px;cursor:pointer;line-height:1;">&#8635;</button>
         <input id="capAns" type="text" maxlength="8" autocomplete="off" spellcheck="false"
-               autocapitalize="characters" placeholder="Upar wale akshar"
+               autocapitalize="characters" placeholder="The characters above"
                onkeydown="if(event.key==='Enter')doLogin()" style="flex:1;min-width:0;">
       </div>
     </div>
@@ -644,7 +644,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
     <div style="font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45;margin:14px 0 5px 14px;">Dashboard</div>
     <button class="nav-it active" data-nav="overview" onclick="navTo('overview',this)"><span class="ico">📊</span> Overview</button>
     <button class="nav-it" data-nav="analytics" onclick="navTo('analytics',this)"><span class="ico">📊</span> Analytics</button>
-    <button class="nav-it" data-nav="kaam" onclick="navTo('kaam',this)"><span class="ico">🎯</span> Action Center</button>
+    <button class="nav-it" data-nav="actions" onclick="navTo('actions',this)"><span class="ico">🎯</span> Action Center</button>
     <div style="font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45;margin:14px 0 5px 14px;">Shops</div>
     <button class="nav-it" data-nav="shops" onclick="navTo('shops',this)"><span class="ico">🏪</span> Shops</button>
     <button class="nav-it" data-nav="demos" onclick="navTo('demos',this)"><span class="ico">🎯</span> Demo Accounts</button>
@@ -680,12 +680,12 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
         <div class="page-crumb" id="pageCrumb">Home <i>›</i> <span>Overview</span></div>
       </div>
       <div class="topbar-spacer"></div>
-      <!-- Global search — kisi bhi tab se shop dhoondh lo -->
+      <!-- Global search — find a shop from any tab -->
       <div class="topbar-search">
-        <input id="globalSearch" type="search" placeholder="Shop ka naam, ID ya number…"
+        <input id="globalSearch" type="search" placeholder="Shop name, ID or number…"
                oninput="globalSearchGo(this.value)" autocomplete="off">
       </div>
-      <button class="topbar-btn" onclick="navTo('kaam',document.querySelector('[data-nav=kaam]'))" title="Action Center">
+      <button class="topbar-btn" onclick="navTo('actions',document.querySelector('[data-nav=actions]'))" title="Action Center">
         🔔<span class="dot" id="topbarBadge" style="display:none;">0</span>
       </button>
       <button class="topbar-logout" onclick="logout()">🚪 <span>Logout</span></button>
@@ -733,12 +733,12 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
         </div>
       </div>
 
-      <!-- What's in the Update — yahi text shop owner ko uske panel me
-           download button ke paas "What's in Update" par dikhta hai. -->
+      <!-- What's in the Update — this same text appears to the shop owner in their panel
+           next to the download button, under "What's in Update". -->
       <div style="background:#f8f7f5;border-radius:14px;padding:16px 20px;margin-bottom:14px;">
         <label for="agentVersionNotes" style="display:block;font-size:11px;color:#6b6870;font-weight:600;text-transform:uppercase;margin-bottom:6px;">📝 What's in the Update</label>
         <textarea id="agentVersionNotes" rows="5" maxlength="2000"
-                  placeholder="Is update me kya naya hai — har point nayi line me likho:&#10;&#10;Sync Now button add hua&#10;Connection ka green/red dot&#10;Print speed tez ki gayi"
+                  placeholder="What is new in this update — write each point on a new line:&#10;&#10;Added a Sync Now button&#10;Green/red connection dot&#10;Faster printing"
                   style="width:100%;padding:12px 14px;border:1.5px solid #e5e3e0;border-radius:10px;font-size:13.5px;font-family:'Inter',sans-serif;line-height:1.65;resize:vertical;box-sizing:border-box;"></textarea>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
           <span style="font-size:11px;color:#6b6870;">This link appears beside the download button in the shop owner panel. Leave it empty to hide the link.</span>
@@ -748,7 +748,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
       <button class="filter-tab" style="padding:14px 24px;background:#1c6fff;color:#fff;border-color:#1c6fff;font-size:13px;" onclick="pushAgentUpdate()">🚀 Push New Update</button>
       <p style="font-size:11px;color:#6b6870;line-height:1.6;">
-        <strong>Do this first:</strong> GitHub pe <code>agent-template/print_agent.py</code> put the new code in the file and deploy on Render.<br>
+        <strong>Do this first:</strong> put the new code into <code>agent-template/print_agent.py</code> on GitHub and deploy it on Render.<br>
         <strong>Then:</strong> Push the update to make it available to installed agents. They download it and restart when they next check for updates, normally within one hour.<br>
         <strong>Version series:</strong> The next version is suggested automatically and can be changed. The server rejects versions older than the current release.
       </p>
@@ -760,9 +760,9 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
     <div data-sect="homepage"><div class="card"><div class="echel-settings-toolbar"><div><span class="echel-kicker">BUSINESS PROFILE</span><h2>Brand &amp; Website</h2></div><button type="button" onclick="saveHomepage()">Save changes</button></div><p>Manage the business details displayed across your website. Empty contact fields are hidden from visitors.</p><div id="hpSaveMsg" role="status"></div><div class="echel-settings-grid"><label for="hpBrandName">Brand name<input id="hpBrandName" type="text" maxlength="300" placeholder="Brand name"></label><label for="hpTagline">Tagline<input id="hpTagline" type="text" maxlength="300" placeholder="Tagline"></label><label for="hpWhatsapp">WhatsApp contact<input id="hpWhatsapp" type="text" maxlength="300" placeholder="WhatsApp contact"></label><label for="hpAddress">Business address<input id="hpAddress" type="text" maxlength="600" placeholder="Business address"></label><label for="hpBusinessHours">Business hours<input id="hpBusinessHours" type="text" maxlength="300" placeholder="Business hours"></label><label for="hpEmail">Support email<input id="hpEmail" type="text" maxlength="300" placeholder="Support email"></label><label for="hpPhone">Support number<input id="hpPhone" type="text" maxlength="300" placeholder="Support number"></label><label for="hpInsta">Instagram<input id="hpInsta" type="text" maxlength="300" placeholder="Instagram"></label><label for="hpFb">Facebook<input id="hpFb" type="text" maxlength="300" placeholder="Facebook"></label><label for="hpYt">YouTube<input id="hpYt" type="text" maxlength="300" placeholder="YouTube"></label><label for="hpLinkedin">LinkedIn<input id="hpLinkedin" type="text" maxlength="300" placeholder="LinkedIn"></label><label for="hpTwitter">X / Twitter<input id="hpTwitter" type="text" maxlength="300" placeholder="X / Twitter"></label><label for="hpTelegram">Telegram<input id="hpTelegram" type="text" maxlength="300" placeholder="Telegram"></label><label for="hpMapsUrl">Google Maps link<input id="hpMapsUrl" type="text" maxlength="300" placeholder="Google Maps link"></label><label for="hpSetupVideoUrl">Setup video URL<input id="hpSetupVideoUrl" type="text" maxlength="300" placeholder="Setup video URL"></label></div></div><div class="card"><h2>Homepage stats</h2><label><input type="checkbox" id="hpShowStats"> Show homepage stats</label><div class="echel-settings-grid"><label for="hpStatShops">Shops onboarded<input id="hpStatShops" type="text" maxlength="300" placeholder="Shops onboarded"></label><label for="hpStatPrints">Documents printed<input id="hpStatPrints" type="text" maxlength="300" placeholder="Documents printed"></label></div></div><div class="card"><h2>Review badge</h2><p>Add a rating and review link to display a badge on the homepage.</p><div class="echel-settings-grid"><label for="hpGRating">Google rating (0–5)<input id="hpGRating" type="text" maxlength="300" placeholder="Google rating (0–5)"></label><label for="hpGCount">Google review count<input id="hpGCount" type="text" maxlength="300" placeholder="Google review count"></label><label for="hpGUrl">Google review link<input id="hpGUrl" type="text" maxlength="300" placeholder="Google review link"></label><label for="hpJdRating">Justdial rating (0–5)<input id="hpJdRating" type="text" maxlength="300" placeholder="Justdial rating (0–5)"></label><label for="hpJdCount">Justdial review count<input id="hpJdCount" type="text" maxlength="300" placeholder="Justdial review count"></label><label for="hpJdUrl">Justdial review link<input id="hpJdUrl" type="text" maxlength="300" placeholder="Justdial review link"></label></div></div></div><div data-sect="planfeatures"><div class="card"><div class="echel-settings-toolbar"><div><span class="echel-kicker">PLAN CONTENT</span><h2>Plan Features</h2></div><button type="button" onclick="savePlanFeatures()">Save plan features</button></div><p>Edit the feature lists shown on the homepage. Add one feature per line. English and Manipuri lists are stored separately.</p><div id="planFeatureMsg" role="status"></div><div class="echel-settings-grid"><div><h3>Demo</h3><label for="hpPlanDemo">English<textarea id="hpPlanDemo" rows="7" maxlength="2400" data-no-i18n></textarea></label><label for="hpPlanDemoMtei">Manipuri — ꯃꯤꯇꯩꯂꯣꯟ<textarea id="hpPlanDemoMtei" rows="7" maxlength="2400" lang="mni-Mtei" data-no-i18n></textarea></label></div><div><h3>Starter</h3><label for="hpPlanStarter">English<textarea id="hpPlanStarter" rows="7" maxlength="2400" data-no-i18n></textarea></label><label for="hpPlanStarterMtei">Manipuri — ꯃꯤꯇꯩꯂꯣꯟ<textarea id="hpPlanStarterMtei" rows="7" maxlength="2400" lang="mni-Mtei" data-no-i18n></textarea></label></div><div><h3>Pro</h3><label for="hpPlanPro">English<textarea id="hpPlanPro" rows="7" maxlength="2400" data-no-i18n></textarea></label><label for="hpPlanProMtei">Manipuri — ꯃꯤꯇꯩꯂꯣꯟ<textarea id="hpPlanProMtei" rows="7" maxlength="2400" lang="mni-Mtei" data-no-i18n></textarea></label></div><div><h3>Premium</h3><label for="hpPlanPremium">English<textarea id="hpPlanPremium" rows="7" maxlength="2400" data-no-i18n></textarea></label><label for="hpPlanPremiumMtei">Manipuri — ꯃꯤꯇꯩꯂꯣꯟ<textarea id="hpPlanPremiumMtei" rows="7" maxlength="2400" lang="mni-Mtei" data-no-i18n></textarea></label></div></div></div></div>
 
     <div data-sect="pricing">
-    <!-- WhatsApp To Print ka daam. Pehle ye Homepage tab me tha — daam
-         dhoondhne wala aadmi wahan nahi jaata. Input ke id wahi hain,
-         isliye purana save (saveHomepage) bina badle chalta hai. -->
+    <!-- The WhatsApp To Print price. It used to be in the Homepage tab — someone
+         looking for prices does not go there. The input ids are unchanged,
+         so the old save (saveHomepage) works without changes. -->
 
 
     <div class="card" style="margin-bottom:20px;">
@@ -778,7 +778,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
         </div>
       </div>
 
-      <!-- Live Preview - jaisa homepage pe dikhega -->
+      <!-- Live Preview - exactly as it will appear on the homepage -->
       <div style="background:#111111;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:18px;">
         <span style="font-size:11px;color:rgba(255,255,255,0.5);">Preview:</span>
         <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;color:rgba(255,255,255,0.4);text-decoration:line-through;" id="previewActual">₹999</span>
@@ -786,7 +786,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
         <span id="previewDiscount" style="background:#00c853;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">50% OFF</span>
       </div>
 
-      <!-- Festival Offer — banner + countdown, One-Time price ke saath homepage par -->
+      <!-- Festival Offer — banner + countdown on the homepage, next to the One-Time price -->
       <div style="background:linear-gradient(135deg,#3d1f1a,#5c2a1a);border-radius:16px;padding:16px 17px;margin-bottom:18px;">
         <label style="font-size:12.5px;font-weight:800;color:#ffb02e;display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;">
           <input type="checkbox" id="festivalEnabledInput" oninput="updatePreview()" style="width:18px;height:18px;cursor:pointer;">
@@ -813,19 +813,19 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
       <div style="border-top:1.5px dashed #e2ddd6;margin-bottom:16px;"></div>
 
-      <!-- Monthly Plan — naye registration me monthly plan hai hi nahi,
-           isliye UI se hata diya. Inputs HIDDEN rakhe hain kyunki JS inhe
-           padhta/likhta hai (hataane par null-crash hota) aur purani 5
-           monthly shops ka rate abhi bhi isi value se aata hai. -->
+      <!-- Monthly Plan — new registrations no longer have a monthly plan,
+           so it was removed from the UI. The inputs are kept HIDDEN because the JS
+           reads/writes them (removing them caused a null crash) and the 5 old
+           monthly shops still get their rate from this value. -->
       <div style="display:none;" aria-hidden="true">
         <input type="number" id="monthlyActualInput" value="0">
         <input type="number" id="monthlyFeeInput" value="0">
         <div id="monthlyPreviewLine"><span id="monthlyPreviewActual"></span><span id="monthlyPreviewOffer"></span><span id="monthlyPreviewDiscount"></span></div>
       </div>
 
-      <!-- ═══ NAYE PLAN KA PRICE ═══
-             Teeno LIFETIME hain. Actual price = katega hua (0 = chhupa do).
-             Festival offer ka banner + timer teeno card par lagta hai. -->
+      <!-- ═══ NEW PLAN PRICES ═══
+             All three are LIFETIME. Actual price = shown struck through (0 = hide it).
+             The festival offer banner + timer apply to all three cards. -->
         <div style="border-top:2px dashed #e2ddd6;margin-top:18px;padding-top:16px;">
           <label style="font-weight:800;font-size:14px;color:#1b1b1f;">🏷️ PLAN PRICING — Starter / Pro / Premium</label>
           <p style="font-size:11.5px;color:#6b6870;margin:5px 0 12px;line-height:1.7;">
@@ -876,7 +876,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
     <div data-sect="overview" class="show">
 
-    <!-- data-ico + --si-bg se har card ka colored icon circle banta hai -->
+    <!-- data-ico + --si-bg create each card's coloured icon circle -->
     <div class="stats">
       <div class="stat" data-ico="🏪" style="--si-bg:#eef2ff;"><div class="stat-lbl">Total Shops</div><div class="stat-val" id="totalShops">0</div></div>
       <div class="stat" data-ico="✅" style="--si-bg:#ecfdf5;"><div class="stat-lbl">Active Shops</div><div class="stat-val green" id="activeShops">0</div></div>
@@ -887,19 +887,19 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
     </div>
 
-    <!-- ══ KAMAI — har source alag ══
-         Pehle sirf setup fee dikhta tha. Advanced unlock aur renewal ka
-         paisa kahin record hi nahi hota tha, isliye kabhi dikhta hi nahi
-         tha. Ab teeno alag-alag dikhte hain. -->
+    <!-- ══ EARNINGS — each source separately ══
+         Only the setup fee used to be shown. Money from Advanced unlocks and
+         renewals was never recorded anywhere, so it never showed up.
+         Now all three are shown separately. -->
     <div class="card" style="margin-top:18px;">
-      <h2><span>💰 Kamai (source ke hisaab se)</span>
+      <h2><span>💰 Earnings (by source)</span>
         <button onclick="navTo('payments',document.querySelector('[data-nav=payments]'))"
           style="background:#f3f4f6;color:#4b5563;border:none;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;">
-          🧾 Saare payments dekho
+          🧾 View all payments
         </button>
       </h2>
       <div id="revBoxes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:11px;"></div>
-      <p style="font-size:11.5px;color:#9b9690;margin:13px 2px 0;line-height:1.6;">
+      <p data-i18n-sentence style="font-size:11.5px;color:#9b9690;margin:13px 2px 0;line-height:1.6;">
         <b>Print Volume</b> is paid by customers to the shop owner. It is
         <b>not</b> platform revenue and is excluded from the total above.
 
@@ -908,23 +908,23 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
     </div><!-- /overview -->
 
-    <div data-sect="kaam">
+    <div data-sect="actions">
 
 
-    <!-- ACTION CENTER — sabse upar, kyunki roz yahi dekhna hai -->
+    <!-- ACTION CENTER — at the very top, because this is checked every day -->
     <div class="card" style="margin-bottom:20px;">
       <h2><span>🎯 What to Look at Today</span>
         <button onclick="loadActionCenter()" style="background:#f3f4f6;color:#4b5563;border:none;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;">↻ Refresh</button>
       </h2>
       <p style="font-size:11.5px;color:#9b9690;margin:-6px 0 14px;">
         Four columns — <b>No Money</b> · <b>Demo Expired</b> · <b>Offline</b> · <b>Asleep for 7 Days</b>.
-        Har column me seedha WhatsApp button.
+        Every column has a direct WhatsApp button.
       </p>
       <div id="actionCenter">Loading…</div>
     </div>
     <style>
-      /* AAJ KA KAAM — 4 column board. Desktop par chaaron saath, tablet par
-         2, phone par 1 — taki har column ki list padhne layak rahe. */
+      /* TODAY'S TASKS — a 4-column board. All four side by side on desktop,
+         2 on tablets, 1 on phones — so every column's list stays readable. */
       .ac-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start;}
       @media(max-width:1150px){.ac-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
       @media(max-width:620px){.ac-grid{grid-template-columns:minmax(0,1fr);}}
@@ -975,7 +975,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
     </div>
 
 
-        </div><!-- /kaam -->
+        </div><!-- /actions -->
 
     <div data-sect="demos">
 
@@ -1019,7 +1019,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
         </div>
         <style>.demo-preset{background:#fff;border:1.5px solid #d9caf9;color:#b51c26;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;}
         .demo-preset:hover{background:#b51c26;color:#fff;}</style>
-        <p style="font-size:11px;color:#6b6870;margin-top:8px;">Min 15 min, max 365 days (525600 min). <b>Applies only to new demos</b> — existing active demos will expire at their original time.</p>
+        <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin-top:8px;">Min 15 min, max 365 days (525600 min). <b>Applies only to new demos</b> — existing active demos will expire at their original time.</p>
       </div>
       <div style="border-top:1.5px dashed #d9caf9;padding-top:12px;margin-top:14px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:8px;">🖨 Demo Print Limit</div>
@@ -1035,17 +1035,17 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
           <button onclick="setDemoPrintsQuick(100)" class="demo-preset">100</button>
           <button onclick="setDemoPrintsQuick(500)" class="demo-preset">500</button>
         </div>
-        <p style="font-size:11px;color:#6b6870;margin-top:8px;">Min 1, max 1,00,000. <b>Applies immediately to every demo shop</b> (old and new) — the limit is checked live on each print.</p>
+        <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin-top:8px;">Min 1, max 1,00,000. <b>Applies immediately to every demo shop</b> (old and new) — the limit is checked live on each print.</p>
       </div>
     </div>
 
-    <!-- ADVANCE FEATURE LIST — shop ke Advance tab par yahi dikhta hai -->
+    <!-- ADVANCE FEATURE LIST — this is what shops see on their Advance tab -->
 
 
-    <!-- PENDING DEMO REQUESTS — sirf Manual mode me bharta hai -->
+    <!-- PENDING DEMO REQUESTS — filled only in Manual mode -->
     <div class="card" id="demoReqCard" style="margin-bottom:20px;display:none;">
       <h2><span>📥 Pending Demo Requests <span id="demoReqCount" style="display:none;background:#c81e28;color:#fff;border-radius:999px;padding:2px 9px;font-size:12px;margin-left:6px;">0</span></span></h2>
-      <p style="font-size:11px;color:#6b6870;margin:6px 0 0;line-height:1.6;">
+      <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:6px 0 0;line-height:1.6;">
         This list only fills up in <b>Manual Approval</b>  mode. <b>Accept</b> creates the demo shop and starts its timer. Use the WhatsApp button to share the Shop ID. <b>Delete</b> removes the request and allows the number to request a demo again.
       </p>
       <div id="demoReqList" style="margin-top:12px;">Loading...</div>
@@ -1069,10 +1069,10 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
         <button onclick="loadSecurity()" style="background:#fff;border:1.5px solid #d9caf9;color:#b51c26;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">🔄 Refresh</button>
         <button onclick="unblockAll()" style="background:#fff;border:1.5px solid #c81e28;color:#c81e28;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">🔓 Clear All Blocks</button>
       </div>
-      <!-- Shop ID se seedha unblock — list me aane ka intezaar na karna pade -->
+      <!-- Unblock directly by Shop ID — no need to wait for it to appear in the list -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
         <input id="unblockShopId" placeholder="SHOP_XXXXXXXX" style="flex:1;min-width:180px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;font-family:monospace;">
-        <button onclick="unblockShop()" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">🔓 Is Shop Ko Chhodo</button>
+        <button onclick="unblockShop()" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">🔓 Unblock This Shop</button>
       </div>
       <p style="font-size:11px;color:#6b6870;margin-top:6px;">
         Enter a Shop ID to clear a temporary upload block. Its upload counter is also reset so the next upload can proceed.
@@ -1081,52 +1081,52 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
       <div id="secEvents" style="margin-top:8px;max-height:340px;overflow-y:auto;">Loading...</div>
       <p style="font-size:11px;color:#6b6870;margin-top:10px;">
         These blocks are <b>temporary</b> and clear on restart. Use Clear All Blocks to restore access after a false positive. Logs are automatically cleared after seven days.<br>
-        <b>Pakka block</b> is managed in the card below and remains active after a server restart.<br>
-        <b>Dhyaan rahe:</b> These temporary blocks are held in server memory. A deployment or server restart <b>automatically clears them</b> without a manual unblock. If no block is found, it may already have expired or been cleared.
+        <b>Permanent blocks</b> are managed in the card below and remain active after a server restart.<br>
+        <b>Note:</b> These temporary blocks are held in server memory. A deployment or server restart <b>automatically clears them</b> without a manual unblock. If no block is found, it may already have expired or been cleared.
       </p>
     </div>
 
-    <!-- IP BLOCK — baar-baar bina paise wali shop banane walon ke liye -->
+    <!-- IP BLOCK — for people who repeatedly create shops without paying -->
     <div class="card" id="ipBanCard" style="margin-bottom:20px;">
       <h2><span>🚫 IP Block — registration</span></h2>
-      <p style="font-size:11px;color:#6b6870;margin:6px 0 12px;line-height:1.7;">
-        Ye block sirf <b>nayi shop banane</b> and <b>demo lene</b> only. Other functions remain available because mobile networks can share an IP address across many legitimate users.
+      <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:6px 0 12px;line-height:1.7;">
+        This block applies only to <b>creating new shops</b> and <b>requesting demos</b>. Other functions remain available because mobile networks can share an IP address across many legitimate users.
       </p>
       <div id="ipBanAuto" style="font-size:11.5px;color:#4b5563;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 11px;margin-bottom:12px;"></div>
 
       <div style="font-size:12px;font-weight:700;margin-bottom:6px;">Most unpaid registrations</div>
       <div id="ipBanWorst" style="margin-bottom:14px;">Loading...</div>
 
-      <div style="font-size:12px;font-weight:700;margin-bottom:6px;">Abhi block kiye hue IP</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px;">Currently blocked IPs</div>
       <div id="ipBanList" style="margin-bottom:12px;">Loading...</div>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <input id="ipBanNew" placeholder="IP haath se daalo" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;font-family:monospace;">
-        <input id="ipBanWhy" placeholder="wajah (optional)" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;">
+        <input id="ipBanNew" placeholder="Enter an IP manually" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;font-family:monospace;">
+        <input id="ipBanWhy" placeholder="reason (optional)" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;">
         <button onclick="banIpManual()" style="background:#ff3b3b;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">Block</button>
         <button onclick="loadIpBans()" style="background:#fff;border:1.5px solid #d9caf9;color:#b51c26;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">🔄 Refresh</button>
       </div>
     </div>
 
 
-    <!-- CUSTOMER BLOCK — jo QR scan karke print deta hai -->
+    <!-- CUSTOMER BLOCK — for the person who scans a QR and submits prints -->
     <div class="card" id="custBanCard" style="margin-bottom:20px;">
-      <h2><span>🙅 Customer Block — pakka</span></h2>
-      <p style="font-size:11px;color:#6b6870;margin:6px 0 12px;line-height:1.7;">
-        This applies to the customer who <b>scans a QR code to submit a print job</b> . A blocked device cannot submit jobs to any shop.
-        <b>This block persists</b>in the database until manually removed, including after restarts. Automatic 15-minute blocks expire separately.
+      <h2><span>🙅 Customer Block — permanent</span></h2>
+      <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:6px 0 12px;line-height:1.7;">
+        This applies to the customer who <b>scans a QR code to submit a print job</b>. A blocked device cannot submit jobs to any shop.
+        <b>This block persists</b> in the database until manually removed, including after restarts. Automatic 15-minute blocks expire separately.
       </p>
       <div id="custBanAuto" style="font-size:11.5px;color:#4b5563;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 11px;margin-bottom:12px;"></div>
 
       <div style="font-size:12px;font-weight:700;margin-bottom:6px;">Devices with the most denied print attempts</div>
       <div id="custBanWorst" style="margin-bottom:14px;">Loading...</div>
 
-      <div style="font-size:12px;font-weight:700;margin-bottom:6px;">Abhi block kiye hue customer</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px;">Currently blocked customers</div>
       <div id="custBanList" style="margin-bottom:12px;">Loading...</div>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <input id="custBanNew" placeholder="Customer ID haath se daalo" style="flex:1;min-width:170px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;font-family:monospace;">
-        <input id="custBanWhy" placeholder="wajah (optional)" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;">
+        <input id="custBanNew" placeholder="Enter a Customer ID manually" style="flex:1;min-width:170px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;font-family:monospace;">
+        <input id="custBanWhy" placeholder="reason (optional)" style="flex:1;min-width:160px;padding:9px 11px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:12px;">
         <button onclick="banCustManual()" style="background:#ff3b3b;color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">Block</button>
         <button onclick="loadCustBans()" style="background:#fff;border:1.5px solid #d9caf9;color:#b51c26;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">🔄 Refresh</button>
       </div>
@@ -1233,7 +1233,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
           <select id="lgSel" onchange="loadTranslations()" style="border:1.5px solid #e2ddd6;border-radius:9px;padding:8px 11px;font-size:13px;font-weight:700;"></select>
         </h2>
         <p style="font-size:11.5px;color:#9b9690;margin:-6px 0 12px;line-height:1.7;">
-          Edit English and Manipuri (Meitei Mayek) translations here. Missing Manipuri translations use English.<br>Saved translations appear on the website.
+          The website is written in English. Here you correct its Manipuri (Meitei Mayek) translation.<br>Anything without a translation stays in English, and a saved line appears on the website within five minutes.
         </p>
         <div id="lgCounts" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;"></div>
         <div id="lgMsg" style="display:none;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:11px;"></div>
@@ -1273,7 +1273,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div>
               <label style="font-size:10.5px;color:#cbd5d1;">Verified sender email</label>
-              <input type="text" id="ntBrevoSender" placeholder="aapka@gmail.com" style="width:100%;padding:10px 12px;border:1.5px solid rgba(94,234,212,.35);border-radius:10px;font-size:13.5px;font-weight:700;color:#5eead4;background:rgba(255,255,255,.07);">
+              <input type="text" id="ntBrevoSender" placeholder="you@gmail.com" style="width:100%;padding:10px 12px;border:1.5px solid rgba(94,234,212,.35);border-radius:10px;font-size:13.5px;font-weight:700;color:#5eead4;background:rgba(255,255,255,.07);">
             </div>
             <div>
               <label style="font-size:10.5px;color:#cbd5d1;">Brevo API key <span id="ntBrevoNote"></span></label>
@@ -1284,8 +1284,8 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
         <details style="margin-bottom:12px;">
           <summary style="cursor:pointer;font-size:11.5px;font-weight:700;color:#cbd5d1;">⚙️ SMTP (advanced — only if you have your own server)</summary>
-          <p style="font-size:11px;color:#9fb3af;line-height:1.65;margin:8px 0 10px;">
-            Gmail SMTP on Render <b>timeout</b> may block SMTP ports. Configure this only when your hosting provider supports SMTP.
+          <p data-i18n-sentence style="font-size:11px;color:#9fb3af;line-height:1.65;margin:8px 0 10px;">
+            Gmail SMTP <b>times out</b> on Render, because hosts like Render block SMTP ports. Configure this only when your hosting provider supports SMTP.
           </p>
         </details>
         <div id="ntMsg" style="display:none;border-radius:9px;padding:9px 11px;font-size:12px;font-weight:700;margin-bottom:10px;"></div>
@@ -1303,15 +1303,15 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:10px;">
           <div>
             <label style="font-size:10.5px;color:#cbd5d1;">Gmail address (sender)</label>
-            <input type="text" id="ntUser" placeholder="aapka@gmail.com" style="width:100%;padding:10px 12px;border:1.5px solid rgba(94,234,212,.35);border-radius:10px;font-size:13.5px;font-weight:700;color:#5eead4;background:rgba(255,255,255,.07);">
+            <input type="text" id="ntUser" placeholder="you@gmail.com" style="width:100%;padding:10px 12px;border:1.5px solid rgba(94,234,212,.35);border-radius:10px;font-size:13.5px;font-weight:700;color:#5eead4;background:rgba(255,255,255,.07);">
           </div>
           <div>
             <label style="font-size:10.5px;color:#cbd5d1;">App Password <span id="ntPassNote"></span></label>
-            <input type="password" id="ntPass" placeholder="16 akshar" style="width:100%;padding:10px 12px;border:1.5px solid rgba(94,234,212,.35);border-radius:10px;font-size:13.5px;font-weight:700;color:#5eead4;background:rgba(255,255,255,.07);">
+            <input type="password" id="ntPass" placeholder="16 characters" style="width:100%;padding:10px 12px;border:1.5px solid rgba(94,234,212,.35);border-radius:10px;font-size:13.5px;font-weight:700;color:#5eead4;background:rgba(255,255,255,.07);">
           </div>
         </div>
         <label style="font-size:10.5px;color:#cbd5d1;">Which email should the alert go to</label>
-        <input type="text" id="ntTo" placeholder="aapka@gmail.com" style="width:100%;padding:10px 12px;border:1.5px solid rgba(94,234,212,.35);border-radius:10px;font-size:13.5px;font-weight:700;color:#5eead4;background:rgba(255,255,255,.07);margin-bottom:11px;">
+        <input type="text" id="ntTo" placeholder="you@gmail.com" style="width:100%;padding:10px 12px;border:1.5px solid rgba(94,234,212,.35);border-radius:10px;font-size:13.5px;font-weight:700;color:#5eead4;background:rgba(255,255,255,.07);margin-bottom:11px;">
         <div style="display:flex;gap:9px;">
           <button onclick="saveNotify()" style="flex:2;background:#5eead4;color:#134e4a;border:none;border-radius:10px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;">💾 Save</button>
           <button onclick="testNotify()" style="flex:1;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;">📤 Test</button>
@@ -1357,7 +1357,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
       <!-- ══ SEARCH + SORT ══ -->
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:13px;">
         <div style="position:relative;flex:1;min-width:210px;">
-          <input id="shopSearch" type="search" placeholder="Shop ka naam, ID, number ya address…"
+          <input id="shopSearch" type="search" placeholder="Shop name, ID, number or address…"
                  oninput="shopPage=1;renderShops()" autocomplete="off"
                  style="width:100%;padding:10px 13px 10px 34px;border:1px solid #e9eaf0;border-radius:11px;font-size:13px;background:#f8f9fc;">
           <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:12.5px;opacity:.5;">🔍</span>
@@ -1366,12 +1366,12 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
           style="height:40px;border-radius:11px;border:1px solid #e9eaf0;background:#fff;padding:0 11px;font-size:12.5px;font-weight:700;color:#3f4150;cursor:pointer;">
           <option value="new">🕒 Newest First</option>
           <option value="old">🕐 Oldest First</option>
-          <option value="earn">💰 Earnings (zyada pehle)</option>
-          <option value="name">🔤 Naam (A–Z)</option>
+          <option value="earn">💰 Earnings (highest first)</option>
+          <option value="name">🔤 Name (A–Z)</option>
         </select>
       </div>
 
-      <!-- ══ EK CLICK ME SAFAI ══ -->
+      <!-- ══ ONE-CLICK CLEANUP ══ -->
       <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px;">
         <button onclick="bulkDeletePending(this)"
           style="background:#fff1f2;color:#be123c;border:1px solid #fecdd3;border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">
@@ -1403,16 +1403,16 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
 
     </div><!-- /shops -->
 
-    <!-- ══ WHITE LABEL SHOPS — alag tab ══
-         Ye shops reseller ki hain. Inka setup fee seedha reseller ke
-         Razorpay me jaata hai, hamare paas nahi. Isliye ye Active/Pending
-         count me aur hamare revenue total me NAHI ginti. -->
+    <!-- ══ WHITE LABEL SHOPS — a separate tab ══
+         These shops belong to resellers. Their setup fee goes straight to the
+         reseller's Razorpay, not to us. So they are NOT counted in the
+         Active/Pending counts or in our revenue total. -->
     <!-- /wlshops -->
 
-    <!-- ══ PAYMENTS — har paisa jo hamare account me aaya ══ -->
+    <!-- ══ PAYMENTS — every rupee that reached our account ══ -->
     <div data-sect="payments">
       <div class="card">
-        <h2><span>🧾 Saare Payments</span>
+        <h2><span>🧾 All Payments</span>
           <div class="filter-tabs">
             <div class="filter-tab active" id="payfAll"      onclick="setPayFilter('')">All</div>
             <div class="filter-tab"        id="payfsetup"    onclick="setPayFilter('setup')">Setup Fee</div>
@@ -1421,7 +1421,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
           </div>
         </h2>
         <div style="display:flex;gap:9px;margin-bottom:12px;flex-wrap:wrap;">
-          <input id="paySearch" placeholder="Shop ID, naam ya payment ID se dhoondo…"
+          <input id="paySearch" placeholder="Search by Shop ID, name or payment ID…"
                  oninput="loadPayments()"
                  style="flex:1;min-width:220px;padding:10px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:13px;">
         </div>
@@ -1429,8 +1429,8 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
         <div style="overflow-x:auto;">
           <table class="shop-table">
             <thead><tr>
-              <th>Kis cheez ka</th><th>Shop</th><th>Amount</th>
-              <th>Payment ID</th><th>Kab</th>
+              <th>Paid for</th><th>Shop</th><th>Amount</th>
+              <th>Payment ID</th><th>When</th>
             </tr></thead>
             <tbody id="payList"><tr><td colspan="5" style="text-align:center;padding:22px;color:#6b6870;">Loading…</td></tr></tbody>
           </table>
@@ -1455,35 +1455,33 @@ let currentFilter = 'all';
 // ── Shops table: search / sort / pagination ka state ──
 let shopPage = 1;
 let shopPerPage = 10;
-// Earnings async aati hai; sort-by-earnings ke liye yahan cache kar lete hain
+// Earnings arrive asynchronously; cache them here for sort-by-earnings
 const _shopEarnCache = {};
 
-// ── YE LINE HI ASLI BUG THI ──
-// Pehle yahan seedha `if (authToken) loadPanel();` likha tha. Ye script
-// ke SHURU me chalta hai, jabki loadPanel() jin cheezon ko chhoota hai
-// unme se 23 `let`/`const` is line ke NEECHE bante hain — jaise
-// `anRange` (line ~2957), `_trRows`, `_agents`, `_wls`, `_hpCfg`,
-// `PAGE_TITLES`. JavaScript me `let` apni line chalne se pehle chhua
-// nahi ja sakta, isliye seedha error aata tha:
+// ── THIS LINE WAS THE REAL BUG ──
+// This used to say `if (authToken) loadPanel();` directly. That runs at the
+// START of the script, while 23 of the `let`/`const` that loadPanel() touches
+// are declared BELOW this line — such as `anRange` (line ~2957), `_trRows`,
+// `_agents`, `_wls`, `_hpCfg`, `PAGE_TITLES`. In JavaScript a `let` cannot be
+// touched before its line has run, so it threw straight away:
 //
 //     Cannot access 'anRange' before initialization
 //
-// Analytics screen par yahi dikhta tha, aur uske baad loadPanel() wahin
-// ruk jaata tha — isliye uske aage wale kai screen bhi 'Loading…' par
-// atke reh jaate the.
+// That is what the Analytics screen showed, and loadPanel() stopped right
+// there — so several screens after it also stayed stuck on 'Loading…'.
 //
-// Ab poora script (aur poora page) taiyaar hone ke BAAD chalta hai.
+// Now it runs AFTER the whole script (and the whole page) is ready.
 if (authToken) {
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded', loadPanel);
   else setTimeout(loadPanel, 0);
 }
 
-// ═══ APNA CAPTCHA ═══  (server: GET /api/captcha)
-// Server jawab kabhi nahi bhejta — sirf ek signed token aur ek image.
-// Jo type kiya hai wo login ke saath wapas jaata hai, aur server wahin
-// milata hai. Captcha band ho (CAPTCHA_OFF=1 ya DB setting) to server
-// `enabled:false` bhejta hai aur ye poora box chhupa rehta hai.
+// ═══ OUR OWN CAPTCHA ═══  (server: GET /api/captcha)
+// The server never sends the answer — only a signed token and an image.
+// What the user types goes back with the login, and the server checks
+// it there. When captcha is disabled (CAPTCHA_OFF=1 or the DB setting) the
+// server sends `enabled:false` and this whole box stays hidden.
 let capToken = '';
 async function loadCaptcha() {
   const row = document.getElementById('capRow');
@@ -1499,8 +1497,8 @@ async function loadCaptcha() {
     if (ans) ans.value = '';
     row.style.display = '';
   } catch (e) {
-    // Captcha na aa paye to login ka darwaza band mat karo — asli faisla
-    // server karta hai. Wahan captcha chalu hoga to wo khud rok dega.
+    // If the captcha cannot load, do not block login — the server makes
+    // the real decision. If captcha is enabled there, it will stop the request itself.
     row.style.display = 'none';
     capToken = '';
   }
@@ -1520,13 +1518,13 @@ async function doLogin() {
   errEl.style.display = 'none';
 
   if (!adminId || !password) {
-    errEl.textContent = '❌ ID aur Password dono daalo';
+    errEl.textContent = '❌ Enter both ID and Password';
     errEl.style.display = 'block';
     return;
   }
 
   const btn = document.getElementById('loginBtn');
-  btn.disabled = true; btn.textContent = 'Login ho raha hai...';
+  btn.disabled = true; btn.textContent = 'Logging in...';
 
   try {
     const res = await fetch('/api/superadmin/login', {
@@ -1543,7 +1541,7 @@ async function doLogin() {
     } else {
       errEl.textContent = '❌ ' + data.error;
       errEl.style.display = 'block';
-      loadCaptcha();          // ek captcha sirf ek baar chalta hai
+      loadCaptcha();          // a captcha works only once
     }
   } catch(e) {
     errEl.textContent = '❌ Network error';
@@ -1567,11 +1565,11 @@ function renderDemoCfg(){
   const lbl = document.getElementById('demoStatusLbl');
   const btn = document.getElementById('demoToggleBtn');
   if (_demoCfg.enabled) {
-    lbl.textContent = '🟢 Demo Enabled — homepage par button dikh raha hai';
+    lbl.textContent = '🟢 Demo Enabled — the button is visible on the homepage';
     btn.textContent = '⏸️ Disable Demo';
     btn.style.background = '#fee2e2'; btn.style.color = '#c22';
   } else {
-    lbl.textContent = '🔴 Demo Disabled — homepage par button chhupa hai';
+    lbl.textContent = '🔴 Demo Disabled — the button is hidden on the homepage';
     btn.textContent = '▶️ Enable Demo';
     btn.style.background = '#dcfce7'; btn.style.color = '#166534';
   }
@@ -1582,8 +1580,8 @@ function renderDemoCfg(){
   renderDemoMode();
 }
 
-// Instant = form bharte hi Shop ID + password screen par.
-// Manual  = pehle yahan Accept karo, phir WhatsApp se bhejo (purana flow).
+// Instant = Shop ID + password appear on screen as soon as the form is submitted.
+// Manual  = Accept it here first, then send it on WhatsApp (the old flow).
 function renderDemoMode(){
   const lbl = document.getElementById('demoModeLbl');
   const sub = document.getElementById('demoModeSub');
@@ -1592,18 +1590,18 @@ function renderDemoMode(){
   if(!lbl || !btn) return;
   const instant = _demoCfg.instant !== false;
   if(instant){
-    lbl.textContent = '⚡ Instant — apne aap activate';
-    sub.innerHTML = 'Form submit karte hi Shop ID aur password <b>usi screen par</b> mil jaate hain. Aapko kuch nahi karna.';
-    btn.textContent = '🔒 Manual Approval Karo';
+    lbl.textContent = '⚡ Instant — activates automatically';
+    sub.innerHTML = 'The Shop ID and password appear <b>on the same screen</b> as soon as the form is submitted. Nothing to do on your side.';
+    btn.textContent = '🔒 Switch to Manual Approval';
     btn.style.background = '#fef3c7'; btn.style.color = '#92400e';
   } else {
-    lbl.textContent = '🔒 Manual — aapki approval ke baad';
-    sub.innerHTML = 'Har request neeche <b>Pending</b> me aayegi. Accept karne par hi demo banega, phir WhatsApp se ID bhejni hogi.';
-    btn.textContent = '⚡ Instant Karo';
+    lbl.textContent = '🔒 Manual — after your approval';
+    sub.innerHTML = 'Every request appears below under <b>Pending</b>. The demo is created only when you accept it; then send the ID on WhatsApp.';
+    btn.textContent = '⚡ Switch to Instant';
     btn.style.background = '#dcfce7'; btn.style.color = '#166534';
   }
-  // Instant mode me pending list kabhi nahi bharti — card chhupa do,
-  // par purani pending rows abhi bhi ho sakti hain isliye tabhi dikhao.
+  // In Instant mode the pending list never fills — hide the card,
+  // but old pending rows may still exist, so show it only when there are some.
   if(reqCard){
     const badge = document.getElementById('demoReqCount');
     const pending = badge ? (parseInt(badge.textContent, 10) || 0) : 0;
@@ -1614,8 +1612,8 @@ function renderDemoMode(){
 async function toggleDemoInstant(){
   const next = !(_demoCfg.instant !== false);
   const msg = next
-    ? 'Instant mode ON karein?\n\nAage se har demo form submit karte hi apne aap activate ho jayegi — aapko Accept nahi dabana padega.'
-    : 'Manual approval ON karein?\n\nAage se har demo pehle Pending me aayegi. Jab tak aap Accept nahi karoge, shop nahi banegi.';
+    ? 'Turn Instant mode ON?\n\nFrom now on every demo activates automatically as soon as the form is submitted — you will not need to press Accept.'
+    : 'Turn Manual approval ON?\n\nFrom now on every demo goes to Pending first. The shop is not created until you press Accept.';
   if(!confirm(msg)) return;
   const btn = document.getElementById('demoModeBtn');
   if(btn) btn.disabled = true;
@@ -1652,9 +1650,9 @@ function downloadBackup(){
     .catch(e => alert('❌ ' + e.message));
 }
 async function migrateDb(){
-  if(!confirm('Purane database (OLD_DATABASE_URL) se saara data is naye DB me copy karein?\n\nSafe hai — duplicate rows skip ho jaayengi.')) return;
+  if(!confirm('Copy all data from the old database (OLD_DATABASE_URL) into this new DB?\n\nIt is safe — duplicate rows are skipped.')) return;
   const out = document.getElementById('migrateOut');
-  out.innerHTML = '<div style="color:#6b6870;font-size:12px;">⏳ Copy ho raha hai... ruko, band mat karo</div>';
+  out.innerHTML = '<div style="color:#6b6870;font-size:12px;">⏳ Copying... please wait, do not close this page</div>';
   try{
     const r = await fetch('/api/superadmin/migrate-db', { method:'POST', headers:{'Authorization':'Bearer '+authToken} });
     const d = await r.json();
@@ -1676,10 +1674,10 @@ async function loadCloudinaryStatus(){
     const d = await r.json();
     const el = document.getElementById('cldStatus');
     const files = document.getElementById('cldFiles');
-    // Agar Cloudinary ne error diya to "0 files" mat dikhao — warna lagta hai
-    // sab saaf hai jabki asal me list hi nahi ho paayi.
+    // If Cloudinary returned an error, do not show "0 files" — otherwise it looks
+    // like everything is clean when in fact the listing failed.
     if (d.errors && d.errors.length) {
-      el.innerHTML = '<span style="color:#b91c1c;font-weight:800;">❌ Cloudinary list nahi ho payi</span>' +
+      el.innerHTML = '<span style="color:#b91c1c;font-weight:800;">❌ Could not list the Cloudinary files</span>' +
         '<div style="font-size:11px;color:#b91c1c;margin-top:3px;">' + d.errors.join('<br>') + '</div>';
       files.innerHTML = '';
       return;
@@ -1690,11 +1688,11 @@ async function loadCloudinaryStatus(){
       return;
     }
     const staleWarn = d.stale > 0
-      ? `<div style="color:#b91c1c;font-weight:700;margin-top:3px;">⚠️ ${d.stale} file 90+ min purani — sweep hona chahiye tha</div>`
-      : '<div style="color:#16a34a;font-size:12px;margin-top:3px;">✅ Sab fresh hain (abhi active jobs ki) — koi leak nahi</div>';
+      ? `<div style="color:#b91c1c;font-weight:700;margin-top:3px;">⚠️ ${d.stale} file(s) older than 90 min — they should have been swept</div>`
+      : '<div style="color:#16a34a;font-size:12px;margin-top:3px;">✅ All files are fresh (they belong to active jobs) — no leak</div>';
     const types = d.by_type ? Object.entries(d.by_type).map(([k,v]) => `${k}: ${v}`).join(' · ') : '';
     const bigWarn = d.over_40kb > 0
-      ? `<div style="color:#b45309;font-weight:700;margin-top:3px;">📦 ${d.over_40kb} file 40 KB se badi</div>` : '';
+      ? `<div style="color:#b45309;font-weight:700;margin-top:3px;">📦 ${d.over_40kb} file(s) larger than 40 KB</div>` : '';
     el.innerHTML = `<b>${d.count} file(s)</b> · ${d.total_kb} KB (${d.total_mb || 0} MB)` +
       (types ? `<div style="font-size:11px;color:#6b7280;margin-top:2px;">${types}</div>` : '') +
       bigWarn + staleWarn;
@@ -1709,8 +1707,8 @@ async function sweepCloudinary(){
   await runSweep({});
 }
 
-// "40 KB se badi sab file delete karo" — user ka apna rule.
-// Jo file abhi print hone wali hai (queued/printing) wo phir bhi bachi rahegi.
+// "Delete every file larger than 40 KB" — the user's own rule.
+// Files about to be printed (queued/printing) are still kept.
 async function sweepCloudinaryBySize(){
   const kb = prompt('Delete every file LARGER than how many KB?', '40');
   if (kb === null) return;
@@ -1777,19 +1775,19 @@ async function saveDemoMinutes(){
       body: JSON.stringify({ enabled: _demoCfg.enabled, minutes: m })
     });
     const d = await r.json();
-    if(d.success){ _demoCfg = d; renderDemoCfg(); alert('✅ Demo time save ho gaya: '+humanMins(m)); }
+    if(d.success){ _demoCfg = d; renderDemoCfg(); alert('✅ Demo time saved: '+humanMins(m)); }
     else alert('❌ '+(d.error||'Fail'));
   }catch(e){ alert('❌ '+e.message); }
 }
 
 async function notifyShop(shopId) {
-  if (!confirm('Is shop ke PC par notification bhejein? (Contact Admin / No Problem popup)')) return;
+  if (!confirm('Send a notification to the PC of this shop? (Contact Admin / No Problem popup)')) return;
   try {
     const r = await fetch('/api/superadmin/notify-shop', { method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
       body: JSON.stringify({ shop_id: shopId, message: 'Any Problem in Printing? Contact Admin' }) });
     const d = await r.json();
-    alert(d.success ? '✅ Notification bheja — agent 30 sec me dikhayega' : '❌ ' + (d.error||'Fail'));
+    alert(d.success ? '✅ Notification sent — the agent will show it within 30 seconds' : '❌ ' + (d.error||'Fail'));
   } catch(e) { alert('❌ ' + e.message); }
 }
 
@@ -1802,14 +1800,14 @@ function _secTile(label, value, color){
 }
 
 /* ── IP BLOCK ──
-   IP `x-forwarded-for` se aata hai, yaani bhejne wale ke kabu me. Isliye
-   yahan sab kuch DOM se banta hai — innerHTML me kabhi nahi jaata. */
+   The IP comes from `x-forwarded-for`, which the sender controls. So
+   everything here is built with the DOM — it never goes into innerHTML. */
 function _ipRow(ip, dahina, madhya) {
   const row = document.createElement('div');
   row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;'
     + 'border:1.5px solid #eee;border-radius:10px;margin-bottom:6px;flex-wrap:wrap;';
   const b = document.createElement('code');
-  b.textContent = ip || '(khaali)';
+  b.textContent = ip || '(empty)';
   b.style.cssText = 'font-size:12px;font-weight:700;';
   row.appendChild(b);
   if (madhya) {
@@ -1844,54 +1842,54 @@ async function loadIpBans(){
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
-    autoEl.textContent = 'Apne aap lagne wali limit: ek IP se 24 ghante me zyada se zyada '
-      + d.unpaidPerIpPerDay + ' bina paise wali shop. Paid shop is ginti me nahi aati, '
-      + 'isliye asli reseller nahi rukta.';
+    autoEl.textContent = 'Automatic limit: at most '
+      + d.unpaidPerIpPerDay + ' unpaid shops per IP in 24 hours. Paid shops are not counted, '
+      + 'so genuine resellers are not blocked.';
 
     const banned = new Set((d.bans || []).map(b => b.ip));
 
     worstEl.textContent = '';
     if (!(d.worst || []).length) {
-      worstEl.textContent = 'Abhi aisa koi IP nahi.';
+      worstEl.textContent = 'No such IP right now.';
       worstEl.style.cssText = 'font-size:12px;color:#6b6870;';
     } else {
       worstEl.style.cssText = '';
       d.worst.forEach(w => {
-        const kaha = w.unpaid + ' unpaid / ' + w.kul + ' kul shop';
+        const summary = w.unpaid + ' unpaid / ' + w.total + ' shops in total';
         let btn;
         if (banned.has(w.ip)) {
           btn = document.createElement('span');
-          btn.textContent = '🚫 block hai';
+          btn.textContent = '🚫 blocked';
           btn.style.cssText = 'font-size:11.5px;font-weight:700;color:#b91c1c;';
         } else {
           btn = _btn('Block', '#ff3b3b', () => banIp(w.ip, w.unpaid + ' unpaid shop'));
         }
-        worstEl.appendChild(_ipRow(w.ip, btn, kaha));
+        worstEl.appendChild(_ipRow(w.ip, btn, summary));
       });
     }
 
     listEl.textContent = '';
     if (!(d.bans || []).length) {
-      listEl.textContent = 'Koi IP block nahi hai.';
+      listEl.textContent = 'No IP is blocked.';
       listEl.style.cssText = 'font-size:12px;color:#6b6870;';
     } else {
       listEl.style.cssText = '';
       d.bans.forEach(b => {
-        const kab = b.created_at ? new Date(b.created_at).toLocaleDateString() : '';
+        const when = b.created_at ? new Date(b.created_at).toLocaleDateString() : '';
         listEl.appendChild(_ipRow(b.ip,
-          _btn('Hatao', '#16a34a', () => unbanIp(b.ip)),
-          [b.reason, kab].filter(Boolean).join(' · ')));
+          _btn('Remove', '#16a34a', () => unbanIp(b.ip)),
+          [b.reason, when].filter(Boolean).join(' · ')));
       });
     }
   } catch (e) {
-    worstEl.textContent = 'Load nahi hua: ' + e.message;
+    worstEl.textContent = 'Failed to load: ' + e.message;
   }
 }
 
 async function banIp(ip, reason){
-  if (!confirm('"' + ip + '" se nayi shop aur demo banna band kar dein?\n\n'
-             + 'Is IP ke peeche baithi PEHLE SE bani shops par koi asar nahi padega — '
-             + 'unki printing chalti rahegi.')) return;
+  if (!confirm('"' + ip + '" — block new shops and demos from this IP?\n\n'
+             + 'Shops ALREADY created behind this IP are not affected — '
+             + 'their printing continues.')) return;
   const r = await fetch('/api/superadmin/ip-ban', {
     method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+authToken },
     body: JSON.stringify({ ip, reason: reason || '' })});
@@ -1902,14 +1900,14 @@ async function banIp(ip, reason){
 
 async function banIpManual(){
   const ip = (document.getElementById('ipBanNew').value || '').trim();
-  if (!ip) return alert('IP daalo');
+  if (!ip) return alert('Enter an IP');
   await banIp(ip, (document.getElementById('ipBanWhy').value || '').trim());
   document.getElementById('ipBanNew').value = '';
   document.getElementById('ipBanWhy').value = '';
 }
 
 async function unbanIp(ip){
-  if (!confirm('"' + ip + '" se block hata dein?')) return;
+  if (!confirm('"' + ip + '" — remove the block?')) return;
   const r = await fetch('/api/superadmin/ip-unban', {
     method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+authToken },
     body: JSON.stringify({ ip })});
@@ -1950,10 +1948,10 @@ async function loadSecurity(){
               + '<button onclick="unblockKey(\''+b.key.replace(/'/g,"")+'\')" style="background:none;border:none;color:#c81e28;'
               + 'font-weight:800;cursor:pointer;font-size:12px;">unblock</button></div>';
           }).join('')
-      : '<div style="font-size:12px;color:#16a34a;font-weight:700;">✅ Abhi koi block nahi hai</div>'
+      : '<div style="font-size:12px;color:#16a34a;font-weight:700;">✅ No active blocks right now</div>'
         + '<div style="font-size:11px;color:#6b6870;margin-top:6px;line-height:1.6;">'
-        + 'Upar "24h log" wali ginti <b>beeti hui</b> baat hai — wo unblock se kabhi kam nahi hoti, '
-        + 'aur honi bhi nahi chahiye. Abhi kaun ruka hua hai, sirf yahi list bataati hai.</div>';
+        + 'The "24h log" count above is <b>history</b> — it never goes down when you unblock, '
+        + 'and it should not. Only this list shows who is blocked right now.</div>';
 
     const ev = d.events || [];
     evEl.innerHTML = ev.length
@@ -1968,7 +1966,7 @@ async function loadSecurity(){
             + (e.upload_count!=null ? ' &nbsp;|&nbsp; uploads '+e.upload_count : '')
             + ' &nbsp;|&nbsp; '+sanitize(e.endpoint||'-')+'</span></div>';
         }).join('')
-      : '<div style="padding:14px;text-align:center;color:#16a34a;font-size:13px;">✅ No security events — sab normal</div>';
+      : '<div style="padding:14px;text-align:center;color:#16a34a;font-size:13px;">✅ No security events — all normal</div>';
   }catch(e){
     evEl.innerHTML = '<div style="padding:14px;color:#c81e28;font-size:13px;">Could not load: '+sanitize(e.message)+'</div>';
   }
@@ -1977,7 +1975,7 @@ async function loadSecurity(){
 async function unblockShop(){
   const el = document.getElementById('unblockShopId');
   const id = (el.value || '').trim();
-  if (!id) return alert('Shop ID daalo');
+  if (!id) return alert('Enter a Shop ID');
   await unblockKey(id.includes(':') ? id : 'shop:' + id);
   el.value = '';
   loadSecurity();
@@ -1991,32 +1989,32 @@ async function unblockKey(key, quiet){
     const d = await r.json();
     if(!r.ok || !d.success) throw new Error(d.error||'Failed');
     loadSecurity();
-    // Natija saaf batao. Pehle ye chup-chaap refresh karta tha, isliye
-    // "kuch hua bhi ya nahi" ka pata hi nahi chalta tha — aur block
-    // pehle hi khatam ho chuka ho (ya server restart ho gaya ho) to
-    // lagta tha button hi kharab hai.
+    // State the result clearly. This used to refresh silently, so there was
+    // no way to tell whether anything happened — and if the block had already
+    // expired (or the server had restarted) it looked like the button
+    // was broken.
     if(!quiet) secUnblockMsg(key, d);
     return d;
   }catch(e){ alert('❌ '+e.message); }
 }
 
-/* Unblock ke baad seedhi baat — jo sach me hua wahi. */
+/* After an unblock, say plainly what actually happened. */
 function secUnblockMsg(key, d){
   const had = d.cleared > 0;
   const cnt = d.countersCleared > 0;
   let msg;
-  if (had && cnt)      msg = '✅ ' + key + ' ka block hata diya, aur uski upload ginti bhi saaf.';
-  else if (had)        msg = '✅ ' + key + ' ka block hata diya.';
-  else if (cnt)        msg = 'ℹ️ ' + key + ' par abhi koi block nahi tha (block khud khatam ho chuka '
-                           + 'tha, ya beech me server restart hua). Uski upload ginti saaf kar di — '
-                           + 'ab wo bilkul sifar se shuru karega.';
-  else                 msg = 'ℹ️ ' + key + ' par kuch tha hi nahi — na block, na ginti. Ye shop abhi '
-                           + 'bilkul khuli hai.';
+  if (had && cnt)      msg = '✅ ' + key + ' — block removed and its upload count cleared.';
+  else if (had)        msg = '✅ ' + key + ' — block removed.';
+  else if (cnt)        msg = 'ℹ️ ' + key + ' had no active block (the block had already expired '
+                           + 'or the server restarted in between). Its upload count was cleared — '
+                           + 'it now starts again from zero.';
+  else                 msg = 'ℹ️ ' + key + ' had nothing — no block and no count. This shop is '
+                           + 'fully open right now.';
   alert(msg);
 }
 
 async function unblockAll(){
-  if(!confirm('Clear ALL temporary blocks?\n\nSab blocked IP/shop turant chalu ho jayenge.')) return;
+  if(!confirm('Clear ALL temporary blocks?\n\nAll blocked IPs/shops will work again immediately.')) return;
   try{
     const r = await fetch('/api/superadmin/security-unblock', {
       method:'POST', headers:{ 'Authorization':'Bearer '+authToken, 'Content-Type':'application/json' },
@@ -2030,7 +2028,7 @@ async function unblockAll(){
 
 // ═══ PENDING DEMO REQUESTS ═══
 // ══════════════════════════════════════════════════════════════
-//  PLAN PRICING — Starter / Pro / Premium (teeno lifetime)
+//  PLAN PRICING — Starter / Pro / Premium (all three lifetime)
 // ══════════════════════════════════════════════════════════════
 const PLAN_META = [
   { key:'starter', icon:'🚀', name:'Starter', color:'#b51c26',
@@ -2085,7 +2083,7 @@ function renderPlanPreview(){
   });
 }
 
-/** Save ke waqt body me jaane wala plans object. */
+/** The plans object sent in the body on save. */
 function collectPlanPrices(){
   const out = {};
   PLAN_META.forEach(m => {
@@ -2100,8 +2098,8 @@ function collectPlanPrices(){
 
 // ══════════════════════════════════════════════════════════════
 //  ADVANCE FEATURE LIST EDITOR
-//  Shop ke Advance tab ki list. Pehle ye admin.html me hardcoded thi
-//  (isliye Mini Print add karna chhoot gaya tha) — ab yahan se chalti hai.
+//  The list on a shop's Advance tab. It used to be hardcoded in admin.html
+//  (which is why adding Mini Print was missed) — now it is managed from here.
 // ══════════════════════════════════════════════════════════════
 let _advFeats = [];
 let _advFeatDefaults = [];
@@ -2116,7 +2114,7 @@ function advFeatRender(){
   const box = document.getElementById('advFeatRows');
   if (!box) return;
   if (!_advFeats.length){
-    box.innerHTML = '<div style="padding:16px;text-align:center;color:#6b6870;font-size:12.5px;">Koi feature nahi — "+ Naya Feature" dabao</div>';
+    box.innerHTML = '<div style="padding:16px;text-align:center;color:#6b6870;font-size:12.5px;">No features — press "+ New Feature"</div>';
     return;
   }
   box.innerHTML = _advFeats.map((f,i) =>
@@ -2125,18 +2123,18 @@ function advFeatRender(){
     +   '<input value="' + advFeatEsc(f.icon) + '" onchange="advFeatSet(' + i + ',\'icon\',this.value)" '
     +     'style="width:56px;text-align:center;font-size:18px;padding:8px;border:1.5px solid #ddd6fe;border-radius:9px;">'
     +   '<input value="' + advFeatEsc(f.title) + '" onchange="advFeatSet(' + i + ',\'title\',this.value)" '
-    +     'placeholder="Feature ka naam" style="flex:1;min-width:0;font-weight:700;padding:9px;border:1.5px solid #ddd6fe;border-radius:9px;">'
-    +   '<button onclick="advFeatDel(' + i + ')" title="Hatao" '
+    +     'placeholder="Feature name" style="flex:1;min-width:0;font-weight:700;padding:9px;border:1.5px solid #ddd6fe;border-radius:9px;">'
+    +   '<button onclick="advFeatDel(' + i + ')" title="Remove" '
     +     'style="flex:none;background:#fee2e2;color:#b91c1c;border:none;border-radius:9px;padding:9px 11px;font-weight:800;cursor:pointer;">🗑️</button>'
     + '</div>'
     + '<textarea onchange="advFeatSet(' + i + ',\'desc\',this.value)" rows="3" '
-    +   'placeholder="Ye feature shop ke liye kya karta hai — <b>bold</b> chalega" '
+    +   'placeholder="What this feature does for the shop — <b>bold</b> is allowed" '
     +   'style="width:100%;box-sizing:border-box;font-size:12.5px;line-height:1.7;padding:10px;border:1.5px solid #ddd6fe;border-radius:9px;resize:vertical;">'
     +   advFeatEsc(f.desc) + '</textarea>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px;">'
-    +   '<div><label style="font-size:10.5px;color:#6b6870;font-weight:700;">FEATURE ID — badlo mat!</label>'
+    +   '<div><label style="font-size:10.5px;color:#6b6870;font-weight:700;">FEATURE ID — do not change!</label>'
     +     '<input value="' + advFeatEsc(f.id || '') + '" onchange="advFeatSet(' + i + ',\'id\',this.value)" '
-    +     'placeholder="jaise poster" style="width:100%;box-sizing:border-box;padding:8px;border:1.5px solid #e2ddd6;border-radius:8px;font-family:monospace;font-size:12px;"></div>'
+    +     'placeholder="e.g. poster" style="width:100%;box-sizing:border-box;padding:8px;border:1.5px solid #e2ddd6;border-radius:8px;font-family:monospace;font-size:12px;"></div>'
     +   '<div><label style="font-size:10.5px;color:#6b6870;font-weight:700;">₹ PRICE (0 = default)</label>'
     +     '<input type="number" min="0" value="' + (f.price || 0) + '" onchange="advFeatSet(' + i + ',\'price\',parseInt(this.value)||0)" '
     +     (f.core !== false ? 'disabled ' : '')
@@ -2144,14 +2142,14 @@ function advFeatRender(){
     + '</div>'
     + '<label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:12px;font-weight:700;color:#166534;cursor:pointer;">'
     +   '<input type="checkbox" ' + (f.core !== false ? 'checked' : '') + ' onchange="advFeatSet(' + i + ',\'core\',this.checked); advFeatRender();"> '
-    +   'Base Advance pack ka hissa (₹199 / Pro / Premium me included)'
+    +   'Part of the base Advance pack (₹199; included in Pro and Premium)'
     + '</label>'
     + (f.core === false ? '<div style="margin-top:7px;font-size:11px;color:#92400e;line-height:1.6;background:#fffbeb;border:1px solid #fcd34d;border-radius:9px;padding:8px 10px;">'
-        + '⚠️ Ye <b>add-on</b> hai. Starter aur Pro walon ko ₹' + (f.price || 49) + ' dena hoga. '
-        + '<b>Premium walon ko apne aap mil jayega</b> — unse kuch nahi liya jayega.</div>' : '')
+        + '⚠️ This is an <b>add-on</b>. Starter and Pro shops must pay ₹' + (f.price || 49) + ' for it. '
+        + '<b>Premium shops get it automatically</b> — they are not charged anything.</div>' : '')
     + '<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12px;font-weight:700;color:#92400e;cursor:pointer;">'
     +   '<input type="checkbox" ' + (f.isNew ? 'checked' : '') + ' onchange="advFeatSet(' + i + ',\'isNew\',this.checked)"> '
-    +   'NAYA badge lagao'
+    +   'Show the NEW badge'
     + '</label>'
     + '<div style="display:flex;gap:6px;margin-top:8px;">'
     +   '<button onclick="advFeatMove(' + i + ',-1)" ' + (i === 0 ? 'disabled' : '')
@@ -2164,14 +2162,14 @@ function advFeatRender(){
 
 function advFeatSet(i, k, v){ if(_advFeats[i]) _advFeats[i][k] = v; }
 function advFeatAdd(){
-  // Naya feature default me ADD-ON hai (core:false) — warna wo sabhi
-  // purane Starter/Pro walon ko muft chala jaata, jabki unhone uska
-  // paisa nahi diya. Premium walon ko phir bhi apne aap milega.
+  // A new feature is an ADD-ON by default (core:false) — otherwise it would go
+  // free to every old Starter/Pro shop even though they never paid for it.
+  // Premium shops still get it automatically.
   _advFeats.push({id:'',icon:'✨',title:'',desc:'',core:false,price:0,isNew:true});
   advFeatRender();
 }
 function advFeatDel(i){
-  if(!confirm('Ye feature list se hata dein?')) return;
+  if(!confirm('Remove this feature from the list?')) return;
   _advFeats.splice(i,1); advFeatRender();
 }
 function advFeatMove(i, d){
@@ -2181,7 +2179,7 @@ function advFeatMove(i, d){
   advFeatRender();
 }
 function advFeatReset(){
-  if(!confirm('Default list wapas laayein? Aapke likhe hue changes chale jaayenge.')) return;
+  if(!confirm('Restore the default list? Your changes will be lost.')) return;
   _advFeats = JSON.parse(JSON.stringify(_advFeatDefaults));
   advFeatRender();
 }
@@ -2196,22 +2194,22 @@ async function advFeatLoad(){
     advFeatRender();
   }catch(e){
     const box = document.getElementById('advFeatRows');
-    if(box) box.innerHTML = '<div style="padding:14px;color:#b91c1c;font-size:12.5px;">List load nahi hui — page refresh karo</div>';
+    if(box) box.innerHTML = '<div style="padding:14px;color:#b91c1c;font-size:12.5px;">Could not load the list — refresh the page</div>';
   }
 }
 
 async function advFeatSave(){
   const empty = _advFeats.filter(f => !String(f.title||'').trim());
-  if (empty.length) return alert('❌ Har feature ka naam bharo (ya use hata do)');
-  // ID par ownership tiki hai — khaali ya duplicate hui to "kis shop ke
-  // paas kaun sa feature hai" ka poora hisaab bigad jayega.
+  if (empty.length) return alert('❌ Fill in a name for every feature (or remove it)');
+  // Ownership depends on the ID — if one is empty or duplicated, the whole record
+  // of "which shop owns which feature" breaks.
   const noId = _advFeats.filter(f => !String(f.id||'').trim());
-  if (noId.length) return alert('❌ Har feature ki ID bharo (chhote akshar, jaise: poster)');
+  if (noId.length) return alert('❌ Fill in an ID for every feature (lowercase, e.g. poster)');
   const ids = _advFeats.map(f => String(f.id).trim().toLowerCase());
   const dup = ids.filter((x,i) => ids.indexOf(x) !== i);
-  if (dup.length) return alert('❌ Do feature ki ID ek jaisi hai: ' + dup[0]);
+  if (dup.length) return alert('❌ Two features have the same ID: ' + dup[0]);
   const btn = document.getElementById('advFeatSaveBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ Save ho raha hai...'; }
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Saving...'; }
   try{
     const r = await fetch('/api/superadmin/advance-features', {
       method:'PUT',
@@ -2222,9 +2220,9 @@ async function advFeatSave(){
     if(!r.ok || !d.success) throw new Error(d.error || 'Save fail');
     _advFeats = d.features;
     advFeatRender();
-    alert('✅ Save ho gaya — sabhi shops ko ab yahi list dikhegi');
+    alert('✅ Saved — all shops will now see this list');
   }catch(e){ alert('❌ '+e.message); }
-  finally{ if(btn){ btn.disabled=false; btn.textContent='💾 Save Karo'; } }
+  finally{ if(btn){ btn.disabled=false; btn.textContent='💾 Save'; } }
 }
 
 async function loadDemoRequests(){
@@ -2241,11 +2239,11 @@ async function loadDemoRequests(){
     }
     if(!rows.length){
       box.innerHTML = '<div style="padding:18px;text-align:center;color:#6b6870;font-size:13px;">No pending requests \u2705</div>';
-      renderDemoMode();   // instant mode + 0 pending = card chhupa do
+      renderDemoMode();   // instant mode + 0 pending = hide the card
       return;
     }
     const _card = document.getElementById('demoReqCard');
-    if(_card) _card.style.display = '';   // pending hai to hamesha dikhao
+    if(_card) _card.style.display = '';   // if anything is pending, always show it
     box.innerHTML = rows.map(function(d){
       const when = new Date(d.created_at).toLocaleString('en-IN',
         { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
@@ -2316,7 +2314,7 @@ async function approveDemoRequest(id){
 }
 
 async function deleteDemoRequest(id){
-  if(!confirm('Delete this demo request?\n\nDemo activate nahi hoga. Ye number dobara demo request kar sakega.')) return;
+  if(!confirm('Delete this demo request?\n\nThe demo will not be activated. This number will be able to request a demo again.')) return;
   const card = document.getElementById('dreq'+id);
   const btns = card ? card.querySelectorAll('button') : [];
   btns.forEach(function(b){ b.disabled = true; });
@@ -2339,7 +2337,7 @@ async function loadDemos(){
     const res = await fetch('/api/superadmin/demos', { headers:{'Authorization':'Bearer '+authToken} });
     const list = await res.json();
     const el = document.getElementById('demosList');
-    if(!Array.isArray(list) || !list.length){ el.innerHTML = '<div style="color:#6b6870;font-size:13px;">Koi demo account nahi.</div>'; return; }
+    if(!Array.isArray(list) || !list.length){ el.innerHTML = '<div style="color:#6b6870;font-size:13px;">No demo accounts.</div>'; return; }
     const now = Date.now();
     el.innerHTML = list.map(d=>{
       const created = new Date(d.created_at);
@@ -2350,14 +2348,14 @@ async function loadDemos(){
       if (expired) statusHtml = '<span style="font-size:11px;font-weight:700;color:#c22;">🔴 Expired</span>';
       else {
         const minsLeft = Math.max(0, Math.round((expires.getTime()-now)/60000));
-        statusHtml = `<span style="font-size:11px;font-weight:700;color:#16a34a;">🟢 Active — ${minsLeft} min bache</span>`;
+        statusHtml = `<span style="font-size:11px;font-weight:700;color:#16a34a;">🟢 Active — ${minsLeft} min left</span>`;
       }
       return `<div style="border:1.5px solid ${expired?'#e2e2e2':'#bbf7d0'};border-radius:12px;padding:12px 14px;margin-bottom:8px;background:${expired?'#fafafa':'#f0fdf4'};">
         <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px;">
           <div>
             <div style="font-weight:800;font-size:14px;">${(d.agent_seconds_ago !== undefined && d.agent_seconds_ago !== null ? d.agent_seconds_ago < 120 : (d.agent_last_seen && (Date.now()-new Date(d.agent_last_seen).getTime())<120000)) ? '🟢' : '🔴'} ${sanitize(d.name||'-')} <span style="font-family:monospace;font-size:11px;color:#6b6870;">${d.id}</span></div>
             <div style="font-size:12px;color:#6b6870;margin-top:3px;">📱 ${sanitize(d.phone||'-')} &nbsp;|&nbsp; 🖨️ ${d.prints} paid prints (${d.total_jobs} total jobs) &nbsp;${agentVerBadge(d.agent_version, d.agent_last_seen, d.agent_version_label)}</div>
-            <div style="font-size:11px;color:#9a9aa0;margin-top:3px;">Shuru: ${createdStr} &nbsp;|&nbsp; ${statusHtml}</div>
+            <div style="font-size:11px;color:#9a9aa0;margin-top:3px;">Started: ${createdStr} &nbsp;|&nbsp; ${statusHtml}</div>
           </div>
           <button onclick="openPrinterPanel('${d.id}','${sanitize(d.name||'')}')" style="background:#0f766e;color:#fff;border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🖨️ Printer</button>
           <button onclick="notifyShop('${d.id}')" style="background:#f59e0b;color:#fff;border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🔔 Notify</button>
@@ -2369,24 +2367,24 @@ async function loadDemos(){
   }catch(e){ document.getElementById('demosList').innerHTML = '<div style="color:#c22;">Load fail</div>'; }
 }
 
-// ── SHOP KA PC HATAO ────────────────────────────────────────
-// Ek Shop ID sirf ek PC par chalti hai. Shop owner ka computer achanak
-// kharab ho jaye aur wo aapko call kare, to yahan se turant hata dijiye —
-// phir wo naye PC me apni Shop ID daal sakega.
+// ── REMOVE A SHOP'S PC ────────────────────────────────────────
+// One Shop ID runs on only one PC. If a shop owner's computer suddenly
+// breaks and they call you, remove it here right away —
+// then they can enter their Shop ID on the new PC.
 async function saDisconnectPc(shopId, machine){
-  const on = machine ? '\n\nAbhi juda hai: ' + machine : '';
-  if(!confirm('Is shop ka computer hata dein?' + on
-    + '\n\nUs PC par printing turant band ho jayegi.\n'
-    + 'Shop owner naye PC me apni Shop ID daal kar dobara shuru kar sakega.')) return;
+  const on = machine ? '\n\nCurrently connected: ' + machine : '';
+  if(!confirm('Disconnect the computer linked to this shop?' + on
+    + '\n\nPrinting on that PC stops immediately.\n'
+    + 'The shop owner can start again by entering their Shop ID on the new PC.')) return;
   try{
     const r = await fetch('/api/superadmin/shop/' + shopId + '/agent-disconnect', {
       method:'POST', headers:{ 'Authorization':'Bearer ' + authToken }
     });
     const d = await r.json();
-    if(!r.ok || !d.success) throw new Error(d.error || 'Nahi ho paya');
-    alert('✅ PC hata diya' + (d.wasOn ? ' (' + d.wasOn + ')' : '')
-      + '\n\nAb shop owner naye computer me apni Shop ID daal sakta hai.');
-    // List refresh — jo bhi maujood ho
+    if(!r.ok || !d.success) throw new Error(d.error || 'Could not complete the request');
+    alert('✅ PC removed' + (d.wasOn ? ' (' + d.wasOn + ')' : '')
+      + '\n\nThe shop owner can now enter their Shop ID on a new computer.');
+    // Refresh the list — whatever is present
     try{ if(typeof loadPanel === 'function') await loadPanel(); }catch(e){}
     try{ if(typeof renderShops === 'function') renderShops(); }catch(e){}
     try{ if(typeof loadDemos === 'function') loadDemos(); }catch(e){}
@@ -2411,20 +2409,20 @@ async function loadTranslations() {
   const sel = document.getElementById('lgSel');
   const box = document.getElementById('lgList');
   if (!sel || !box) return;
-  // Pehli baar — languages bhar do (Hinglish source hai, wo edit nahi hota)
+  // First time — fill in the languages (English is the source language, so it is not listed)
   if (!sel.options.length) {
     try {
       const lr = await fetch('/api/i18n');
       const ld = await lr.json();
       _trLangs = ld.langs || {};
-      Object.keys(_trLangs).filter(k => k !== 'hin').forEach(k => {
+      Object.keys(_trLangs).filter(k => k !== 'en').forEach(k => {
         const o = document.createElement('option');
         o.value = k; o.textContent = _trLangs[k];
         sel.appendChild(o);
       });
     } catch(e) {}
   }
-  const lang = sel.value || 'en';
+  const lang = sel.value || 'mni-mtei';
   box.innerHTML = 'Loading…';
   try {
     const r = await fetch('/api/superadmin/translations?lang=' + encodeURIComponent(lang),
@@ -2434,7 +2432,7 @@ async function loadTranslations() {
     _trRows = d.rows || [];
     _trCounts = d.counts || {};
     const cbox = document.getElementById('lgCounts');
-    if (cbox) cbox.innerHTML = Object.keys(_trLangs).filter(k => k !== 'hin').map(k =>
+    if (cbox) cbox.innerHTML = Object.keys(_trLangs).filter(k => k !== 'en').map(k =>
       `<span style="background:${k===lang?'#111114':'#f3f4f6'};color:${k===lang?'#e4e7e9':'#4b5563'};border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:700;">${_trLangs[k]}: ${_trCounts[k]||0}</span>`).join('');
     renderTranslations();
   } catch(e) { box.innerHTML = `<span style="color:#c22;">❌ ${e.message}</span>`; }
@@ -2446,7 +2444,7 @@ function renderTranslations() {
   const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const rows = _trRows.filter(r => !q || r.source.toLowerCase().includes(q) || (r.text||'').toLowerCase().includes(q));
   if (!rows.length) {
-    box.innerHTML = '<p style="color:#9b9690;">' + (q ? 'Kuch nahi mila.' : 'Abhi koi translation nahi. Upar se add karo.') + '</p>';
+    box.innerHTML = '<p style="color:#9b9690;">' + (q ? 'Nothing found.' : 'No translations yet. Add one above.') + '</p>';
     return;
   }
   box.innerHTML = rows.map(r => `
@@ -2454,7 +2452,7 @@ function renderTranslations() {
       <div style="font-size:12.5px;color:#6b6870;word-break:break-word;">${esc(r.source)}</div>
       <input value="${esc(r.text)}" data-tr-src="${esc(r.source)}"
         style="width:100%;padding:8px 10px;border:1.5px solid #e2ddd6;border-radius:8px;font-size:13px;box-sizing:border-box;">
-      <button onclick="clearTranslation(this)" title="Hatao"
+      <button onclick="clearTranslation(this)" title="Remove"
         style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;">✕</button>
     </div>`).join('');
 }
@@ -2467,14 +2465,14 @@ function clearTranslation(btn) {
 function addTranslation() {
   const s = document.getElementById('lgNewSrc').value.trim();
   const t = document.getElementById('lgNewTxt').value.trim();
-  if (!s || !t) return lgShow('❌ Dono field bharo', false);
+  if (!s || !t) return lgShow('❌ Fill in both fields', false);
   const ex = _trRows.find(r => r.source === s);
   if (ex) ex.text = t; else _trRows.unshift({ id: 0, source: s, text: t });
   document.getElementById('lgNewSrc').value = '';
   document.getElementById('lgNewTxt').value = '';
   document.getElementById('lgFilter').value = '';
   renderTranslations();
-  lgShow('✅ List me aa gaya — ab "Sab Save Karo" dabao', true);
+  lgShow('✅ Added to the list — now press "Save All"', true);
 }
 
 async function saveTranslations() {
@@ -2483,10 +2481,10 @@ async function saveTranslations() {
   document.querySelectorAll('#lgList input[data-tr-src]').forEach(i => {
     items.push({ source: i.getAttribute('data-tr-src'), text: i.value });
   });
-  // Jo filter ki wajah se dikh nahi rahe, unhe bhi bhejo (warna gayab ho jayenge)
+  // Also send the ones hidden by the filter (otherwise they would disappear)
   const shown = new Set(items.map(i => i.source));
   _trRows.forEach(r => { if (!shown.has(r.source)) items.push({ source: r.source, text: r.text }); });
-  if (!items.length) return lgShow('❌ Kuch hai hi nahi', false);
+  if (!items.length) return lgShow('❌ There is nothing to save', false);
   try {
     const r = await fetch('/api/superadmin/translations', {
       method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
@@ -2494,7 +2492,7 @@ async function saveTranslations() {
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'fail');
-    lgShow(`✅ ${d.saved} save${d.removed ? ', ' + d.removed + ' hataye' : ''} — website par live`, true);
+    lgShow(`✅ ${d.saved} saved${d.removed ? ', ' + d.removed + ' removed' : ''} — live on the website`, true);
     loadTranslations();
   } catch(e) { lgShow('❌ ' + e.message, false); }
 }
@@ -2520,10 +2518,10 @@ async function loadNotify() {
     document.getElementById('ntBrevoSender').value = d.brevoSender || '';
     const bn = document.getElementById('ntBrevoNote');
     if (bn) bn.textContent = d.hasBrevoKey ? '(saved)' : '';
-    if (d.hasBrevoKey) document.getElementById('ntBrevoKey').placeholder = '•••••• saved — khaali chhodo';
+    if (d.hasBrevoKey) document.getElementById('ntBrevoKey').placeholder = '•••••• saved — leave blank to keep it';
     const note = document.getElementById('ntPassNote');
     if (note) note.textContent = d.hasPass ? '(saved)' : '';
-    if (d.hasPass) document.getElementById('ntPass').placeholder = '•••••• saved — khaali chhodo';
+    if (d.hasPass) document.getElementById('ntPass').placeholder = '•••••• saved — leave blank to keep it';
   } catch(e) {}
 }
 async function saveNotify() {
@@ -2544,29 +2542,29 @@ async function saveNotify() {
     if (!r.ok) throw new Error(d.error || 'fail');
     document.getElementById('ntPass').value = '';
     document.getElementById('ntBrevoKey').value = '';
-    ntShow('✅ Save ho gaya — ab Test dabao', true);
+    ntShow('✅ Saved — now press Test', true);
     loadNotify();
   } catch(e) { ntShow('❌ ' + e.message, false); }
 }
 async function testNotify() {
-  ntShow('📤 Bhej rahe hain…', true);
+  ntShow('📤 Sending…', true);
   try {
     const r = await fetch('/api/superadmin/notify/test', {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + authToken } });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'fail');
-    // Server ka asli jawab dikhao — "bhej diya" kehna kaafi nahi
+    // Show the server's real response — saying "sent" is not enough
     const e = document.getElementById('ntMsg');
     e.style.background = 'rgba(94,234,212,.2)';
     e.style.color = '#5eead4';
     e.style.display = 'block';
     e.innerHTML =
-      '<b>✅ Mail accept ho gayi</b> <span style="opacity:.8;">(' + (d.via || '?') + ')</span><br>' +
-      'Bheja: <b>' + (d.from || '?') + '</b><br>' +
-      'Gaya: <b>' + (d.to || '?') + '</b><br>' +
-      'Server ka jawab: <code style="font-size:11px;">' + (d.response || '-') + '</code><br><br>' +
-      '📥 Ab <b>' + (d.to || '') + '</b> kholo. Inbox me na mile to <b>Spam</b> aur ' +
-      '<b>All Mail</b> zaroor dekho — pehli baar aksar wahan jaata hai.';
+      '<b>✅ Mail accepted</b> <span style="opacity:.8;">(' + (d.via || '?') + ')</span><br>' +
+      'From: <b>' + (d.from || '?') + '</b><br>' +
+      'To: <b>' + (d.to || '?') + '</b><br>' +
+      'Server response: <code style="font-size:11px;">' + (d.response || '-') + '</code><br><br>' +
+      '📥 Now open <b>' + (d.to || '') + '</b>. If it is not in the Inbox, be sure to check <b>Spam</b> and ' +
+      '<b>All Mail</b> — the first message often lands there.';
     setTimeout(function(){ e.style.display = 'none'; }, 60000);
   } catch(e) { ntShow('❌ ' + e.message, false); }
 }
@@ -2585,8 +2583,8 @@ function rvShow(msg, ok) {
 const rvStarStr = n => '★'.repeat(Math.max(0, Math.min(5, n || 0))) + '☆'.repeat(5 - Math.max(0, Math.min(5, n || 0)));
 
 /* ── Action Center ──────────────────────────────────────────
-   Roz ka kaam ek jagah. Har line par seedha WhatsApp button hai
-   taaki dekhne se karne tak ek hi click lage. */
+   The daily tasks in one place. Every line has a direct WhatsApp button,
+   so going from seeing to doing takes a single click. */
 async function loadActionCenter() {
   const box = document.getElementById('actionCenter');
   if (!box) return;
@@ -2599,7 +2597,7 @@ async function loadActionCenter() {
     const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const nf  = n => (n||0).toLocaleString('en-IN');
 
-    /* WhatsApp — 10 digit ho to 91 laga do */
+    /* WhatsApp — prefix 91 for a 10-digit number */
     const wa = (phone, msg) => {
       let num = String(phone||'').replace(/\D/g,'');
       if (!num) return '';
@@ -2608,47 +2606,47 @@ async function loadActionCenter() {
              '?text=' + encodeURIComponent(msg) + '">WhatsApp</a>';
     };
 
-    /* ── Har column ka data ek jaise shape me — {name,id,phone,sub,hot,msg} ── */
-    const C1 = [];   /* Paisa Nahi   : register hua par paisa nahi + renewal due */
+    /* ── Every column's data in the same shape — {name,id,phone,sub,hot,msg} ── */
+    const C1 = [];   /* No Money     : registered but not paid + renewal due */
     (d.unpaid || []).forEach(v => C1.push({
       name: v.name || v.id, id: v.id, phone: v.phone,
-      sub: v.days_ago + ' din pehle register', hot: v.days_ago >= 3,
-      msg: 'Namaste ' + (v.name||'') + ', Echel par aapka registration ho gaya hai. Setup fee pending hai — activate karne me koi dikkat aa rahi hai kya?'
+      sub: v.days_ago + ' days since registration', hot: v.days_ago >= 3,
+      msg: 'Hello ' + (v.name||'') + ', your registration on Echel is complete. The setup fee is still pending — are you facing any problem activating it?'
     }));
     (d.renewals || []).forEach(v => C1.push({
       name: v.name || v.id, id: v.id, phone: v.phone,
-      sub: v.days_left < 0 ? 'Renewal ' + Math.abs(v.days_left) + ' din pehle EXPIRE'
-                           : 'Renewal — ' + v.days_left + ' din baaki',
+      sub: v.days_left < 0 ? 'Renewal ' + Math.abs(v.days_left) + ' days overdue'
+                           : 'Renewal — ' + v.days_left + ' days left',
       hot: v.days_left < 0,
-      msg: 'Namaste ' + (v.name||'') + ', Echel ka plan ' +
-           (v.days_left < 0 ? 'khatam ho gaya hai' : 'khatam hone wala hai') + '. Renew kar dein?'
+      msg: 'Hello ' + (v.name||'') + ', your Echel plan ' +
+           (v.days_left < 0 ? 'has expired' : 'is about to expire') + '. Would you like to renew?'
     }));
 
-    const C2 = [];   /* Demo Expired : khatam ho chuka + khatam hone wala */
+    const C2 = [];   /* Demo Expired : already expired + about to expire */
     (d.demoExpired || []).forEach(v => C2.push({
       name: v.name || v.id, id: v.id, phone: v.phone,
-      sub: 'EXPIRED — ' + v.days_ago + ' din pehle', hot: true,
-      msg: 'Namaste ' + (v.name||'') + ', aapka Echel demo khatam ho chuka hai. Full version chalu kar dein? Setup wahi ka wahi rahega.'
+      sub: 'EXPIRED — ' + v.days_ago + ' days ago', hot: true,
+      msg: 'Hello ' + (v.name||'') + ', your Echel demo has ended. Would you like to start the full version? Your setup stays exactly the same.'
     }));
     (d.demoExpiring || []).forEach(v => C2.push({
       name: v.name || v.id, id: v.id, phone: v.phone,
-      sub: 'Demo — ' + v.days_left + ' din baaki', hot: false,
-      msg: 'Namaste ' + (v.name||'') + ', aapka Echel demo khatam hone wala hai. Kaisa laga? Full version chalu kar dein?'
+      sub: 'Demo — ' + v.days_left + ' days left', hot: false,
+      msg: 'Hello ' + (v.name||'') + ', your Echel demo is about to end. How did you like it? Would you like to start the full version?'
     }));
 
     const C3 = (d.agentOffline || []).map(v => ({   /* Offline */
       name: v.name || v.id, id: v.id, phone: v.phone,
-      sub: (v.hours_ago >= 48 ? Math.floor(v.hours_ago/24) + ' din' : v.hours_ago + ' ghante') +
-           ' se offline' + (v.agent_version ? ' · v' + v.agent_version : ''),
+      sub: (v.hours_ago >= 48 ? Math.floor(v.hours_ago/24) + ' days' : v.hours_ago + ' hours') +
+           ' offline' + (v.agent_version ? ' · v' + v.agent_version : ''),
       hot: v.hours_ago >= 72,
-      msg: 'Namaste ' + (v.name||'') + ', aapka Echel agent offline dikh raha hai. PC band hai ya koi dikkat aa rahi hai?'
+      msg: 'Hello ' + (v.name||'') + ', your Echel agent appears to be offline. Is the PC switched off, or are you facing a problem?'
     }));
 
-    const C4 = (d.silent || []).map(v => ({         /* 7 din se soya */
+    const C4 = (d.silent || []).map(v => ({         /* asleep for 7 days */
       name: v.name || v.id, id: v.id, phone: v.phone,
-      sub: v.days_silent === null ? 'Kabhi print nahi kiya' : v.days_silent + ' din se print nahi',
+      sub: v.days_silent === null ? 'Never printed' : v.days_silent + ' days without a print',
       hot: v.days_silent === null,
-      msg: 'Namaste ' + (v.name||'') + ', kaafi din se Echel par koi order nahi dikha. Sab theek hai? Koi help chahiye to bataiye.'
+      msg: 'Hello ' + (v.name||'') + ', we have not seen any orders on Echel for a while. Is everything all right? Let us know if you need any help.'
     }));
 
     const rowHtml = v =>
@@ -2672,25 +2670,25 @@ async function loadActionCenter() {
     };
 
     let html = '<div class="ac-grid">' +
-      colHtml('🔴', 'Paisa Nahi',      'red',    C1, 'ek bhi nahi ✅') +
-      colHtml('🟡', 'Demo Expired',    'yellow', C2, 'koi nahi ✅') +
-      colHtml('📵', 'Offline',         'blue',   C3, 'sab online ✅') +
-      colHtml('😴', '7 Din Se Soya',   'violet', C4, 'sab chal rahi hain ✅') +
+      colHtml('🔴', 'No Money',        'red',    C1, 'none ✅') +
+      colHtml('🟡', 'Demo Expired',    'yellow', C2, 'none ✅') +
+      colHtml('📵', 'Offline',         'blue',   C3, 'all online ✅') +
+      colHtml('😴', 'Asleep for 7 Days', 'violet', C4, 'all are active ✅') +
     '</div>';
 
-    /* Chhote kaam — inke liye poori list ki zaroorat nahi, sirf link */
+    /* Small tasks — they do not need a full list, just a link */
     const W = d.withdrawals || {}, rvp = d.reviewsPending || 0;
     const small = [];
     if (W.cnt) small.push('<a href="#" onclick="navTo(\'withdrawals\',document.querySelector(\'[data-nav=withdrawals]\'));return false;" style="color:#b91c1c;font-weight:800;text-decoration:none;">💸 ' + W.cnt + ' withdrawal pending — ₹' + nf(W.amount) + '</a>');
-    if (rvp) small.push('<a href="#" onclick="navTo(\'reviews\',document.querySelector(\'[data-nav=reviews]\'));return false;" style="color:#8a6d1f;font-weight:800;text-decoration:none;">⭐ ' + rvp + ' review approval baaki</a>');
+    if (rvp) small.push('<a href="#" onclick="navTo(\'reviews\',document.querySelector(\'[data-nav=reviews]\'));return false;" style="color:#8a6d1f;font-weight:800;text-decoration:none;">⭐ ' + rvp + ' review(s) awaiting approval</a>');
     if (small.length) html += '<div class="ac-small">' + small.join('') + '</div>';
 
     const total = C1.length + C2.length + C3.length + C4.length + (W.cnt||0) + rvp;
     if (total === 0) {
       html = '<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:13px;padding:20px;text-align:center;">' +
         '<div style="font-size:30px;">✅</div>' +
-        '<div style="font-size:14px;font-weight:800;color:#166534;margin-top:6px;">Sab clear hai</div>' +
-        '<div style="font-size:12px;color:#4b5563;margin-top:3px;">Aaj koi cheez atki hui nahi hai.</div></div>';
+        '<div style="font-size:14px;font-weight:800;color:#166534;margin-top:6px;">All clear</div>' +
+        '<div style="font-size:12px;color:#4b5563;margin-top:3px;">Nothing is stuck today.</div></div>';
     }
     box.innerHTML = html;
 
@@ -2708,11 +2706,11 @@ async function loadReviews() {
     const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     if (!d.reviews || !d.reviews.length) {
-      box.innerHTML = '<p style="color:#9b9690;">Abhi koi review nahi. Upar se add karo.</p>';
+      box.innerHTML = '<p style="color:#9b9690;">No reviews yet. Add one above.</p>';
       return;
     }
 
-    /* Pending sabse upar — wahi kaam ki cheez hai. Baaki neeche. */
+    /* Pending at the very top — that is what needs action. The rest below. */
     const all = d.reviews.slice();
     const pending = all.filter(v => v.status === 'pending');
     const rest    = all.filter(v => v.status !== 'pending');
@@ -2722,10 +2720,10 @@ async function loadReviews() {
       const live = !isPending && v.active;
       const loc = v.state || v.city || '';
       const badge = isPending
-        ? '<span style="flex:none;font-size:10px;font-weight:800;border-radius:999px;padding:3px 9px;background:#f2f4f5;color:#8a6d1f;border:1.5px solid #f0e2ba;">⏳ APPROVAL BAAKI</span>'
+        ? '<span style="flex:none;font-size:10px;font-weight:800;border-radius:999px;padding:3px 9px;background:#f2f4f5;color:#8a6d1f;border:1.5px solid #f0e2ba;">⏳ AWAITING APPROVAL</span>'
         : (live
           ? '<span style="flex:none;font-size:10px;font-weight:800;border-radius:999px;padding:3px 9px;background:#f0fdf4;color:#166534;">✅ LIVE</span>'
-          : '<span style="flex:none;font-size:10px;font-weight:800;border-radius:999px;padding:3px 9px;background:#f3f4f6;color:#6b7280;">CHHUPA HUA</span>');
+          : '<span style="flex:none;font-size:10px;font-weight:800;border-radius:999px;padding:3px 9px;background:#f3f4f6;color:#6b7280;">HIDDEN</span>');
 
       return `
       <div style="border:1.5px solid ${isPending ? '#f0e2ba' : (live ? '#e2ddd6' : '#fecaca')};
@@ -2736,9 +2734,9 @@ async function loadReviews() {
             <b style="font-size:14px;">${esc(v.name)}</b>
             <span style="color:#ffb703;letter-spacing:1px;margin-left:7px;">${rvStarStr(v.stars)}</span>
             <div style="font-size:11.5px;color:#9b9690;margin-top:2px;">
-              ${loc ? esc(loc) : '<i>location nahi</i>'}
-              ${v.shop_id ? ' · <b>' + esc(v.shop_id) + '</b> ne bheja' : ' · superadmin ne daala'}
-              ${v.edited ? ' · <span style="color:#8a6d1f;">edit kiya hua</span>' : ''}
+              ${loc ? esc(loc) : '<i>no location</i>'}
+              ${v.shop_id ? ' · sent by <b>' + esc(v.shop_id) + '</b>' : ' · added by superadmin'}
+              ${v.edited ? ' · <span style="color:#8a6d1f;">edited</span>' : ''}
             </div>
           </div>
           ${badge}
@@ -2751,15 +2749,15 @@ async function loadReviews() {
               ? `<button onclick="approveReview(${v.id})" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer;">✅ Approve</button>
                  <button onclick="editReview(${v.id})" style="background:#f2f4f5;color:#8a6d1f;border:1.5px solid #f0e2ba;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer;">✏️ Edit &amp; Approve</button>`
               : `<button onclick="editReview(${v.id})" style="background:#f3f4f6;color:#4b5563;border:none;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer;">✏️ Edit</button>
-                 <button onclick="toggleReview(${v.id},${v.active ? 'false' : 'true'})" style="background:${v.active ? '#f3f4f6' : '#dcfce7'};color:${v.active ? '#6b7280' : '#166534'};border:none;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer;">${v.active ? 'Chhupao' : 'Dikhao'}</button>
-                 <button onclick="unapproveReview(${v.id})" style="background:#f2f4f5;color:#8a6d1f;border:1.5px solid #f0e2ba;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer;">↩ Wapas pending</button>`}
+                 <button onclick="toggleReview(${v.id},${v.active ? 'false' : 'true'})" style="background:${v.active ? '#f3f4f6' : '#dcfce7'};color:${v.active ? '#6b7280' : '#166534'};border:none;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer;">${v.active ? 'Hide' : 'Show'}</button>
+                 <button onclick="unapproveReview(${v.id})" style="background:#f2f4f5;color:#8a6d1f;border:1.5px solid #f0e2ba;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer;">↩ Back to pending</button>`}
             <button onclick="delReview(${v.id})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer;">🗑 Delete</button>
           </div>
         </div>
 
         <div id="rvEdit${v.id}" style="display:none;margin-top:10px;">
           <div style="display:grid;gap:8px;">
-            <input id="rvEName${v.id}" value="${esc(v.name)}" placeholder="Naam"
+            <input id="rvEName${v.id}" value="${esc(v.name)}" placeholder="Name"
                    style="padding:8px 11px;border:1.5px solid #e2ddd6;border-radius:9px;font-size:13px;">
             <input id="rvELoc${v.id}" value="${esc(loc)}" placeholder="State"
                    style="padding:8px 11px;border:1.5px solid #e2ddd6;border-radius:9px;font-size:13px;">
@@ -2782,7 +2780,7 @@ async function loadReviews() {
     let html = '';
     if (pending.length) {
       html += `<div style="background:#f2f4f5;border:1.5px solid #f0e2ba;border-radius:11px;padding:9px 13px;margin-bottom:12px;font-size:12.5px;font-weight:700;color:#8a6d1f;">
-                 ⏳ ${pending.length} review approval ka intezaar kar rahe hain
+                 ⏳ ${pending.length} review(s) awaiting approval
                </div>`;
       html += pending.map(card).join('');
       if (rest.length) html += `<div style="height:1.5px;background:#eee9e2;margin:16px 0 12px;"></div>`;
@@ -2793,7 +2791,7 @@ async function loadReviews() {
   } catch(e) { box.innerHTML = `<span style="color:#c22;">⚠ ${e.message}</span>`; }
 }
 
-/* Approve — bina kuch badle */
+/* Approve — without any changes */
 async function approveReview(id) {
   try {
     const r = await fetch('/api/superadmin/reviews/' + id + '/approve', {
@@ -2804,11 +2802,11 @@ async function approveReview(id) {
     const d = await r.json();
     if (!r.ok || d.error) throw new Error(d.error || 'fail');
 
-  } catch(e) { alert('Approve nahi hua: ' + e.message); }
+  } catch(e) { alert('Could not approve: ' + e.message); }
 }
 
 async function unapproveReview(id) {
-  if (!confirm('Ye review homepage se hata kar wapas pending me daal du?')) return;
+  if (!confirm('Remove this review from the homepage and move it back to pending?')) return;
   try {
     const r = await fetch('/api/superadmin/reviews/' + id + '/unapprove', {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + authToken }
@@ -2816,7 +2814,7 @@ async function unapproveReview(id) {
     const d = await r.json();
     if (!r.ok || d.error) throw new Error(d.error || 'fail');
 
-  } catch(e) { alert('Nahi hua: ' + e.message); }
+  } catch(e) { alert('Failed: ' + e.message); }
 }
 
 function editReview(id) {
@@ -2828,12 +2826,12 @@ function cancelReviewEdit(id) {
   if (v && e) { v.style.display = 'block'; e.style.display = 'none'; }
 }
 
-/* Edit karke approve — dono kaam ek hi endpoint se */
+/* Edit and approve — both handled by one endpoint */
 async function saveReviewEdit(id) {
   const g = pre => (document.getElementById(pre + id) || {}).value || '';
   const name = g('rvEName').trim(), state = g('rvELoc').trim(), text = g('rvEText').trim();
-  if (!name) return alert('Naam khaali nahi ho sakta');
-  if (!text) return alert('Review khaali nahi ho sakta');
+  if (!name) return alert('The name cannot be empty');
+  if (!text) return alert('The review cannot be empty');
   try {
     const r = await fetch('/api/superadmin/reviews/' + id + '/approve', {
       method: 'POST',
@@ -2843,13 +2841,13 @@ async function saveReviewEdit(id) {
     const d = await r.json();
     if (!r.ok || d.error) throw new Error(d.error || 'fail');
 
-  } catch(e) { alert('Save nahi hua: ' + e.message); }
+  } catch(e) { alert('Could not save: ' + e.message); }
 }
 
 async function addReview() {
   const g = id => document.getElementById(id).value.trim();
-  if (!g('rvName')) return rvShow('❌ Naam daalo', false);
-  if (!g('rvText')) return rvShow('❌ Review likho', false);
+  if (!g('rvName')) return rvShow('❌ Enter a name', false);
+  if (!g('rvText')) return rvShow('❌ Write a review', false);
   try {
     const r = await fetch('/api/superadmin/reviews', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
@@ -2858,7 +2856,7 @@ async function addReview() {
     });
     const d = await r.json();
     if (!r.ok || !d.success) throw new Error(d.error || 'fail');
-    rvShow('✅ Review add ho gaya — homepage par live hai', true);
+    rvShow('✅ Review added — it is live on the homepage', true);
     ['rvName','rvText','rvCity'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('rvStarsIn').value = '5';
 
@@ -2878,7 +2876,7 @@ async function toggleReview(id, active) {
 }
 
 async function delReview(id) {
-  if (!confirm('Ye review delete karein? Wapas nahi aayega.')) return;
+  if (!confirm('Delete this review? This cannot be undone.')) return;
   try {
     const r = await fetch(`/api/superadmin/reviews/${id}`, {
       method: 'DELETE', headers: { 'Authorization': 'Bearer ' + authToken } });
@@ -2917,12 +2915,12 @@ function renderWhitelabels(d) {
   document.getElementById('wlSummary').innerHTML =
     box(paidWls.length, 'Paid partners', ['#f5f3ff','#ddd6fe','#5b21b6']) +
     box(_wls.length - paidWls.length, 'Registered, unpaid', ['#fffbeb','#fde68a','#92400e']) +
-    box('₹' + licenseRevenue.toLocaleString('en-IN'), 'License se hamari kamai', ['#f0fdf4','#bbf7d0','#166534']) +
-    box(totalShops, 'Unki total paid shops', ['#eff6ff','#bfdbfe','#1e40af']) +
-    box('₹' + theirRevenue.toLocaleString('en-IN'), 'Unki kamai (hamare paas nahi)', ['#f2f4f5','#f0e2ba','#8a6d1f']);
+    box('₹' + licenseRevenue.toLocaleString('en-IN'), 'Our license earnings', ['#f0fdf4','#bbf7d0','#166534']) +
+    box(totalShops, 'Their total paid shops', ['#eff6ff','#bfdbfe','#1e40af']) +
+    box('₹' + theirRevenue.toLocaleString('en-IN'), 'Their earnings (not ours)', ['#f2f4f5','#f0e2ba','#8a6d1f']);
 
   if (!_wls.length) {
-    document.getElementById('wlList').innerHTML = '<p style="color:#9b9690;">Abhi koi white label partner nahi hai.</p>';
+    document.getElementById('wlList').innerHTML = '<p style="color:#9b9690;">No white-label partners yet.</p>';
     return;
   }
 
@@ -2935,7 +2933,7 @@ function renderWhitelabels(d) {
         : '<span style="font-size:10px;background:#dcfce7;color:#166534;border-radius:999px;padding:2px 9px;font-weight:800;">ACTIVE</span>';
     const rzpChip = w.razorpayReady
       ? '<span style="font-size:10.5px;color:#166534;font-weight:700;">💳 Razorpay ✓</span>'
-      : '<span style="font-size:10.5px;color:#991b1b;font-weight:700;">💳 Razorpay nahi lagaya</span>';
+      : '<span style="font-size:10.5px;color:#991b1b;font-weight:700;">💳 Razorpay not set up</span>';
 
     return `<details style="background:#f7f7f9;border:1.5px solid ${w.blocked ? '#fecaca' : '#e2ddd6'};border-radius:14px;padding:13px 15px;margin-bottom:11px;">
       <summary style="cursor:pointer;font-weight:800;font-size:14px;list-style:none;">
@@ -2957,8 +2955,8 @@ function renderWhitelabels(d) {
       <div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11.5px;">
         <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">${rzpChip}</span>
         <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">📧 ${esc(w.email || '-')}</span>
-        <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">Base <b>₹${w.basePrice}</b> → bech raha <b>₹${w.shopPrice}</b></span>
-        <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">Unki kamai <b>₹${(st.collected || 0).toLocaleString('en-IN')}</b></span>
+        <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">Base <b>₹${w.basePrice}</b> → selling at <b>₹${w.shopPrice}</b></span>
+        <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">Their earnings <b>₹${(st.collected || 0).toLocaleString('en-IN')}</b></span>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin-top:12px;">
@@ -2975,10 +2973,10 @@ function renderWhitelabels(d) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;">
         <input id="wlBase_${w.id}" type="number" value="${w.basePrice}" style="width:110px;padding:8px 10px;border:1.5px solid #e2ddd6;border-radius:9px;font-size:13px;font-weight:700;">
         <button onclick="saveWlBase('${w.id}')" style="background:#111114;color:#fff;border:none;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">Base Price Save</button>
-        ${w.paid ? `<button onclick="toggleWlBlock('${w.id}',${w.blocked ? 'false' : 'true'})" style="background:${w.blocked ? '#16a34a' : '#fee2e2'};color:${w.blocked ? '#fff' : '#dc2626'};border:none;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">${w.blocked ? '▶️ Unblock' : '⏸️ Pause karo'}</button>` : ''}
+        ${w.paid ? `<button onclick="toggleWlBlock('${w.id}',${w.blocked ? 'false' : 'true'})" style="background:${w.blocked ? '#16a34a' : '#fee2e2'};color:${w.blocked ? '#fff' : '#dc2626'};border:none;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">${w.blocked ? '▶️ Unblock' : '⏸️ Pause'}</button>` : ''}
       </div>
       <p style="font-size:10.5px;color:#9b9690;margin-top:8px;line-height:1.55;">
-        Base price = ye partner isse neeche shop ko nahi bech sakta. Badalne par agar iska price base se neeche ho, wo bhi upar utha diya jaayega.
+        Base price = this partner cannot sell to shops below this. When it changes, a partner price below the base is raised to match it.
       </p>
     </details>`;
   }).join('');
@@ -3000,8 +2998,8 @@ async function saveWlBase(id) {
 
 async function toggleWlBlock(id, blocked) {
   if (!confirm(blocked
-    ? 'Is partner ko pause karein?\nUnka link band ho jayega aur nayi shops register nahi kar payengi.'
-    : 'Is partner ko wapas chalu karein?')) return;
+    ? 'Pause this partner?\nTheir link will stop working and new shops will not be able to register.'
+    : 'Resume this partner?')) return;
   try {
     const r = await fetch(`/api/superadmin/whitelabel/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
@@ -3046,27 +3044,27 @@ function renderAnalytics(d) {
   const days = d.days || 0;
   const isHourly = !!d.hourly;
   const rangeLabel = isHourly
-    ? (d.rangeAmount === 1 ? 'pichhle 1 ghante me' : `pichhle ${d.rangeAmount} ghanto me`)
-    : `pichhle ${d.rangeAmount || days} din me`;
+    ? (d.rangeAmount === 1 ? 'in the last hour' : `in the last ${d.rangeAmount} hours`)
+    : `in the last ${d.rangeAmount || days} days`;
 
-  /* ── har source ka apna rang, taaki pehchanne me aasani ho ── */
+  /* ── each source has its own colour, so they are easy to tell apart ── */
   const SRC = {
-    google:['#4285f4','Google Search'], 'other-search':['#b51c26','Baaki Search'],
+    google:['#4285f4','Google Search'], 'other-search':['#b51c26','Other search'],
     facebook:['#1877f2','Facebook'],    instagram:['#e1306c','Instagram'],
     whatsapp:['#25d366','WhatsApp'],    youtube:['#ff0000','YouTube'],
     telegram:['#229ed9','Telegram'],    linkedin:['#0a66c2','LinkedIn'],
-    twitter:['#14171a','X / Twitter'],  direct:['#6b7280','Seedha aaya'],
-    other:['#c0b9b0','Doosri site']
+    twitter:['#14171a','X / Twitter'],  direct:['#6b7280','Direct'],
+    other:['#c0b9b0','Other site']
   };
   const srcMeta = k => SRC[k] || ['#9ca3af', k];
 
-  /* ── Donut: ring track ke upar stroke-dasharray se segments kaate hain ── */
+  /* ── Donut: segments are cut out with stroke-dasharray over the ring track ── */
   function donut(items, centerTop, centerSub) {
     const total = items.reduce((n,i)=>n+i.value,0);
     const R = 54, C = 2*Math.PI*R, W = 148;
     if (!total) {
       return `<div style="width:${W}px;height:${W}px;display:grid;place-items:center;
-        border-radius:50%;border:14px solid #f4f2f7;color:#b9b3ab;font-size:11px;">Data nahi</div>`;
+        border-radius:50%;border:14px solid #f4f2f7;color:#b9b3ab;font-size:11px;">No data</div>`;
     }
     let off = 0, segs = '';
     items.forEach(it => {
@@ -3100,7 +3098,7 @@ function renderAnalytics(d) {
         </div>`).join('') + `</div>`;
   }
 
-  /* ─────────── 1. Upar ke KPI cards ─────────── */
+  /* ─────────── 1. KPI cards at the top ─────────── */
   const tot = k => (d.totals||[]).find(t=>t.event_type===k) || {cnt:0,uniq:0};
   const pv = tot('pageview'), demoClk = tot('demo_click'),
         regClk = tot('register_click'), payClk = tot('pay_click');
@@ -3124,12 +3122,12 @@ function renderAnalytics(d) {
 
   document.getElementById('anSummary').innerHTML =
     kpi('👁️', ...ACC.amber,   nf(pv.uniq), 'Total Visitors', nf(pv.cnt)+' pageviews') +
-    kpi('🎯', ...ACC.teal,    nf(demoClk.uniq), 'Demo pe click', nf(demoClk.cnt)+' baar') +
-    kpi('💳', ...ACC.blue,    nf(payClk.uniq), 'Pay pe click', payClk.cnt ? nf(payClk.cnt)+' baar' : 'abhi track shuru hua') +
-    kpi('✅', ...ACC.emerald, nf(P.paid), 'Payment successful', '₹'+nf(P.revenue)+' kamai (is range me)') +
-    kpi('⏳', ...ACC.rose,    nf(P.pending), 'Payment pending', 'register hua, paisa nahi') +
-    kpi('🏪', ...ACC.purple,  nf(S.active), 'Active shops', nf(S.total)+' total banaye') +
-    kpi('💰', ...ACC.forest,  '₹'+nf(R.total), 'Total Overall Income', 'Sabhi time ka — monthly renewal shamil nahi');
+    kpi('🎯', ...ACC.teal,    nf(demoClk.uniq), 'Demo clicks', nf(demoClk.cnt)+' times') +
+    kpi('💳', ...ACC.blue,    nf(payClk.uniq), 'Pay clicks', payClk.cnt ? nf(payClk.cnt)+' times' : 'tracking just started') +
+    kpi('✅', ...ACC.emerald, nf(P.paid), 'Payment successful', '₹'+nf(P.revenue)+' earned (in this range)') +
+    kpi('⏳', ...ACC.rose,    nf(P.pending), 'Payment pending', 'registered, not paid') +
+    kpi('🏪', ...ACC.purple,  nf(S.active), 'Active shops', nf(S.total)+' created in total') +
+    kpi('💰', ...ACC.forest,  '₹'+nf(R.total), 'Total Overall Income', 'All time — monthly renewals not included');
 
 
   /* ─────────── 2. Chart (hourly ya daily bucket) + exact-number table ─────────── */
@@ -3139,7 +3137,7 @@ function renderAnalytics(d) {
     const now = new Date();
     for (let i = n-1; i >= 0; i--) {
       const t = new Date(now.getTime() - i*3600*1000);
-      const ist = new Date(t.getTime() + 5.5*3600*1000); // IST shift, phir UTC-getters se read karo
+      const ist = new Date(t.getTime() + 5.5*3600*1000); // shift to IST, then read with the UTC getters
       const y = ist.getUTCFullYear(), mo = String(ist.getUTCMonth()+1).padStart(2,'0'),
             da = String(ist.getUTCDate()).padStart(2,'0'), hh = String(ist.getUTCHours()).padStart(2,'0');
       bucketKeys.push(`${y}-${mo}-${da}T${hh}:00`);
@@ -3187,7 +3185,7 @@ function renderAnalytics(d) {
       ${bars}
     </svg>`;
 
-  /* Exact-number table — chart trend ke liye hai, ye table exact ginti ke liye (naya-pehle) */
+  /* Exact-number table — the chart shows the trend, this table gives exact counts (newest first) */
   document.getElementById('anChartTable').innerHTML =
     `<table class="an-datatable"><thead><tr>
       <th>${isHourly ? 'Time (IST)' : 'Date'}</th><th>Pageviews</th><th>Demo</th><th>Paid</th>
@@ -3196,7 +3194,7 @@ function renderAnalytics(d) {
       .slice().reverse().join('') +
     `</tbody></table>`;
 
-  /* ─────────── 2.5 Din vs Raat visits (IST 6AM–6PM = din) ─────────── */
+  /* ─────────── 2.5 Day vs Night visits (IST 6AM–6PM = day) ─────────── */
   const dn = d.dayNight || [];
   const dnDay = dn.find(r=>r.period==='day') || {cnt:0,uniq:0};
   const dnNight = dn.find(r=>r.period==='night') || {cnt:0,uniq:0};
@@ -3207,16 +3205,16 @@ function renderAnalytics(d) {
         <div class="an-dn-tile day">
           <div class="an-dn-ico">☀️</div>
           <div class="an-dn-val">${nf(dnDay.uniq)}</div>
-          <div class="an-dn-lbl">Din visitors — ${nf(dnDay.cnt)} pageviews (${dnDayPct}%)</div>
+          <div class="an-dn-lbl">Day visitors — ${nf(dnDay.cnt)} pageviews (${dnDayPct}%)</div>
         </div>
         <div class="an-dn-tile night">
           <div class="an-dn-ico">🌙</div>
           <div class="an-dn-val">${nf(dnNight.uniq)}</div>
-          <div class="an-dn-lbl">Raat visitors — ${nf(dnNight.cnt)} pageviews (${dnNightPct}%)</div>
+          <div class="an-dn-lbl">Night visitors — ${nf(dnNight.cnt)} pageviews (${dnNightPct}%)</div>
         </div>
         <div class="an-dn-bar"><i class="day" style="width:${dnDayPct}%"></i><i class="night" style="width:${dnNightPct}%"></i></div>
       </div>`
-    : `<div class="an-empty">Abhi is range me koi visit nahi hai.</div>`;
+    : `<div class="an-empty">No visits in this range yet.</div>`;
 
   /* ─────────── 3. Traffic source donut ─────────── */
   const srcItems = (d.sources||[]).map(r => {
@@ -3226,24 +3224,24 @@ function renderAnalytics(d) {
   const srcTotal = srcItems.reduce((n,i)=>n+i.value,0);
   document.getElementById('anSrcDonut').innerHTML = srcItems.length
     ? donut(srcItems, nf(srcTotal), 'visitors') + legend(srcItems)
-    : `<div class="an-empty">Abhi source data nahi hai. Naya tracking deploy hone ke baad
-         Google / Facebook / Instagram alag-alag dikhne lagenge.</div>`;
+    : `<div class="an-empty">No source data yet. After the new tracking is deployed,
+         Google / Facebook / Instagram will be shown separately.</div>`;
 
   /* ─────────── 4. Shop status donut ─────────── */
   const shopItems = [
     { label:'Active (paid)',  color:'#0f9d70', value:S.active||0 },
-    { label:'Demo chal rahe', color:'#0f766e', value:S.demo_live||0 },
-    { label:'Demo expire',    color:'#c0b9b0', value:S.demo_expired||0 },
-    { label:'Paisa pending',  color:'#e11d48', value:S.unpaid||0 }
+    { label:'Demos running', color:'#0f766e', value:S.demo_live||0 },
+    { label:'Demos expired',  color:'#c0b9b0', value:S.demo_expired||0 },
+    { label:'Payment pending',  color:'#e11d48', value:S.unpaid||0 }
   ];
   document.getElementById('anShopDonut').innerHTML =
     donut(shopItems, nf(S.total||0), 'total shops') + legend(shopItems);
 
   /* ─────────── 5. Payment funnel (timeline style) ─────────── */
   const steps = [
-    { label:'Register hua',       value:P.registered||0, color:'#b45309' },
+    { label:'Registered',       value:P.registered||0, color:'#b45309' },
     { label:'Payment successful', value:P.paid||0,       color:'#0f9d70' },
-    { label:'Abhi pending',       value:P.pending||0,    color:'#e11d48' }
+    { label:'Still pending',       value:P.pending||0,    color:'#e11d48' }
   ];
   const base = Math.max(1, P.registered||0);
   document.getElementById('anPayFunnel').innerHTML =
@@ -3257,7 +3255,7 @@ function renderAnalytics(d) {
       <div class="an-funnel-bar"><i style="width:${pct(st.value,base)}%;background:${st.color}"></i></div>
     </div>`).join('') +
     `<div class="an-rev-chip">💰&nbsp;<b>₹${nf(P.revenue)}</b>
-      <span style="color:#4b5563;font-weight:500;">setup fee se kamai — ${rangeLabel}</span></div>`;
+      <span style="color:#4b5563;font-weight:500;">setup fee earnings — ${rangeLabel}</span></div>`;
 
   /* ─────────── 6. Source quality table ─────────── */
   const q = (d.sourceQuality||[]).filter(r=>r.visitors>0)
@@ -3275,14 +3273,14 @@ function renderAnalytics(d) {
           <td class="r">${nf(r.pay_clicks)}</td>
           <td class="r"><span class="an-mini-bar"><i style="width:${dp}%;background:${dp?'#0f9d70':'#e2ddd6'}"></i></span><b style="color:${r.demo_clicks?'#0f9d70':'#b9b3ab'};font-weight:800;">${dp}%</b></td>
         </tr>`; }).join('') + `</tbody></table>`
-    : `<div class="an-empty">Abhi data nahi. Naya tracking deploy hone ke baad bharna shuru hoga.</div>`;
+    : `<div class="an-empty">No data yet. It starts filling in once the new tracking is deployed.</div>`;
 
   /* ─────────── 7. Campaign + click breakdown ─────────── */
   const srcEl = document.getElementById('anSource');
   const camp = (d.bySource||[]).filter(x=>x.source!=='direct');
   srcEl.innerHTML = camp.length
     ? camp.map(x => `<div class="an-list-row"><span>${esc(x.source)}</span><b>${nf(x.cnt)}</b></div>`).join('')
-    : '<div class="an-empty" style="padding:0">Koi utm_source wala link abhi track nahi hua.</div>';
+    : '<div class="an-empty" style="padding:0">No link with a utm_source has been tracked yet.</div>';
 
   const CLICKS = [['demo_click','Demo'],['register_click','Register'],['pay_click','Pay'],
                   ['inquiry_click','Business Inquiry'],['guide_click','Setup Guide'],['agent_click','Agent']];
@@ -3319,9 +3317,9 @@ function renderAgents(d) {
     box(_agents.length, 'Total agents', ['#f5f3ff','#ddd6fe','#5b21b6']) +
     box(totalShops, 'Shops onboarded', ['#eff6ff','#bfdbfe','#1e40af']) +
     box('₹'+totalEarn, 'Total commission', ['#f2f4f5','#f0e2ba','#8a6d1f']) +
-    box('₹'+pending, 'Abhi dena hai', ['#fef2f2','#fecaca','#991b1b']);
+    box('₹'+pending, 'Payable now', ['#fef2f2','#fecaca','#991b1b']);
 
-  if (!_agents.length) { document.getElementById('agentsList').innerHTML = '<p style="color:#9b9690;">Abhi koi agent nahi hai.</p>'; return; }
+  if (!_agents.length) { document.getElementById('agentsList').innerHTML = '<p style="color:#9b9690;">No agents yet.</p>'; return; }
 
   document.getElementById('agentsList').innerHTML = _agents.map(a => {
     const paidShops = a.shops.filter(s => s.setup_paid && !s.demo);
@@ -3337,12 +3335,12 @@ function renderAgents(d) {
         <td style="padding:8px 6px;font-size:12px;"><b>${esc(s.name||'—')}</b><br><span style="color:#9b9690;font-size:10.5px;">${esc(s.id)}</span></td>
         <td style="padding:8px 6px;font-size:11.5px;">${esc(s.phone||'-')}</td>
         <td style="padding:8px 6px;"><span style="font-size:10px;font-weight:800;background:${st[1]};color:${st[2]};border-radius:999px;padding:3px 8px;white-space:nowrap;">${st[0]}</span></td>
-        <td style="padding:8px 6px;font-size:12px;white-space:nowrap;"><b>₹${base}</b>${mk?` <span style="color:#16a34a;font-weight:800;">+ ₹${mk}</span>`:''}<br><span style="color:#9b9690;font-size:10.5px;">= ₹${sold} liya</span></td>
+        <td style="padding:8px 6px;font-size:12px;white-space:nowrap;"><b>₹${base}</b>${mk?` <span style="color:#16a34a;font-weight:800;">+ ₹${mk}</span>`:''}<br><span style="color:#9b9690;font-size:10.5px;">= ₹${sold} charged</span></td>
         <td style="padding:8px 6px;font-size:12px;white-space:nowrap;">${s.earned?`<b style="color:#166534;">₹${s.earned}</b>`:'<span style="color:#9b9690;">—</span>'}</td>
         <td style="padding:8px 6px;"><span style="font-size:10px;font-weight:800;background:${online?'#dcfce7':'#f3f4f6'};color:${online?'#166534':'#9ca3af'};border-radius:999px;padding:3px 8px;">${online?'🟢':'🔴'}</span></td>
         <td style="padding:8px 6px;min-width:230px;">${shopActions(s)}</td>
       </tr>`;
-    }).join('') : '<tr><td colspan="7" style="padding:12px;color:#9b9690;font-size:12px;text-align:center;">Abhi koi shop onboard nahi</td></tr>';
+    }).join('') : '<tr><td colspan="7" style="padding:12px;color:#9b9690;font-size:12px;text-align:center;">No shops onboarded yet</td></tr>';
 
     return `<details style="background:#f7f7f9;border:1.5px solid ${a.agent_blocked?'#fecaca':'#e2ddd6'};border-radius:14px;padding:13px 15px;margin-bottom:11px;">
       <summary style="cursor:pointer;font-weight:800;font-size:14px;list-style:none;">
@@ -3355,16 +3353,16 @@ function renderAgents(d) {
             </div>
           </div>
           <div style="text-align:right;font-weight:600;font-size:11.5px;color:#6b6870;white-space:nowrap;">
-            <div><b style="color:#166534;font-size:15px;">₹${a.agent_earnings||0}</b> kamaya</div>
-            <div style="color:#991b1b;">₹${a.pending_payout||0} dena hai</div>
+            <div><b style="color:#166534;font-size:15px;">₹${a.agent_earnings||0}</b> earned</div>
+            <div style="color:#991b1b;">₹${a.pending_payout||0} payable</div>
           </div>
         </div>
       </summary>
       <div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11.5px;">
-        <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">Base <b>₹${a.base_price}</b> → Agent ka price <b>₹${a.agent_price||a.base_price}</b>${a.markup?` <span style="color:#16a34a;font-weight:800;">(+₹${a.markup})</span>`:''}</span>
-        <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">💳 ${esc(a.agent_upi||'UPI nahi diya')}</span>
+        <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">Base <b>₹${a.base_price}</b> → Agent's price <b>₹${a.agent_price||a.base_price}</b>${a.markup?` <span style="color:#16a34a;font-weight:800;">(+₹${a.markup})</span>`:''}</span>
+        <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">💳 ${esc(a.agent_upi||'No UPI given')}</span>
         <span style="background:#fff;border:1.5px solid #e2ddd6;border-radius:8px;padding:6px 10px;">${paidShops.length} paid shop</span>
-        <button onclick="toggleAgentBlock('${a.id}',${a.agent_blocked?'false':'true'})" style="background:${a.agent_blocked?'#16a34a':'#fee2e2'};color:${a.agent_blocked?'#fff':'#dc2626'};border:none;border-radius:8px;padding:7px 12px;font-size:11.5px;font-weight:700;cursor:pointer;">${a.agent_blocked?'▶️ Unblock':'⏸️ Pause karo'}</button>
+        <button onclick="toggleAgentBlock('${a.id}',${a.agent_blocked?'false':'true'})" style="background:${a.agent_blocked?'#16a34a':'#fee2e2'};color:${a.agent_blocked?'#fff':'#dc2626'};border:none;border-radius:8px;padding:7px 12px;font-size:11.5px;font-weight:700;cursor:pointer;">${a.agent_blocked?'▶️ Unblock':'⏸️ Pause'}</button>
       </div>
       <div style="overflow-x:auto;margin-top:11px;">
         <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:10px;">
@@ -3373,7 +3371,7 @@ function renderAgents(d) {
             <th style="padding:8px 6px;text-align:left;font-size:10.5px;">Phone</th>
             <th style="padding:8px 6px;text-align:left;font-size:10.5px;">Status</th>
             <th style="padding:8px 6px;text-align:left;font-size:10.5px;">Base + Markup</th>
-            <th style="padding:8px 6px;text-align:left;font-size:10.5px;">Agent ko</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10.5px;">To agent</th>
             <th style="padding:8px 6px;text-align:left;font-size:10.5px;">Agent</th>
             <th style="padding:8px 6px;text-align:left;font-size:10.5px;">Action</th>
           </tr></thead>
@@ -3384,7 +3382,7 @@ function renderAgents(d) {
   }).join('');
 }
 async function toggleAgentBlock(shopId, blocked) {
-  if (!confirm(blocked ? 'Is agent ko pause karein? Uska link band ho jayega aur naye commission nahi judenge.' : 'Is agent ko wapas chalu karein?')) return;
+  if (!confirm(blocked ? 'Pause this agent? Their link will stop working and no new commission will be added.' : 'Resume this agent?')) return;
   try {
     const r = await fetch(`/api/superadmin/agent/${shopId}/block`, {
       method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
@@ -3400,7 +3398,7 @@ async function toggleAgentBlock(shopId, blocked) {
 let _latestAgentVersion = null;      // internal integer counter
 let _latestAgentLabel   = null;      // display label e.g. "2.0"
 
-// "2.10" → [2,10]. String compare NEVER use karo: "2.9" > "2.10" aa jaata hai.
+// "2.10" → [2,10]. NEVER compare as strings: "2.9" would come out greater than "2.10".
 function parseVerLabel(label) {
   if (typeof label !== 'string') return null;
   const s = label.trim().replace(/^[vV]\.?/, '');
@@ -3419,25 +3417,25 @@ function cmpVerLabel(a, b) {
 function agentVerBadge(v, lastSeen, label) {
   const ver = parseInt(v, 10);
   const everSeen = !!lastSeen;
-  // Naye agents "2.0" jaisa label bhejte hain — wahi dikhao. Purane agents
-  // sirf integer bhejte hain, unke liye purana behaviour chalta rahe.
+  // New agents send a label like "2.0" — show that. Old agents
+  // only send an integer; the old behaviour continues for them.
   const myLabel = parseVerLabel(label) ? label.trim() : null;
   if (myLabel) {
     const behind = _latestAgentLabel && cmpVerLabel(myLabel, _latestAgentLabel) < 0;
     return behind
-      ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 7px;" title="Purana version — latest v${_latestAgentLabel} hai. Agent 1 ghante me khud update ho jayega.">v${myLabel} ⬆</span>`
-      : `<span style="display:inline-block;font-size:10px;font-weight:800;background:#dcfce7;color:#166534;border-radius:6px;padding:2px 7px;" title="Latest version chal raha hai">v${myLabel} ✓</span>`;
+      ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 7px;" title="Old version — the latest is v${_latestAgentLabel}. The agent updates itself within 1 hour.">v${myLabel} ⬆</span>`
+      : `<span style="display:inline-block;font-size:10px;font-weight:800;background:#dcfce7;color:#166534;border-radius:6px;padding:2px 7px;" title="Running the latest version">v${myLabel} ✓</span>`;
   }
   if (!ver) {
     return everSeen
-      ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:#f3f4f6;color:#6b7280;border-radius:6px;padding:2px 7px;" title="Purana agent — version report nahi karta. Update hone par dikhne lagega.">v ?</span>`
-      : `<span style="display:inline-block;font-size:10px;font-weight:800;background:#f3f4f6;color:#9ca3af;border-radius:6px;padding:2px 7px;" title="Agent kabhi connect nahi hua">agent nahi</span>`;
+      ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:#f3f4f6;color:#6b7280;border-radius:6px;padding:2px 7px;" title="Old agent — it does not report its version. It will show after the update.">v ?</span>`
+      : `<span style="display:inline-block;font-size:10px;font-weight:800;background:#f3f4f6;color:#9ca3af;border-radius:6px;padding:2px 7px;" title="The agent has never connected">no agent</span>`;
   }
   const latest = _latestAgentVersion;
   if (latest && ver < latest) {
-    return `<span style="display:inline-block;font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 7px;" title="Purana version — latest v${latest} hai. Agent 1 ghante me khud update ho jayega.">v${ver} ⬆</span>`;
+    return `<span style="display:inline-block;font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 7px;" title="Old version — the latest is v${latest}. The agent updates itself within 1 hour.">v${ver} ⬆</span>`;
   }
-  return `<span style="display:inline-block;font-size:10px;font-weight:800;background:#dcfce7;color:#166534;border-radius:6px;padding:2px 7px;" title="Latest version chal raha hai">v${ver} ✓</span>`;
+  return `<span style="display:inline-block;font-size:10px;font-weight:800;background:#dcfce7;color:#166534;border-radius:6px;padding:2px 7px;" title="Running the latest version">v${ver} ✓</span>`;
 }
 
 // ═══ PRINTER & PAYMENT PANEL ═══
@@ -3475,7 +3473,7 @@ function renderPrinterPanel(d) {
   const field = (id, label, val, hint) => `
     <div style="margin-bottom:13px;">
       <label style="display:block;font-size:12px;font-weight:800;color:#4b5563;margin-bottom:5px;">${label}</label>
-      <input id="${id}" list="prnList" value="${_pesc(val||'')}" placeholder="— koi printer select nahi —"
+      <input id="${id}" list="prnList" value="${_pesc(val||'')}" placeholder="— no printer selected —"
         style="width:100%;padding:10px 12px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:13px;box-sizing:border-box;">
       ${hint ? `<div style="font-size:10.5px;color:#9b9690;margin-top:3px;">${hint}</div>` : ''}
     </div>`;
@@ -3483,13 +3481,13 @@ function renderPrinterPanel(d) {
   const listBox = list.length
     ? `<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:11px;padding:11px 13px;margin-bottom:14px;">
          <div style="font-size:11.5px;font-weight:800;color:#166534;margin-bottom:5px;">
-           ✅ PC se mili printer list (${list.length})${reported ? ` · ${reported}` : ''}
+           ✅ Printer list received from the PC (${list.length})${reported ? ` · ${reported}` : ''}
          </div>
          <div style="font-size:12px;color:#166534;line-height:1.8;">${list.map(p=>`• ${_pesc(p)}`).join('<br>')}</div>
        </div>`
     : `<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:11px;padding:11px 13px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.65;">
-         ⚠️ Is shop ke PC se abhi tak printer list nahi aayi.<br>
-         Agent chalu hone ke baad 30 min me apne aap aati hai. Tab tak naam khud type kar sakte ho (bilkul waise hi jaise Windows me dikhta hai).
+         ⚠️ The printer list has not arrived from this shop's PC yet.<br>
+         It arrives automatically within 30 minutes after the agent starts. Until then you can type the name yourself (exactly as it appears in Windows).
        </div>`;
 
   document.getElementById('prnBody').innerHTML = `
@@ -3499,10 +3497,10 @@ function renderPrinterPanel(d) {
       ${s.demo ? '<span style="font-size:11px;font-weight:800;background:#ede9fe;color:#5b21b6;border-radius:999px;padding:5px 11px;">🎯 Demo shop</span>' : ''}
     </div>
     ${listBox}
-    ${field('prnBw','⚫ B&W Printer', s.printer_name_bw, 'Black & white print isi se niklega')}
-    ${field('prnColor','🌈 Color Printer', s.printer_name_color, 'Khaali chhodo to B&W wala hi use hoga')}
-    ${field('prnA3','📄 A3 / Bade Size Printer', s.printer_name_a3, 'Sirf tab jab alag bada printer ho')}
-    ${field('prn4x6','🖼️ 4×6 Photo Printer', s.printer_name_4x6, 'Passport photo ke liye alag printer ho to')}
+    ${field('prnBw','⚫ B&W Printer', s.printer_name_bw, 'Black & white prints come out of this printer')}
+    ${field('prnColor','🌈 Color Printer', s.printer_name_color, 'Leave empty to use the B&W printer')}
+    ${field('prnA3','📄 A3 / Large Size Printer', s.printer_name_a3, 'Only if there is a separate large-format printer')}
+    ${field('prn4x6','🖼️ 4×6 Photo Printer', s.printer_name_4x6, 'If there is a separate printer for passport photos')}
 
     <div style="border-top:1.5px dashed #e2ddd6;margin:18px 0 14px;"></div>
 
@@ -3510,13 +3508,13 @@ function renderPrinterPanel(d) {
     <label style="display:flex;align-items:flex-start;gap:9px;background:#f7f7f9;border:1.5px solid #e2ddd6;border-radius:11px;padding:12px;cursor:pointer;">
       <input type="checkbox" id="prnCounter" ${s.payment_mode==='counter_only'?'checked disabled':''} style="margin-top:2px;width:17px;height:17px;cursor:pointer;">
       <span style="font-size:12.5px;line-height:1.6;">
-        <b>Counter par payment</b> — customer dukaan par cash dega${s.payment_mode==='counter_only'?' <span style="color:#16a34a;font-weight:800;">(abhi yahi set hai)</span>':''}
+        <b>Payment at the counter</b> — the customer pays cash at the shop${s.payment_mode==='counter_only'?' <span style="color:#16a34a;font-weight:800;">(currently set)</span>':''}
       </span>
     </label>
     <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:11px;padding:11px 13px;margin-top:9px;font-size:11.5px;color:#1e40af;line-height:1.65;">
-      🔒 Aap sirf <b>Counter payment</b> set kar sakte ho.<br>
-      <b>Online</b> ya <b>Both</b> shop owner ko khud apne login se karna hoga — usme uski apni Razorpay/Cashfree key chahiye hoti hai.
-      ${s.payment_mode && s.payment_mode!=='counter_only' ? `<br><br>Abhi is shop par set hai: <b>${_pesc(s.payment_mode)}</b> — ise counter par lane ke liye upar wala box tick karke Save karo.` : ''}
+      🔒 You can only set <b>Counter payment</b>.<br>
+      <b>Online</b> or <b>Both</b> must be set by the shop owner from their own login — it requires their own Razorpay/Cashfree keys.
+      ${s.payment_mode && s.payment_mode!=='counter_only' ? `<br><br>Currently set for this shop: <b>${_pesc(s.payment_mode)}</b> — to switch it to counter, tick the box above and press Save.` : ''}
     </div>`;
 }
 async function savePrinterPanel() {
@@ -3540,11 +3538,11 @@ async function savePrinterPanel() {
     });
     const d = await r.json();
     if (!r.ok || !d.success) throw new Error(d.error || 'Save fail');
-    btn.textContent = '✅ Save ho gaya';
-    setTimeout(() => { btn.disabled=false; btn.textContent='💾 Save Karo'; closePrinterPanel(); try { loadPanel(); } catch(e){} }, 900);
+    btn.textContent = '✅ Saved';
+    setTimeout(() => { btn.disabled=false; btn.textContent='💾 Save'; closePrinterPanel(); try { loadPanel(); } catch(e){} }, 900);
   } catch(e) {
     alert('❌ ' + e.message);
-    btn.disabled = false; btn.textContent = '💾 Save Karo';
+    btn.disabled = false; btn.textContent = '💾 Save';
   }
 }
 
@@ -3553,7 +3551,7 @@ async function loadWithdrawals(){
     const res = await fetch('/api/superadmin/withdrawals', { headers:{'Authorization':'Bearer '+authToken} });
     const list = await res.json();
     const el = document.getElementById('withdrawalsList');
-    if(!Array.isArray(list) || !list.length){ el.innerHTML = '<div style="color:#6b6870;font-size:13px;">Koi withdrawal request nahi.</div>'; return; }
+    if(!Array.isArray(list) || !list.length){ el.innerHTML = '<div style="color:#6b6870;font-size:13px;">No withdrawal requests.</div>'; return; }
     el.innerHTML = list.map(w=>{
       const pending = w.status==='pending';
       const reqDt = new Date(w.requested_at).toLocaleString('en-IN');
@@ -3567,7 +3565,7 @@ async function loadWithdrawals(){
             <div style="font-size:11px;color:#9a9aa0;margin-top:4px;">Request: ${reqDt}</div>
             ${doneDt?`<div style="font-size:11px;color:#16a34a;font-weight:700;margin-top:2px;">✅ Paid: ${doneDt}</div>`:''}
           </div>
-          ${pending?`<button onclick="completeWithdrawal(${w.id},${w.amount})" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">✅ Paid Mark Karo</button>`:'<span style="font-size:12px;color:#16a34a;font-weight:700;">✅ Done</span>'}
+          ${pending?`<button onclick="completeWithdrawal(${w.id},${w.amount})" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">✅ Mark as Paid</button>`:'<span style="font-size:12px;color:#16a34a;font-weight:700;">✅ Done</span>'}
         </div>
       </div>`;
     }).join('');
@@ -3575,7 +3573,7 @@ async function loadWithdrawals(){
 }
 function sanitize(s){ return String(s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 async function completeWithdrawal(id, amount){
-  if(!confirm(`₹${amount} apne UPI app se bhej diya? Confirm karne par shop owner ko "Paid" dikhega.`)) return;
+  if(!confirm(`Have you sent ₹${amount} from your UPI app? After confirming, the shop owner will see "Paid".`)) return;
   try{
     const res = await fetch(`/api/superadmin/withdrawals/${id}/complete`, { method:'POST', headers:{'Authorization':'Bearer '+authToken} });
     const d = await res.json();
@@ -3585,14 +3583,14 @@ async function completeWithdrawal(id, amount){
 }
 
 function organizeSections() {
-  // Card ko uske sahi section me le jao (id -> section)
+  // Move the card into its proper section (id -> section)
   const moves = [
     ['broadcastMsg', 'broadcast'],   // 📢 Important Message
     ['qrRegenMsg',   'qrtools'],     // 🔲 QR Regenerate
     ['dbCounts',     'database'],    // 🗄️ DB Backup & Migration
     ['cldStatus',    'database'],    // ☁️ Cloudinary Storage
-    // Advance Feature ki list ka Demo se koi rishta nahi tha — use
-    // apna tab mil gaya. Card wahin ka wahin, bas ghar badla.
+    // The Advance Feature list had nothing to do with Demo — it got
+    // its own tab. The card is unchanged; it just moved house.
     ['advFeatCard',  'advtool'],     // ⚡ Advance Feature — List
   ];
   for (const [id, sect] of moves) {
@@ -3654,7 +3652,7 @@ async function loadPanel() {
     setStat('monthlyShops', overview.monthly_shops);
     setStat('wlShopsStat',  overview.whitelabel_shops || 0);
 
-    // Kamai ke boxes — setup + advanced + renewal + license = hamara total
+    // Earnings boxes — setup + advanced + renewal + license = our total
     const rb = document.getElementById('revBoxes');
     if (rb) {
       const setup   = overview.total_setup_revenue || 0;
@@ -3702,8 +3700,8 @@ async function loadPanel() {
         versionData.displayVersion || versionData.versionLabel || versionData.version;
       const _viEl = document.getElementById('agentVersionInput');
       if (_viEl && !_viEl.value) _viEl.value = versionData.nextLabel || '2.0';
-      // Abhi jo notes live hain wahi box me bhar do — super admin dekh sake
-      // ki shop owners ko is waqt kya dikh raha hai, aur usi ko edit kar sake.
+      // Fill the box with the notes that are live right now — so the super admin can
+      // see what shop owners currently see and edit exactly that.
       const _nEl = document.getElementById('agentVersionNotes');
       if (_nEl && !_nEl.value) { _nEl.value = versionData.notes || ''; updateAgentNotesCount(); }
       if (versionData.updatedAt) {
@@ -3740,7 +3738,7 @@ async function updateInstallerUrl() {
     });
     const data = await res.json();
     if (data.success) {
-      msgEl.textContent = '✅ Installer URL save ho gaya! Sab download links ab isi URL pe redirect karenge.';
+      msgEl.textContent = '✅ Installer URL saved! All download links now redirect to this URL.';
       msgEl.style.color = '#00c853';
       msgEl.style.display = 'block';
     } else {
@@ -3777,27 +3775,27 @@ async function pushAgentUpdate() {
   const notes = (notesEl && notesEl.value || '').trim();
 
   if (!parseVerLabel(label)) {
-    msgEl.textContent = '❌ Version format galat hai. Aise likho: 2.0, 2.1, 2.10, 3.0';
+    msgEl.textContent = '❌ Invalid version format. Use: 2.0, 2.1, 2.10, 3.0';
     msgEl.style.color = '#c81e28';
     msgEl.style.display = 'block';
     if (inputEl) inputEl.focus();
     return;
   }
   if (_latestAgentLabel && cmpVerLabel(label, _latestAgentLabel) <= 0) {
-    msgEl.textContent = `❌ v${label} current v${_latestAgentLabel} se aage hona chahiye.`;
+    msgEl.textContent = `❌ v${label} must be newer than the current v${_latestAgentLabel}.`;
     msgEl.style.color = '#c81e28';
     msgEl.style.display = 'block';
     if (inputEl) inputEl.focus();
     return;
   }
 
-  // Notes khali hain ye confirm me saaf bata do — warna pata hi nahi chalega
-  // ki shop owner ko "What's in Update" dikhega hi nahi.
+  // State clearly in the confirm that the notes are empty — otherwise nobody
+  // would know that shop owners will not see "What's in Update" at all.
   const notesLine = notes
-    ? `\n\n📝 "What's in Update" me ${notes.split('\n').filter(l => l.trim()).length} line jayegi.`
-    : `\n\n⚠️ "What's in the Update" khali hai — shop owner ko koi update note nahi dikhega, aur purana note bhi hat jayega.`;
+    ? `\n\n📝 "What's in Update" will carry ${notes.split('\n').filter(l => l.trim()).length} line(s).`
+    : `\n\n⚠️ "What's in the Update" is empty — shop owners will see no update notes, and the previous note will be removed too.`;
 
-  if (!confirm(`Pakka? Version v${label} push hoga aur sab customers ke Print Agent naya code download karenge. Pehle confirm karo GitHub/Render pe naya agent-template/print_agent.py deploy ho chuka hai.${notesLine}`)) {
+  if (!confirm(`Are you sure? Version v${label} will be pushed and every customer's Print Agent will download the new code. First confirm that the new agent-template/print_agent.py has been deployed on GitHub/Render.${notesLine}`)) {
     return;
   }
 
@@ -3813,7 +3811,7 @@ async function pushAgentUpdate() {
       _latestAgentLabel   = data.versionLabel || label;
       document.getElementById('agentVersionDisplay').textContent = data.displayVersion || data.versionLabel;
       if (inputEl) inputEl.value = data.nextLabel || '';
-      msgEl.textContent = `✅ Version v${data.versionLabel} push ho gaya! Sab customers ke PC 1 ghante ke andar auto-update ho jayenge.`;
+      msgEl.textContent = `✅ Version v${data.versionLabel} pushed! All customer PCs will auto-update within 1 hour.`;
       msgEl.style.color = '#00c853';
       msgEl.style.display = 'block';
     } else {
@@ -3861,7 +3859,7 @@ function updatePreview() {
     discountEl.style.display = 'none';
   }
 
-  // Ek hi tarah ka preview Monthly aur Advanced ke liye bhi
+  // The same kind of preview for Monthly and Advanced too
   const mini = (actualId, feeId, lineId, actualElId, offerElId, discEl) => {
     const a = parseInt(document.getElementById(actualId).value) || 0;
     const f = parseInt(document.getElementById(feeId).value) || 0;
@@ -3876,7 +3874,7 @@ function updatePreview() {
     }
   };
   mini('monthlyActualInput','monthlyFeeInput','monthlyPreviewLine','monthlyPreviewActual','monthlyPreviewOffer','monthlyPreviewDiscount');
-  // White Label license ka preview
+  // White Label license preview
   (function(){
     const a = parseInt((document.getElementById('wlLicenseActualInput')||{}).value, 10) || 0;
     const f = parseInt((document.getElementById('wlLicenseFeeInput')||{}).value, 10) || 0;
@@ -3891,13 +3889,13 @@ function updatePreview() {
   })();
   mini('advancedActualInput','advancedFeeInput','advancedPreviewLine','advancedPreviewActual','advancedPreviewOffer','advancedPreviewDiscount');
 
-  // Agent base price ka chhota explainer
+  // A short explainer for the agent base price
   const abp = parseInt(document.getElementById('agentBasePriceInput').value) || 0;
   const abpNote = document.getElementById('agentBasePreviewLine');
   if (abpNote) {
     abpNote.innerHTML = abp > 0
-      ? `Har agent ka link kam se kam <b style="color:#e4e7e9;">₹${abp}</b> dikhayega (agent chahe to isse zyada rakh sakta hai)`
-      : `Abhi khaali hai — agent ka floor bhi normal <b style="color:#e4e7e9;">₹${offer}</b> (Offer Price) hi rahega`;
+      ? `Every agent link will show at least <b style="color:#e4e7e9;">₹${abp}</b> (an agent may set it higher)`
+      : `Empty for now — the agent floor stays at the normal <b style="color:#e4e7e9;">₹${offer}</b> (Offer Price)`;
   }
 }
 
@@ -3932,7 +3930,7 @@ async function updateSetupFee() {
     });
     const data = await res.json();
     if (data.success) {
-      msgEl.textContent = `✅ Price update ho gaya — naye registrations ₹${data.actualPrice} (katega) → ₹${data.offerPrice} pe honge`;
+      msgEl.textContent = `✅ Price updated — new registrations will be ₹${data.actualPrice} (struck through) → ₹${data.offerPrice}`;
       msgEl.style.color = '#00c853';
       msgEl.style.display = 'block';
       refreshSetupFeeDisplay();
@@ -3948,7 +3946,7 @@ async function updateSetupFee() {
   }
 }
 
-// Sidebar se seedha filtered shops view (alag 'card' feel)
+// Straight from the sidebar into a filtered shops view (a separate 'card' feel)
 const SHOP_CRUMB = { all:'Shops', active:'Active Shops', pending:'Pending Payment',
                      lifetime:'Lifetime Shops', monthly:'Subscription Shops', expired:'Expired Shops' };
 
@@ -3968,14 +3966,14 @@ function navShops(f, el) {
 
 function setFilter(f) {
   currentFilter = f;
-  shopPage = 1;                     // filter badla to page 1 se shuru
+  shopPage = 1;                     // filter changed — start from page 1
   ['All','Active','Pending','Lifetime','Monthly','Expired','Scanner'].forEach(x =>
     document.getElementById('filter'+x)?.classList.toggle('active', f === x.toLowerCase()));
   renderShops();
 }
 
 function shopActions(shop) {
-  return `${shop.advanced_unlocked ? `<span style="display:inline-block;background:#f3e8ff;color:#b51c26;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:800;margin-right:6px;" title="Advance Feature active">⚡✓</span>` : `<button onclick="unlockAdvancedFor('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">⚡ Unlock</button>`}${(shop.billing_cycle || (shop.plan_type === 'monthly' ? 'monthly' : 'lifetime')) !== 'lifetime' ? `<button onclick="extendShop30('${shop.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔄 Extend cycle</button>` : ''}<button onclick="openPrinterPanel('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#0f766e;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC ka printer list + payment method">🖨️ Printer</button>${saScanBtn(shop)}<button onclick="resetShopPassword('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔑 Reset Pass</button>${shop.agent_bound ? `<button onclick="saDisconnectPc('${shop.id}','${(shop.agent_machine||'').replace(/'/g,"")}')" style="background:#fff;color:#b45309;border:1.5px solid #fde68a;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC: ${(shop.agent_machine||'unknown').replace(/"/g,'')} — hatane par naye PC me Shop ID lag sakegi">🔌 Disconnect PC</button>` : ''}${!shop.setup_paid ? `<button onclick="manualActivate('${shop.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">💰 Activate</button>` : ''}${(!shop.setup_paid || !shop.setup_amount || shop.setup_amount == 0) && shop.id !== 'SHOP_ECB1AB8A' ? `<button onclick="deletePendingShop('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#ff3b3b;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑️ Delete</button>` : `<span style="font-size:11px;color:#b0b0b0">${shop.id === 'SHOP_ECB1AB8A' ? '🔒 Protected' : '—'}</span>`}`;
+  return `${shop.advanced_unlocked ? `<span style="display:inline-block;background:#f3e8ff;color:#b51c26;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:800;margin-right:6px;" title="Advance Feature active">⚡✓</span>` : `<button onclick="unlockAdvancedFor('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">⚡ Unlock</button>`}${(shop.billing_cycle || (shop.plan_type === 'monthly' ? 'monthly' : 'lifetime')) !== 'lifetime' ? `<button onclick="extendShop30('${shop.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔄 Extend cycle</button>` : ''}<button onclick="openPrinterPanel('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#0f766e;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC printer list + payment method">🖨️ Printer</button>${saScanBtn(shop)}<button onclick="resetShopPassword('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔑 Reset Pass</button>${shop.agent_bound ? `<button onclick="saDisconnectPc('${shop.id}','${(shop.agent_machine||'').replace(/'/g,"")}')" style="background:#fff;color:#b45309;border:1.5px solid #fde68a;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC: ${(shop.agent_machine||'unknown').replace(/"/g,'')} — after removal the Shop ID can be used on a new PC">🔌 Disconnect PC</button>` : ''}${!shop.setup_paid ? `<button onclick="manualActivate('${shop.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">💰 Activate</button>` : ''}${(!shop.setup_paid || !shop.setup_amount || shop.setup_amount == 0) && shop.id !== 'SHOP_ECB1AB8A' ? `<button onclick="deletePendingShop('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#ff3b3b;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑️ Delete</button>` : `<span style="font-size:11px;color:#b0b0b0">${shop.id === 'SHOP_ECB1AB8A' ? '🔒 Protected' : '—'}</span>`}`;
 }
 
 async function renderShops() {
@@ -3986,13 +3984,13 @@ async function renderShops() {
   const _isMonthly = s => (s.billing_cycle || (s.plan_type === 'monthly' ? 'monthly' : 'lifetime')) !== 'lifetime';
   const _isExpired = s => _isMonthly(s) && s.setup_paid && (!s.paid_until || new Date(s.paid_until).getTime() <= _now);
 
-  // ── YAHI WO BUG THA ──
-  // Pehle `!s.onboarded_by` bhi filter me tha, yaani AGENT ki onboard ki
-  // hui har shop is list se gayab thi. Isi wajah se agent wali shop ka
-  // payment (jaise SHOP_B39F44B8 / ₹799) superadmin me kabhi dikhta hi
-  // nahi tha, aur Overview "Pending 5" dikhata tha jabki list khali thi.
-  // Ab agent wali shops yahan DIKHTI hain (agent ka naam column me aata
-  // hai), aur sirf WHITE-LABEL ki shops alag tab me jaati hain.
+  // ── THIS WAS THE BUG ──
+  // `!s.onboarded_by` used to be part of the filter too, meaning every shop
+  // onboarded by an AGENT vanished from this list. That is why the payment of
+  // an agent's shop (such as SHOP_B39F44B8 / ₹799) never showed up in
+  // superadmin, and the Overview said "Pending 5" while the list was empty.
+  // Agent shops now DO show here (the agent's name appears in a column),
+  // and only WHITE-LABEL shops go to their separate tab.
   const realShops = allShops.filter(s => !s.demo && !s.whitelabel_id);
   let filtered = realShops;
   if (currentFilter === 'active') filtered = realShops.filter(s => s.setup_paid);
@@ -4000,11 +3998,11 @@ async function renderShops() {
   if (currentFilter === 'lifetime') filtered = realShops.filter(s => s.setup_paid && !_isMonthly(s));
   if (currentFilter === 'monthly') filtered = realShops.filter(_isMonthly);
   if (currentFilter === 'expired') filtered = realShops.filter(_isExpired);
-  // Smart Scanner add-on kis-kis ke paas hai. Premium wale bhi ginte hain -
-  // unhe plan ke saath hi mila hota hai.
+  // Which shops have the Smart Scanner add-on. Premium shops count too -
+  // they get it with their plan.
   if (currentFilter === 'scanner') filtered = realShops.filter(saShopHasScan);
 
-  // ── SEARCH ── naam / ID / phone / address, kahin bhi match ho jaye
+  // ── SEARCH ── name / ID / phone / address, a match anywhere counts
   const _q = ((document.getElementById('shopSearch')||{}).value || '').trim().toLowerCase();
   if (_q) {
     filtered = filtered.filter(s =>
@@ -4022,7 +4020,7 @@ async function renderShops() {
     return new Date(b.created_at) - new Date(a.created_at);   // new
   });
 
-  // ── PAGINATION ── 156 shops ek saath render karne se page bhaari hota hai
+  // ── PAGINATION ── rendering 156 shops at once makes the page heavy
   const _total = filtered.length;
   const _pages = Math.max(1, Math.ceil(_total / shopPerPage));
   if (shopPage > _pages) shopPage = _pages;
@@ -4031,7 +4029,7 @@ async function renderShops() {
   renderShopsPager(_total, _pages, _from, _pageRows.length);
   filtered = _pageRows;
 
-  // Monthly summary (MRR estimate) — sirf monthly filter par
+  // Monthly summary (MRR estimate) — only for the monthly filter
   const summaryEl = document.getElementById('monthlySummary');
   if (summaryEl) {
     if (currentFilter === 'monthly' || currentFilter === 'expired') {
@@ -4049,10 +4047,10 @@ async function renderShops() {
     } else summaryEl.style.display = 'none';
   }
   // ── SMART SCANNER summary ──
-  // Sawaal jo poochha gaya tha: "kis account me active hai, kisme nahi".
-  // Yahan ek nazar me poora hisaab dikh jaata hai. Ginti HAMESHA saari
-  // shops par hoti hai (allShops), page ya search par nahi — warna
-  // aadha-adhoora number dikhta.
+  // The question asked was: "which accounts have it active and which do not".
+  // This shows the whole picture at a glance. The count ALWAYS covers all
+  // shops (allShops), not the page or the search — otherwise the number
+  // would be incomplete.
   const scanEl = document.getElementById('scannerSummary');
   if (scanEl) {
     if (currentFilter === 'scanner') {
@@ -4077,7 +4075,7 @@ async function renderShops() {
     const tr = document.createElement('tr');
     const _dt = new Date(shop.created_at);
     const createdDate = _dt.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
-    // Time IST me 24-hour HH:MM:SS — record match karne ke liye exact
+    // Time in IST, 24-hour HH:MM:SS — exact, for matching records
     const createdTime = _dt.toLocaleTimeString('en-GB', { hour12:false, timeZone:'Asia/Kolkata', hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
     tr.innerHTML = `
@@ -4089,7 +4087,7 @@ async function renderShops() {
         📍 ${sanitize(shop.address || '-')}<br>
         📞 ${sanitize(shop.phone || '-')}
       </td>
-      <td style="font-size:12px;">${sanitize(shop.printer_model || '-')}<br>${agentVerBadge(shop.agent_version, shop.agent_last_seen)}${shop.onboarded_by ? `<div style="margin-top:5px;display:inline-block;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:7px;padding:2px 7px;font-size:10px;font-weight:800;" title="Agent ne onboard ki hai">🤝 ${sanitize(shop.onboarded_by_name || shop.onboarded_by)}</div>` : ''}</td>
+      <td style="font-size:12px;">${sanitize(shop.printer_model || '-')}<br>${agentVerBadge(shop.agent_version, shop.agent_last_seen)}${shop.onboarded_by ? `<div style="margin-top:5px;display:inline-block;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;border-radius:7px;padding:2px 7px;font-size:10px;font-weight:800;" title="Onboarded by an agent">🤝 ${sanitize(shop.onboarded_by_name || shop.onboarded_by)}</div>` : ''}</td>
       <td><span class="status-pill ${shop.setup_paid ? 'active' : 'pending'}">${shop.setup_paid ? '✅ Active' : '⏳ Pending'}</span>${shop.setup_paid ? `<div style="font-size:11px;color:#00875a;font-weight:700;margin-top:4px">Paid ₹${shop.setup_amount || 0}</div>` : ''}</td>
       <td class="earnings-cell" id="earn-${shop.id}">Loading...</td>
       <td style="font-size:11px;color:#6b6870;">${createdDate}<br><span style="font-family:monospace;color:#9a9aa0;">${createdTime}</span></td>
@@ -4097,7 +4095,7 @@ async function renderShops() {
     `;
     tbody.appendChild(tr);
 
-    // Earnings async load karo (aur sort ke liye cache bhi kar lo)
+    // Load earnings asynchronously (and cache them for sorting)
     fetch(`/api/superadmin/shop/${shop.id}/earnings`, { headers: { 'Authorization': 'Bearer ' + authToken } })
       .then(r => r.json())
       .then(data => {
@@ -4109,7 +4107,7 @@ async function renderShops() {
   }
 
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#8b8e9e;padding:34px;font-size:13px;">Koi shop nahi mila</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#8b8e9e;padding:34px;font-size:13px;">No shops found</td></tr>';
   }
 }
 
@@ -4119,7 +4117,7 @@ function renderShopsPager(total, pages, from, shown) {
   if (!box) return;
   if (!total) { box.innerHTML = ''; return; }
 
-  // Page buttons: hamesha pehla/aakhri + current ke aas-paas ke
+  // Page buttons: always the first/last + the ones around the current page
   const nums = [];
   for (let i = 1; i <= pages; i++) {
     if (i === 1 || i === pages || Math.abs(i - shopPage) <= 1) nums.push(i);
@@ -4129,13 +4127,13 @@ function renderShopsPager(total, pages, from, shown) {
   box.innerHTML =
     `<div class="info">Showing ${from + 1} to ${from + shown} of ${total} shops</div>
      <div class="pages">
-       <button onclick="goShopPage(1)" ${shopPage === 1 ? 'disabled' : ''} title="Pehla page">«</button>
+       <button onclick="goShopPage(1)" ${shopPage === 1 ? 'disabled' : ''} title="First page">«</button>
        <button onclick="goShopPage(${shopPage - 1})" ${shopPage === 1 ? 'disabled' : ''}>‹</button>
        ${nums.map(n => n === '…'
           ? `<button disabled style="border:none;background:none;">…</button>`
           : `<button class="${n === shopPage ? 'on' : ''}" onclick="goShopPage(${n})">${n}</button>`).join('')}
        <button onclick="goShopPage(${shopPage + 1})" ${shopPage === pages ? 'disabled' : ''}>›</button>
-       <button onclick="goShopPage(${pages})" ${shopPage === pages ? 'disabled' : ''} title="Aakhri page">»</button>
+       <button onclick="goShopPage(${pages})" ${shopPage === pages ? 'disabled' : ''} title="Last page">»</button>
        <select onchange="shopPerPage=parseInt(this.value);shopPage=1;renderShops()">
          ${[10, 25, 50, 100].map(n => `<option value="${n}" ${n === shopPerPage ? 'selected' : ''}>${n} / page</option>`).join('')}
        </select>
@@ -4148,7 +4146,7 @@ function goShopPage(p) {
   if (c) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* ── Topbar ka global search — kisi bhi tab se seedha Shops par le jaata hai ── */
+/* ── Topbar global search — goes straight to Shops from any tab ── */
 function globalSearchGo(v) {
   const s = document.getElementById('shopSearch');
   if (s) s.value = v;
@@ -4164,9 +4162,9 @@ function globalSearchGo(v) {
 // ═══ HOMEPAGE EDIT ═══
 let _hpCfg = {};
 async function regenerateAllQrs(btn) {
-  if (!confirm('Sabhi shops ke QR current domain se naye ban jayenge. Jinke QR pehle se sahi hain unpe koi asar nahi. Continue?')) return;
+  if (!confirm('The QR codes of all shops will be regenerated with the current domain. Shops whose QR is already correct are not affected. Continue?')) return;
   const msg = document.getElementById('qrRegenMsg');
-  btn.disabled = true; btn.textContent = '⏳ QR ban rahe hain...';
+  btn.disabled = true; btn.textContent = '⏳ Generating QR codes...';
   try {
     const r = await fetch('/api/superadmin/regenerate-qrs', {
       method:'POST', headers:{'Authorization':'Bearer '+authToken}
@@ -4175,12 +4173,12 @@ async function regenerateAllQrs(btn) {
     msg.style.display = 'block';
     if (d.success) {
       msg.style.color = '#16a34a';
-      msg.textContent = `✅ ${d.regenerated}/${d.total} shops ke QR naye ban gaye (${d.base_url} se)` + (d.failed ? ` — ${d.failed} fail` : '');
+      msg.textContent = `✅ QR codes regenerated for ${d.regenerated}/${d.total} shops (from ${d.base_url})` + (d.failed ? ` — ${d.failed} fail` : '');
     } else {
       msg.style.color = '#dc2626'; msg.textContent = '❌ ' + (d.error || 'Fail');
     }
   } catch(e) { msg.style.display='block'; msg.style.color='#dc2626'; msg.textContent='❌ '+e.message; }
-  btn.disabled = false; btn.textContent = '🔄 Sabhi QR Naye Banao (Current Domain Se)';
+  btn.disabled = false; btn.textContent = '🔄 Regenerate All QR Codes (Current Domain)';
 }
 
 async function loadBroadcast() {
@@ -4202,7 +4200,7 @@ async function saveBroadcast() {
     });
     const d = await r.json();
     msg.style.display = 'block';
-    if (d.success) { msg.style.color='#16a34a'; msg.textContent = val ? '✅ Save ho gaya — ab sabhi shops ko dikhega' : '✅ Message hata diya'; }
+    if (d.success) { msg.style.color='#16a34a'; msg.textContent = val ? '✅ Saved — all shops will now see it' : '✅ Message removed'; }
     else { msg.style.color='#dc2626'; msg.textContent='❌ '+(d.error||'Fail'); }
   } catch(e) { msg.style.display='block'; msg.style.color='#dc2626'; msg.textContent='❌ '+e.message; }
 }
@@ -4244,9 +4242,9 @@ async function savePlanFeatures(){
   }
   await saveWebsitePart(body,'planFeatureMsg');
 }
-/* Homepage par daam kaise dikhega — bilkul wahi hisaab jo index.html me
-   hai (Indian style comma: 149900 -> 1,49,900). Superadmin ko save karne
-   se PEHLE dikh jaata hai, taaki 14990 aur 1499 ki galti pakdi jaye. */
+/* How the price will appear on the homepage — exactly the same calculation as in
+   index.html (Indian-style commas: 149900 -> 1,49,900). Superadmin sees it
+   BEFORE saving, so a mix-up between 14990 and 1499 gets caught. */
 function hpINR(n) {
   var s = String(n || '').replace(/\D/g, '');
   if (s.length <= 3) return s;
@@ -4254,8 +4252,8 @@ function hpINR(n) {
   return rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
 }
 
-/* Homepage par abhi kaunsa number dikh raha hai — wahi API se jo
-   homepage khud use karta hai, taaki dono me kabhi farq na ho. */
+/* Which number the homepage is showing right now — from the same API the
+   homepage itself uses, so the two never differ. */
 async function loadLiveStats() {
   var s = document.getElementById('hpLiveShops'), p = document.getElementById('hpLivePrints');
   if (!s || !p) return;
@@ -4268,9 +4266,9 @@ async function loadLiveStats() {
   }
 }
 
-/* Homepage wale dono badge yahin dikha dete hain — save karne se PEHLE
-   pata chal jaye ki visitor ko kya dikhega. Hisaab bilkul wahi jo
-   index.html me hai, default bhi wahi. */
+/* Both homepage badges are previewed right here — so it is clear BEFORE
+   saving what visitors will see. The calculation is exactly the same as in
+   index.html, and so is the default. */
 function hpGPreview() {
   var box = document.getElementById('hpGPreview');
   if (!box) return;
@@ -4302,13 +4300,13 @@ function hpGPreview() {
     + one('<span style="font-size:13.5px;font-weight:800;color:#0a4b8c;">Justdial</span>',
           val('hpJdRating', '5'), 'hpJdCount', val('hpJdUrl', 'https://jsdl.in/DT-99Q7DGR4824'));
   box.innerHTML = html || '<span style="font-size:12px;color:#9ca3af;">'
-    + 'Rating 0 ya link galat hai — badge homepage par nahi dikhega.</span>';
+    + 'Rating is 0 or the link is invalid — the badge will not show on the homepage.</span>';
 }
 
-/* Textarea ki har line ko partner me todo: Naam | logo | link.
-   Adhuri line chup-chaap chhod dete hain — save karte waqt server bhi
-   yahi jaanch karta hai, isliye galat data kabhi homepage tak nahi
-   pahunchta. */
+/* Split each textarea line into a partner: Name | logo | link.
+   Incomplete lines are silently skipped — the server runs the same
+   check on save, so bad data never reaches
+   the homepage. */
 async function saveHomepage(){
   const body={showStats:document.getElementById('hpShowStats').checked};
   Object.entries(ECHEL_SETTING_FIELDS).forEach(([id,key])=>{body[key]=document.getElementById(id).value.trim();});
@@ -4316,37 +4314,37 @@ async function saveHomepage(){
 }
 
 // ═══ SMART SCANNER (add-on) — per shop ═══
-// Scanner base pack me nahi hai. Premium (₹999) ko free milta hai,
-// baaki ko ₹49 dene padte hain — ya yahan se free diya ja sakta hai.
+// The scanner is not in the base pack. Premium (₹999) gets it free,
+// everyone else pays ₹49 — or it can be granted for free from here.
 function saShopHasScan(shop){
-  if (shop.plan_type === 'premium') return true;          // plan se hi mila hua
+  if (shop.plan_type === 'premium') return true;          // included with the plan
   const own = Array.isArray(shop.owned_features) ? shop.owned_features : [];
   return own.indexOf('scan') !== -1;
 }
 
 function saScanBtn(shop){
-  // Advance hi nahi khula to scanner ka sawaal hi nahi
+  // If Advance is not even unlocked, the scanner is out of the question
   if (!shop.advanced_unlocked) return '';
   if (shop.plan_type === 'premium'){
     return '<span style="display:inline-block;background:#ecfdf5;color:#047857;border-radius:8px;'
          + 'padding:7px 9px;font-size:11px;font-weight:800;margin-right:6px;" '
-         + 'title="Premium plan — Smart Scanner pehle se shaamil hai">\uD83D\uDCF8 Premium</span>';
+         + 'title="Premium plan — Smart Scanner is already included">\uD83D\uDCF8 Premium</span>';
   }
   const has = saShopHasScan(shop);
   const id  = String(shop.id).replace(/'/g,"");
   return has
     ? '<button onclick="saSetScan(\'' + id + '\',false)" style="background:#fff;color:#b45309;'
       + 'border:1.5px solid #fde68a;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;'
-      + 'cursor:pointer;margin-right:6px;" title="Smart Scanner wapas le lo">\uD83D\uDCF8 Scanner ON</button>'
+      + 'cursor:pointer;margin-right:6px;" title="Take back Smart Scanner">\uD83D\uDCF8 Scanner ON</button>'
     : '<button onclick="saSetScan(\'' + id + '\',true)" style="background:#0f766e;color:#fff;'
       + 'border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;'
-      + 'cursor:pointer;margin-right:6px;" title="Bina ₹49 liye Smart Scanner free do">\uD83D\uDCF8 Scanner OFF</button>';
+      + 'cursor:pointer;margin-right:6px;" title="Give Smart Scanner for free without charging ₹49">\uD83D\uDCF8 Scanner OFF</button>';
 }
 
 async function saSetScan(shopId, grant){
   const msg = grant
-    ? shopId + ' ko Smart Scanner FREE de dein?\n(₹49 add-on — bina payment ke)'
-    : shopId + ' se Smart Scanner WAPAS le lein?\n(Customer ke page se card hat jayega)';
+    ? shopId + ': give Smart Scanner for FREE?\n(₹49 add-on — without payment)'
+    : shopId + ': take Smart Scanner BACK?\n(The card will be removed from the customer page)';
   if (!confirm(msg)) return;
   try{
     const res = await fetch('/api/superadmin/shop/' + shopId + '/feature', {
@@ -4355,19 +4353,19 @@ async function saSetScan(shopId, grant){
       body: JSON.stringify({ featureId:'scan', grant: grant })
     });
     const d = await res.json();
-    if(d.success){ alert(grant ? '✅ Smart Scanner de diya gaya' : '✅ Smart Scanner hata diya gaya'); loadPanel(); }
+    if(d.success){ alert(grant ? '✅ Smart Scanner granted' : '✅ Smart Scanner removed'); loadPanel(); }
     else alert('❌ '+(d.error||'Fail'));
   }catch(e){ alert('❌ '+e.message); }
 }
 
 async function unlockAdvancedFor(shopId){
-  if(!confirm(`${shopId} ko Advance Feature FREE unlock karein?\n(4x6/A3/Duplex/Resume — bina ₹199 payment ke, lifetime)`)) return;
+  if(!confirm(`Unlock the Advance Feature for ${shopId} for FREE?\n(4x6/A3/Duplex/Resume — without the ₹199 payment, lifetime)`)) return;
   try{
     const res = await fetch(`/api/superadmin/shop/${shopId}/unlock-advanced`, {
       method:'POST', headers:{'Authorization':'Bearer '+authToken}
     });
     const d = await res.json();
-    if(d.success){ alert('✅ Advance Feature unlock ho gaya!'); loadPanel(); }
+    if(d.success){ alert('✅ Advance Feature unlocked!'); loadPanel(); }
     else alert('❌ '+(d.error||'Fail'));
   }catch(e){ alert('❌ '+e.message); }
 }
@@ -4379,42 +4377,42 @@ async function extendShop30(shopId){
       method:'POST', headers:{'Authorization':'Bearer '+authToken}
     });
     const d = await res.json();
-    if(d.success){ alert('✅ Extend ho gaya — ab till: ' + new Date(d.paid_until).toLocaleDateString('en-IN')); loadPanel(); }
+    if(d.success){ alert('✅ Extended — now valid until: ' + new Date(d.paid_until).toLocaleDateString('en-IN')); loadPanel(); }
     else alert('❌ '+(d.error||'Fail'));
   }catch(e){ alert('❌ '+e.message); }
 }
 
 async function resetShopPassword(shopId){
-  if(!confirm(`${shopId} ka password RESET karein? Owner ka purana password kaam nahi karega.`)) return;
+  if(!confirm(`Reset the password of ${shopId}? The owner's old password will stop working.`)) return;
   try{
     const res = await fetch(`/api/superadmin/shop/${shopId}/reset-password`, {
       method:'POST', headers:{'Authorization':'Bearer '+authToken}
     });
     const d = await res.json();
     if(d.success){
-      prompt('✅ Naya temporary password (owner ko phone par batao, copy kar lo):', d.tempPassword);
+      prompt('✅ New temporary password (tell the owner over the phone; copy it now):', d.tempPassword);
     } else alert('❌ '+(d.error||'Fail'));
   }catch(e){ alert('❌ '+e.message); }
 }
 
 async function manualActivate(shopId){
-  const ref = prompt('Razorpay Payment ID daalo (customer ke screenshot / Razorpay dashboard se, jaise pay_XXXXX):');
+  const ref = prompt('Enter the Razorpay Payment ID (from the customer screenshot / Razorpay dashboard, e.g. pay_XXXXX):');
   if (ref === null) return;
-  if (!ref.trim()) { alert('Payment ID zaroori hai — record ke liye'); return; }
-  if (!confirm(`${shopId} ko ACTIVATE karein? Iska matlab: aapne Razorpay me payment verify kar liya hai.`)) return;
+  if (!ref.trim()) { alert('A Payment ID is required — for the record'); return; }
+  if (!confirm(`ACTIVATE ${shopId}? This means you have verified the payment in Razorpay.`)) return;
   try{
     const res = await fetch(`/api/superadmin/shop/${shopId}/activate`, {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
       body: JSON.stringify({ payment_ref: ref.trim() })
     });
     const d = await res.json();
-    if (d.success){ alert('✅ Shop activate ho gayi! Owner ab login kar sakta hai.'); loadPanel(); }
+    if (d.success){ alert('✅ Shop activated! The owner can log in now.'); loadPanel(); }
     else alert('❌ ' + (d.error||'Fail'));
   }catch(e){ alert('❌ '+e.message); }
 }
 
 async function deletePendingShop(shopId, name){
-  if(!confirm(`"${name}" (${shopId}) delete karein? Ye shop wapas nahi aayegi.`)) return;
+  if(!confirm(`Delete "${name}" (${shopId})? This shop cannot be restored.`)) return;
   try{
     const res = await fetch(`/api/superadmin/shop/${shopId}`, {
       method: 'DELETE',
@@ -4423,21 +4421,21 @@ async function deletePendingShop(shopId, name){
     const data = await res.json();
     if(data.success){
       loadPanel();  // stats + main list
-      // Demo tab ki apni list alag hai — wo bhi refresh karo, warna
-      // shop delete hone ke baad bhi card screen par bacha rehta hai
-      // aur lagta hai ki delete hua hi nahi.
+      // The Demo tab has its own separate list — refresh it too, otherwise the
+      // card stays on screen even after the shop is deleted
+      // and it looks as if nothing was deleted.
       try { if (typeof loadDemos === 'function') loadDemos(); } catch(e){}
       try { if (typeof loadDemoRequests === 'function') loadDemoRequests(); } catch(e){}
       try { if (typeof loadSecurity === 'function') loadSecurity(); } catch(e){}
     } else {
-      alert('❌ ' + (data.error || 'Delete fail hua'));
+      alert('❌ ' + (data.error || 'Delete failed'));
     }
   }catch(e){ alert('❌ ' + e.message); }
 }
 
 
 // ===== SIDEBAR NAV =====
-const PAGE_TITLES = {kaam:'Aaj Ka Kaam', overview:'Overview', shops:'Shops', demos:'Demo Accounts', security:'Security', agents:'Agents', withdrawals:'Withdrawals', agent:'Agent Software', pricing:'Setup Fee', analytics:'Analytics', whitelabel:'White Label', reviews:'Reviews', langs:'Languages', notify:'Email Alerts', wlshops:'White Label Shops', payments:'Payments', planfeatures:'Plan Features', homepage:'Brand & Website', broadcast:'Broadcast Message', qrtools:'QR Tools', database:'Database', advtool:'Advance Tool'};
+const PAGE_TITLES = {actions:'Action Center', overview:'Overview', shops:'Shops', demos:'Demo Accounts', security:'Security', agents:'Agents', withdrawals:'Withdrawals', agent:'Agent Software', pricing:'Setup Fee', analytics:'Analytics', whitelabel:'White Label', reviews:'Reviews', langs:'Languages', notify:'Email Alerts', wlshops:'White Label Shops', payments:'Payments', planfeatures:'Plan Features', homepage:'Brand & Website', broadcast:'Broadcast Message', qrtools:'QR Tools', database:'Database', advtool:'Advance Tool'};
 function navTo(sect, btn){
   document.querySelectorAll('[data-sect]').forEach(el=>el.classList.toggle('show', el.getAttribute('data-sect')===sect));
   document.querySelectorAll('.nav-it[data-nav]').forEach(n=>n.classList.toggle('active', n.getAttribute('data-nav')===sect));
@@ -4454,12 +4452,12 @@ function navTo(sect, btn){
 
 
 /* ═══════════ CUSTOMER BLOCK ═══════════
-   IP wale card jaisa hi. Do list: shak ke daayre wale, aur abhi block
-   kiye hue.
+   Just like the IP card. Two lists: suspicious ones, and those blocked
+   right now.
 
-   Poora card DOM se banta hai, innerHTML se NAHI — customer id aur shop
-   ka naam dono bahar se aate hain, aur innerHTML me daalte to koi apni
-   device id me markup bhar kar panel me script chala sakta tha. */
+   The whole card is built with the DOM, NOT innerHTML — the customer id and
+   the shop name both come from outside, and with innerHTML someone could put
+   markup into their device id and run a script inside the panel. */
 async function loadCustBans(){
   const auto  = document.getElementById('custBanAuto');
   const worstEl = document.getElementById('custBanWorst');
@@ -4470,15 +4468,15 @@ async function loadCustBans(){
     const d = await r.json();
 
     if (auto) auto.textContent =
-      'Apne aap: ' + (d.jobsMax || 6) + ' se zyada print ' + (d.windowMin || 5)
-      + ' minute me = us customer par 15 minute ka block. Ek job me zyada se zyada '
-      + (d.sheetMax || 20) + ' kagaz. Neeche wala block PAKKA hai — khud kabhi nahi hatega.';
+      'Automatic: more than ' + (d.jobsMax || 6) + ' prints in ' + (d.windowMin || 5)
+      + ' minutes = a 15-minute block on that customer. At most '
+      + (d.sheetMax || 20) + ' sheets per job. The block below is PERMANENT — it never lifts by itself.';
 
-    // ── shak ke daayre wale ──
+    // ── suspicious ones ──
     worstEl.textContent = '';
     const worst = d.worst || [];
     if (!worst.length) {
-      worstEl.textContent = 'Abhi koi nahi. (Purani job me customer ka nishaan nahi tha, isliye ye list ab se bharegi.)';
+      worstEl.textContent = 'None yet. (Old jobs did not carry a customer marker, so this list fills from now on.)';
       worstEl.style.cssText = 'font-size:11.5px;color:#6b6870;';
     } else {
       for (const w of worst) {
@@ -4489,22 +4487,22 @@ async function loadCustBans(){
         id.textContent = w.cid;
         const info = document.createElement('span');
         info.style.cssText = 'font-size:11.5px;color:#6b6870;flex:1;min-width:150px;';
-        info.textContent = w.kul + ' print · ' + w.denied + ' deny · '
+        info.textContent = w.total + ' print · ' + w.denied + ' deny · '
                          + w.shops + ' shop' + (w.last_shop ? ' · ' + w.last_shop : '');
         const b = document.createElement('button');
         b.style.cssText = 'background:#ff3b3b;color:#fff;border:none;border-radius:9px;padding:7px 13px;font-size:11.5px;font-weight:700;cursor:pointer;';
         b.textContent = 'Block';
-        b.onclick = () => banCustomer(w.cid, w.last_shop || '', w.denied + ' deny / ' + w.kul + ' print');
+        b.onclick = () => banCustomer(w.cid, w.last_shop || '', w.denied + ' deny / ' + w.total + ' print');
         row.appendChild(id); row.appendChild(info); row.appendChild(b);
         worstEl.appendChild(row);
       }
     }
 
-    // ── abhi block kiye hue ──
+    // ── blocked right now ──
     listEl.textContent = '';
     const bans = d.bans || [];
     if (!bans.length) {
-      listEl.textContent = 'Abhi koi customer block nahi hai.';
+      listEl.textContent = 'No customer is blocked right now.';
       listEl.style.cssText = 'font-size:11.5px;color:#6b6870;';
     } else {
       for (const b of bans) {
@@ -4515,26 +4513,26 @@ async function loadCustBans(){
         id.textContent = b.cid;
         const why = document.createElement('span');
         why.style.cssText = 'font-size:11.5px;color:#6b6870;flex:1;min-width:150px;';
-        why.textContent = (b.reason || 'wajah nahi likhi')
+        why.textContent = (b.reason || 'no reason given')
                         + (b.shop_name ? ' · ' + b.shop_name : '');
         const btn = document.createElement('button');
         btn.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:9px;padding:7px 13px;font-size:11.5px;font-weight:700;cursor:pointer;';
-        btn.textContent = 'Hatao';
+        btn.textContent = 'Remove';
         btn.onclick = () => unbanCustomer(b.cid);
         row.appendChild(id); row.appendChild(why); row.appendChild(btn);
         listEl.appendChild(row);
       }
     }
   } catch(e) {
-    listEl.textContent = 'Load nahi hua: ' + e.message;
+    listEl.textContent = 'Failed to load: ' + e.message;
   }
 }
 
 async function banCustomer(cid, shopId, reason){
   if (!cid) return;
-  if (!confirm('Is customer ko PAKKA block karna hai?\n\n' + cid
-             + '\n\nIske baad ye device kisi bhi shop par print nahi kar payega, '
-             + 'jab tak aap khud block na hataye.')) return;
+  if (!confirm('Block this customer PERMANENTLY?\n\n' + cid
+             + '\n\nAfter this, the device cannot print at any shop, '
+             + 'until you remove the block yourself.')) return;
   try {
     const r = await fetch('/api/superadmin/customer-ban', {
       method:'POST',
@@ -4543,12 +4541,12 @@ async function banCustomer(cid, shopId, reason){
     });
     const d = await r.json();
     if (!d.success) return alert(d.error || 'Fail');
-    // Line me lagi job bhi hat gayi — ye bataana zaroori hai, warna
-    // superadmin ko lagta hai block ke baad bhi print nikal rahe hain.
+    // Queued jobs were removed too — this must be said, otherwise the
+    // superadmin thinks prints are still coming out after the block.
     if (d.cancelledJobs > 0) {
-      alert('✅ Block ho gaya.\n\nUski ' + d.cancelledJobs
-          + ' bina-paise wali job line se hata bhi di — ab printer par kuch nahi jayega.'
-          + '\n\n(Paise wali job nahi hataayi — wo shop owner ka faisla hai.)');
+      alert('✅ Blocked.\n\nIts ' + d.cancelledJobs
+          + ' unpaid job(s) were also removed from the queue — nothing will reach the printer now.'
+          + '\n\n(Paid jobs were not removed — that is the shop owner\'s decision.)');
     }
     loadCustBans();
   } catch(e) { alert(e.message); }
@@ -4572,8 +4570,8 @@ function banCustManual(){
   const el = document.getElementById('custBanNew');
   const wy = document.getElementById('custBanWhy');
   const cid = (el.value || '').trim();
-  if (!cid) return alert('Customer ID daalo');
-  banCustomer(cid, '', (wy.value || '').trim() || 'haath se');
+  if (!cid) return alert('Enter a Customer ID');
+  banCustomer(cid, '', (wy.value || '').trim() || 'manual');
   el.value = ''; wy.value = '';
 }
 
@@ -4595,7 +4593,7 @@ async function loadWlShops(){
       tile('🎯', demo,          'Demo',           '#fff7ed', '#c2410c') +
       tile('🏷️', brands,        'Partners',       '#faf5ff', '#b51c26');
     if (!shops.length){
-      tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#6b6870;">Abhi koi white-label shop nahi hai</td></tr>';
+      tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#6b6870;">No white-label shops yet</td></tr>';
       return;
     }
     tb.innerHTML = shops.map(s => {
@@ -4610,12 +4608,12 @@ async function loadWlShops(){
         <td>${s.demo
               ? '<span class="status-pill pending">🎯 Demo</span>'
               : `<span class="status-pill ${s.setup_paid?'active':'pending'}">${s.setup_paid?'✅ Active':'⏳ Pending'}</span>`}
-            <div style="font-size:10.5px;color:#6b6870;margin-top:4px;">paisa partner ko</div></td>
+            <div style="font-size:10.5px;color:#6b6870;margin-top:4px;">money goes to the partner</div></td>
         <td style="font-size:11px;color:#6b6870;">${dt.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
       </tr>`;
     }).join('');
   } catch(e){
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#dc2626;">Load nahi hua</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#dc2626;">Failed to load</td></tr>';
   }
 }
 
@@ -4650,7 +4648,7 @@ async function loadPayments(){
       tile('🧾',(T.cnt||0),'Total payments','#eef2ff','#4338ca') +
       tile('📊','₹'+(T.our_amount||0).toLocaleString('en-IN'),'Total revenue','#fffbeb','#b45309');
     if (!rows.length){
-      tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#6b6870;">Koi payment nahi mila</td></tr>';
+      tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#6b6870;">No payments found</td></tr>';
       return;
     }
     const KIND = {
@@ -4665,7 +4663,7 @@ async function loadPayments(){
       const wl = p.kind==='setup' && p.whitelabel_id;
       return `<tr>
         <td><span style="background:${k[1]};color:${k[2]};border-radius:8px;padding:5px 9px;font-size:11.5px;font-weight:800;white-space:nowrap;">${k[0]}</span>
-            ${wl?'<div style="font-size:10px;color:#b45309;font-weight:700;margin-top:4px;">partner ka paisa</div>':''}</td>
+            ${wl?'<div style="font-size:10px;color:#b45309;font-weight:700;margin-top:4px;">money for the partner</div>':''}</td>
         <td><div style="font-weight:700;font-size:13px;">${sanitize(p.shop_name||'—')}</div>
             <div class="shop-id-mono">${sanitize(p.shop_id||p.whitelabel_id||'')}</div></td>
         <td style="font-weight:800;color:${wl?'#9a9aa0':'#047857'};font-size:14px;">₹${(p.amount||0).toLocaleString('en-IN')}</td>
@@ -4675,31 +4673,31 @@ async function loadPayments(){
       </tr>`;
     }).join('');
   } catch(e){
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#dc2626;">Load nahi hua</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#dc2626;">Failed to load</td></tr>';
   }
 }
 
-/* ═══════════ EK CLICK ME SAFAI ═══════════ */
+/* ═══════════ ONE-CLICK CLEANUP ═══════════ */
 async function bulkDeletePending(btn){
-  if (!confirm('Saari PENDING PAYMENT shops (register hui, paisa nahi aaya) delete ho jayengi.\n\nDemo accounts are excluded.\n\nPakka?')) return;
-  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Delete ho raha hai…';
+  if (!confirm('All PENDING PAYMENT shops (registered, no payment received) will be deleted.\n\nDemo accounts are excluded.\n\nAre you sure?')) return;
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Deleting…';
   try {
     const r = await fetch('/api/superadmin/bulk/delete-pending', { method:'POST', headers:{ 'Authorization':'Bearer '+authToken }});
     const d = await r.json();
     if (d.error) throw new Error(d.error);
-    alert('✅ ' + (d.deleted||0) + ' pending shop delete ho gayi');
+    alert('✅ ' + (d.deleted||0) + ' pending shop(s) deleted');
     await loadPanel();
   } catch(e){ alert('❌ ' + e.message); }
   btn.disabled = false; btn.textContent = old;
 }
 async function bulkDeleteExpiredDemos(btn){
-  if (!confirm('Saare EXPIRED DEMO accounts delete ho jayenge.\n\nJo demo abhi chal rahe hain wo safe rahenge.\n\nPakka?')) return;
-  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Delete ho raha hai…';
+  if (!confirm('All EXPIRED DEMO accounts will be deleted.\n\nDemos that are still running stay safe.\n\nAre you sure?')) return;
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Deleting…';
   try {
     const r = await fetch('/api/superadmin/bulk/delete-expired-demos', { method:'POST', headers:{ 'Authorization':'Bearer '+authToken }});
     const d = await r.json();
     if (d.error) throw new Error(d.error);
-    alert('✅ ' + (d.deleted||0) + ' expired demo delete ho gaye');
+    alert('✅ ' + (d.deleted||0) + ' expired demo(s) deleted');
     await loadPanel();
   } catch(e){ alert('❌ ' + e.message); }
   btn.disabled = false; btn.textContent = old;

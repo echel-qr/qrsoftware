@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>QR Se Resume Maker</title>
+<title>Echel Resume Maker</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -11,9 +11,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  /* Palette customer.html se — variable ke naam wahi purane rakhe hain,
-     sirf values badli hain, taaki poora page ek hi jagah se match ho jaye
-     aur baaki CSS ko haath na lagana pade. */
+  /* Palette from customer.html — the old variable names are kept and
+     only the values changed, so the whole page matches from one place
+     and the rest of the CSS does not need to be touched. */
   --bg:#f4f4f8;--white:#fff;--border:#e8e6f0;
   --text:#15151f;--ink-2:#3d3d4e;--muted:#7a7a8c;
   --primary:#b51c26;--primary-d:#6d28d9;--primary-l:#ede9fe;
@@ -45,7 +45,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI'
   letter-spacing:-.3px;line-height:1.2}
 .h-s{color:rgba(255,255,255,.62);font-size:11.5px;margin-top:3px}
 
-/* Steps — customer page ke bade dots, gradient active + violet done */
+/* Steps — the customer page's large dots, gradient when active + violet when done */
 .steps{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;padding:0 4px}
 .step{flex:1 1 0;display:flex;flex-direction:column;align-items:center;position:relative;min-width:0}
 .step:not(:last-child)::after{content:'';position:absolute;top:23px;
@@ -56,8 +56,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI'
   background:#e9e7f2;color:#9997ab;transition:.25s;position:relative;z-index:1}
 .step.active .dot{background:var(--grad);color:#fff;
   box-shadow:0 0 0 5px rgba(124,58,237,.15),0 6px 18px rgba(124,58,237,.34)}
-/* Done step par number ki jagah ✓ — customer page bilkul aisa hi dikhta hai.
-   CSS se kiya hai taaki JS ka step logic waise ka waisa rahe. */
+/* A ✓ instead of the number on a completed step — exactly like the customer page.
+   Done in CSS so the JS step logic stays unchanged. */
 .step.done .dot{background:var(--primary);color:#fff;font-size:0}
 .step.done .dot::after{content:'✓';font-size:19px;line-height:1}
 .step-lbl{font-size:12.5px;font-weight:700;color:var(--muted);margin-top:9px;text-align:center}
@@ -187,14 +187,14 @@ textarea.fi{resize:vertical;min-height:65px}
 </style>
 <link rel="stylesheet" href="/echel-theme.css?v=1">
 <script src="/echel-brand.js?v=1" defer></script>
-<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<script src="/i18n.js" defer></script></head>
 <body class="echel-resume">
 <div class="wrap">
 
 <div class="hdr">
   <div class="h-ic">📄</div>
   <div>
-    <div class="h-t" id="shopName">QR Se Resume Maker</div>
+    <div class="h-t" id="shopName">Echel Resume Maker</div>
     <div class="h-s" id="shopAddr">📍 Mahato Net Cafe</div>
     <div class="h-s" id="shopPhone" style="margin-top:1px">📞 —</div>
   </div>
@@ -453,7 +453,7 @@ textarea.fi{resize:vertical;min-height:65px}
 
   <!-- B: Stream + Objective -->
   <div class="card hidden" id="fB">
-    <h3>🎯 Job Title & Objective</h3>
+    <h3>🎯 Job Title &amp; Objective</h3>
     <div class="card-sub">Step 2 of 5 — Job profile</div>
     <div class="fg">
       <div class="fl">Job Title / Designation</div>
@@ -555,7 +555,7 @@ textarea.fi{resize:vertical;min-height:65px}
 
   <!-- D: Skills & Experience -->
   <div class="card hidden" id="fD">
-    <h3>💼 Skills & Experience</h3>
+    <h3>💼 Skills &amp; Experience</h3>
     <div class="card-sub">Step 4 of 5</div>
     <div class="fg"><div class="fl">Skills <span class="req">*</span></div><input class="fi" id="f_skills" placeholder="e.g. MS Office, Tally, Spoken English, Driving"></div>
 
@@ -656,7 +656,7 @@ textarea.fi{resize:vertical;min-height:65px}
         <input type="text" class="fi" id="f_sign" placeholder="e.g. Rajkishor Kumar Mahato">
       </div>
     </div>
-    <button class="btn btn-p" onclick="genPDF()">✨ Resume Banao & Preview Dekho</button>
+    <button class="btn btn-p" onclick="genPDF()">✨ Create Resume &amp; Preview</button>
     <button class="btn btn-b" onclick="prv('E')">← Back</button>
   </div>
 </div>
@@ -741,6 +741,8 @@ let selTplId  = null, selColor = 'bw';
 let photoURL  = null, pdfBlob = null;
 let extraCnt  = 0;
 
+/* i18n-ignore: resume content. The customer picks one of these and it is
+   printed on the CV exactly as it stands, so it is never translated. */
 const OBJ = {
   anm: "I am seeking employment to exchange my nursing and patient care skills so that I can contribute my knowledge and abilities to achieve growth in the healthcare/medical industry. I am dedicated to providing quality patient care and committed to professional excellence.",
   bsc_nursing: "I am seeking employment to utilize my nursing knowledge and clinical skills to provide quality patient care. I am committed to contributing effectively to a reputed healthcare institution and growing professionally in the nursing field.",
@@ -763,13 +765,13 @@ const OBJ = {
 // ══════════════════════════════════════════════
 // ═══ QSP HANDOFF: PDF customer.html ke proven payment/print pipeline me ═══
 async function goToQSPPrint() {
-  if (!pdfBlob) { toast('⚠️ Pehle resume banao'); return; }
-  showLoad('🖨️ Print ke liye taiyaar...');
+  if (!pdfBlob) { toast('⚠️ Please make the resume first'); return; }
+  showLoad('🖨️ Ready to print...');
   try {
     const dataUrl = await new Promise((res, rej) => {
       const fr = new FileReader();
       fr.onload = () => res(fr.result);
-      fr.onerror = () => rej(new Error('PDF read fail'));
+      fr.onerror = () => rej(new Error('Could not read the PDF'));
       fr.readAsDataURL(pdfBlob);
     });
     sessionStorage.setItem('qsp_resume_handoff', JSON.stringify({
@@ -796,21 +798,21 @@ async function init() {
 
     if (r.ok) {
       shopData = await r.json();
-      // QSP integration: Advance unlock ho AUR shop ne Resume module ON rakha ho.
-      // Direct link/bookmark se aane wale ko bhi yahin rok dete hain.
+      // QSP integration: Advance must be unlocked AND the shop must have the Resume module ON.
+      // Visitors arriving via a direct link/bookmark are stopped here too.
       if (!shopData.advanced_unlocked || shopData.adv_resume_active === false) {
         document.body.innerHTML = `<div style="max-width:400px;margin:80px auto;padding:30px;text-align:center;font-family:sans-serif;">
           <div style="font-size:48px;">🔒</div>
-          <h2>Resume Maker Available Nahi</h2>
-          <p style="color:#888;font-size:14px;line-height:1.6;">Is shop par ye feature abhi active nahi hai.<br>Counter par baat karo.</p>
-          <a href="/print/${SHOP_ID}" style="display:inline-block;margin-top:14px;padding:12px 22px;background:#ff4d1c;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;">← Document Print Karo</a>
+          <h2>Resume Maker Not Available</h2>
+          <p style="color:#888;font-size:14px;line-height:1.6;">This feature is not active at this shop yet.<br>Please ask at the counter.</p>
+          <a href="/print/${SHOP_ID}" style="display:inline-block;margin-top:14px;padding:12px 22px;background:#ff4d1c;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;">← Print a Document</a>
         </div>`;
         return;
       }
-      // Resume ke apne rates (owner ne Advance tab me set kiye) — na ho to page rates
+      // The resume's own rates (set by the owner in the Advance tab) — otherwise the page rates
       shopData.price_bw    = parseInt(shopData.price_resume_bw)    > 0 ? shopData.price_resume_bw    : shopData.price_bw;
       shopData.price_color = parseInt(shopData.price_resume_color) > 0 ? shopData.price_resume_color : shopData.price_color;
-      document.getElementById('shopName').textContent  = shopData.name  || 'QR Se Resume Banao';
+      document.getElementById('shopName').textContent  = shopData.name  || 'Echel Resume Maker';
       document.getElementById('shopAddr').textContent  = '📍 ' + (shopData.address || '');
       document.getElementById('shopPhone').textContent = '📞 ' + (shopData.phone || '—');
       document.getElementById('bw_p').textContent     = '₹' + (shopData.price_bw    || 10);
@@ -818,7 +820,7 @@ async function init() {
       updPrice();
     }
   } catch(e) {
-    // Server slow ya offline — default values se kaam chalao
+    // Server slow or offline — fall back to the default values
     document.getElementById('shopAddr').textContent = '📍 Mahato Net Cafe';
     shopData = { price_bw: 10, price_color: 20 };
     updPrice();
@@ -849,13 +851,13 @@ function selT(n) {
   if(card) card.classList.add('sel');
   const names=['','Classic Standard','Blue Formal','Modern Sidebar','CV Style','Green Classic','Photo Sidebar'];
   const nm = names[n] || 'Template';
-  toast('✅ '+nm+' select hua!');
+  toast('✅ '+nm+' selected!');
   const lbl = document.getElementById('tplSelName');
   if(lbl) lbl.textContent = '— '+nm;
 }
 function goForm() {
   if(!selTplId){ selT(1); }
-  toast('✅ Form shuru ho raha hai...');
+  toast('✅ Starting the form...');
   setTimeout(()=>{ goStep(2); showF('A'); }, 300);
 }
 
@@ -874,37 +876,37 @@ function prv(cur){const i=FSECS.indexOf(cur);i>0?showF(FSECS[i-1]):goStep(1);}
 
 function nxt(cur) {
   if(cur==='A'){
-    if(!gv('f_name').trim()){toast('❌ Naam likhein!');return;}
-    if(!gv('f_father').trim()){toast('❌ Pita ji ka naam likhein!');return;}
-    if(!gv('f_dob')){toast('❌ Date of Birth chunein!');return;}
-    if(!gv('f_gender')){toast('❌ Gender select karein!');return;}
+    if(!gv('f_name').trim()){toast('❌ Enter name!');return;}
+    if(!gv('f_father').trim()){toast('❌ Enter father\'s name!');return;}
+    if(!gv('f_dob')){toast('❌ Select Date of Birth!');return;}
+    if(!gv('f_gender')){toast('❌ Select gender!');return;}
     // Address validation based on type
     const atype = gv('f_addrtype');
     if (atype === 'village') {
-      if(!gv('a_vill').trim()){toast('❌ Vill likhein!');return;}
-      if(!gv('a_po').trim()){toast('❌ PO likhein!');return;}
-      if(!gv('a_ps').trim()){toast('❌ PS likhein!');return;}
-      if(!gv('a_dist').trim()){toast('❌ District likhein!');return;}
-      if(!gv('a_state').trim()){toast('❌ State likhein!');return;}
-      if(!gv('a_pin').trim()){toast('❌ Pin Code likhein!');return;}
+      if(!gv('a_vill').trim()){toast('❌ Enter village!');return;}
+      if(!gv('a_po').trim()){toast('❌ Enter PO!');return;}
+      if(!gv('a_ps').trim()){toast('❌ Enter PS!');return;}
+      if(!gv('a_dist').trim()){toast('❌ Enter district!');return;}
+      if(!gv('a_state').trim()){toast('❌ Enter state!');return;}
+      if(!gv('a_pin').trim()){toast('❌ Enter PIN code!');return;}
     } else {
-      if(!gv('a_city').trim()){toast('❌ City likhein!');return;}
-      if(!gv('a_cpo').trim()){toast('❌ PO likhein!');return;}
-      if(!gv('a_cps').trim()){toast('❌ PS likhein!');return;}
-      if(!gv('a_cdist').trim()){toast('❌ District likhein!');return;}
-      if(!gv('a_cstate').trim()){toast('❌ State likhein!');return;}
-      if(!gv('a_cpin').trim()){toast('❌ Pin Code likhein!');return;}
+      if(!gv('a_city').trim()){toast('❌ Enter city!');return;}
+      if(!gv('a_cpo').trim()){toast('❌ Enter PO!');return;}
+      if(!gv('a_cps').trim()){toast('❌ Enter PS!');return;}
+      if(!gv('a_cdist').trim()){toast('❌ Enter district!');return;}
+      if(!gv('a_cstate').trim()){toast('❌ Enter state!');return;}
+      if(!gv('a_cpin').trim()){toast('❌ Enter PIN code!');return;}
     }
-    if(!gv('f_phone').trim()){toast('❌ Mobile Number 1 likhein!');return;}
+    if(!gv('f_phone').trim()){toast('❌ Enter Mobile Number 1!');return;}
     showF('B');
   } else if(cur==='B'){
-    if(!gv('f_stream')){toast('❌ Stream / Field chunein!');return;}
+    if(!gv('f_stream')){toast('❌ Select stream / field!');return;}
     showF('C');
   } else if(cur==='C'){
-    if(!gv('e10_board').trim()){toast('❌ Matriculation board likhein!');return;}
+    if(!gv('e10_board').trim()){toast('❌ Enter matriculation board!');return;}
     showF('D');
   } else if(cur==='D'){
-    if(!gv('f_skills').trim()){toast('❌ Skills likhein!');return;}
+    if(!gv('f_skills').trim()){toast('❌ Enter skills!');return;}
     showF('E');
   }
 }
@@ -974,7 +976,7 @@ function addExpEntry() {
   const field   = gv('we_field');
   const company = gv('we_company');
   const loc     = gv('we_location');
-  if (!years && !field && !company) { toast('❌ Kam se kam Years aur Field/Company bharo'); return; }
+  if (!years && !field && !company) { toast('❌ Fill at least Years and Field/Company'); return; }
   const sentence = buildExpSentence(years, field, company, loc);
   expEntries.push(sentence);
   renderExpList();
@@ -984,7 +986,7 @@ function addExpEntry() {
   document.getElementById('we_company').value  = '';
   document.getElementById('we_location').value = '';
   document.getElementById('expPreviewBox').style.display = 'none';
-  toast('✅ Experience add ho gaya!');
+  toast('✅ Experience added!');
 }
 
 function renderExpList() {
@@ -1018,7 +1020,7 @@ function addCertField() {
   div.style.alignItems = 'center';
   div.innerHTML = `
     <span style="font-size:12px;font-weight:700;color:var(--primary);flex-shrink:0;width:18px">${certCount}.</span>
-    <input class="fi" id="${id}_val" placeholder="Jaise: Google Digital Marketing Certificate" style="flex:1">
+    <input class="fi" id="${id}_val" placeholder="e.g. Google Digital Marketing Certificate" style="flex:1">
     <button onclick="document.getElementById('${id}').remove()" style="background:#fee2e2;border:none;color:#dc2626;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px;flex-shrink:0">✕</button>
   `;
   document.getElementById('certList').appendChild(div);
@@ -1080,7 +1082,7 @@ function addExtra() {
   d.className='extra-item'; d.id=id;
   d.innerHTML=`
     <button class="rm-btn" onclick="document.getElementById('${id}').remove()">✕</button>
-    <div class="fg"><div class="fl">Course / Qualification</div><input class="fi" id="${id}_c" placeholder="Jaise: DCA / ITI Electrician / B.A / G.N.M"></div>
+    <div class="fg"><div class="fl">Course / Qualification</div><input class="fi" id="${id}_c" placeholder="e.g. DCA / ITI Electrician / B.A / G.N.M"></div>
     <div class="fg"><div class="fl">Board / University / Institute</div><input class="fi" id="${id}_b" placeholder="e.g. Board or university name"></div>
     <div class="fr3">
       <div class="fg"><div class="fl">Year</div><input class="fi" id="${id}_y" placeholder="2022" maxlength="4"></div>
@@ -1113,17 +1115,17 @@ function handleDirect(inp) {
   if (!inp.files[0]) return;
   document.getElementById('photoZoneBox').style.display    = 'none';
   document.getElementById('photoProcessing').style.display = 'block';
-  document.getElementById('procTxt').textContent           = 'Photo load ho rahi hai...';
+  document.getElementById('procTxt').textContent           = 'Loading photo...';
   const reader = new FileReader();
   reader.onload = e => {
     photoURL = e.target.result;
     document.getElementById('photoProcessing').style.display = 'none';
-    showPhotoResult(e.target.result, '✅ Passport Photo Upload Ho Gaya!', 'Resume mein use hoga');
+    showPhotoResult(e.target.result, '✅ Passport Photo Uploaded!', 'Will be used in the resume');
   };
   reader.onerror = () => {
     document.getElementById('photoProcessing').style.display = 'none';
     document.getElementById('photoZoneBox').style.display    = 'block';
-    toast('❌ Photo load nahi hui, dobara try karo');
+    toast('❌ Photo did not load, please try again');
   };
   reader.readAsDataURL(inp.files[0]);
 }
@@ -1151,7 +1153,7 @@ function retakePhoto() {
 // ══════════════════════════════════════════════
 function gv(id){return(document.getElementById(id)?.value||'').trim();}
 
-// Demo Print Check — placeholder-filled resume, print quality test ke liye
+// Demo Print Check — a placeholder-filled resume for testing print quality
 function demoPrintCheck() {
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
   set('f_name','NAME'); set('f_father','FATHER NAME');
@@ -1163,7 +1165,7 @@ function demoPrintCheck() {
   set('a_pin','000000'); set('a_city','CITY');
   ['a_cpo','a_cps','a_cdist','a_cstate'].forEach(id => set(id,'ADDRESS'));
   set('a_cpin','000000');
-  // BAAKI HAR khali field bhi bhar do — demo me kuch blank na rahe
+  // Fill EVERY other empty field too — nothing should be blank in the demo
   document.querySelectorAll('input.fi, select.fi, textarea.fi, input, select, textarea').forEach(el => {
     if (!el.id || el.value) return;
     if (el.tagName === 'SELECT') { if (el.options.length > 1) el.selectedIndex = 1; return; }
@@ -1174,13 +1176,13 @@ function demoPrintCheck() {
     else if (el.type === 'file' || el.type === 'hidden' || el.type === 'checkbox' || el.type === 'radio') return;
     else el.value = el.id.startsWith('e1') ? '0000' : 'DEMO';
   });
-  // Photo ki jagah sirf gray box
+  // Just a gray box in place of the photo
   const pc = document.createElement('canvas'); pc.width = 413; pc.height = 531;
   const px = pc.getContext('2d'); px.fillStyle = '#c8c8c8'; px.fillRect(0,0,413,531);
   photoURL = pc.toDataURL('image/png');
-  // Poora flow auto — template se seedha preview/print tak
+  // Fully automatic flow — from the template straight to preview/print
   goForm(); nxt('A'); nxt('B'); nxt('C'); nxt('D');
-  toast('🖨️ Demo resume ready — payment karke print quality check karo');
+  toast('🖨️ Demo resume ready — pay to check the print quality');
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -1239,7 +1241,7 @@ function buildAddressString() {
 // PDF GENERATION
 // ══════════════════════════════════════════════
 async function genPDF() {
-  showLoad('✨ Resume ban raha hai...');
+  showLoad('✨ Creating resume...');
   await new Promise(r=>setTimeout(r,80));
   try {
     const d=collect();
@@ -1247,14 +1249,14 @@ async function genPDF() {
     const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const builders=[null,buildT1,buildT2,buildT3,buildT4,buildT5,buildT6];
     if(d.tpl===1){
-      /* Classic Standard ko pehle chupchaap naapte hain. Text wrap hone
-         ki wajah se ye hisaab bilkul seedha nahi hai (bada font = zyada
-         line = zyada oonchai), isliye teen baar tak sudharte hain —
-         har baar naya scale, phir se naap. Ye sab ek throwaway doc par
-         hota hai; jo dikhta hai wo aakhir me ek hi baar banta hai. */
+      /* First measure Classic Standard silently. Because text wraps, the
+         calculation is not linear (bigger font = more lines = more
+         height), so we refine it up to three times — a new scale each
+         time, then measure again. All of this happens on a throwaway doc;
+         what the user sees is built only once at the end. */
       const TOP=24, BOTTOM=280;
-      // Photo har naap me dobara embed na ho — 1x1 se layout wahi rehta
-      // hai (sirf "photo hai ya nahi" maayne rakhta hai) aur naapna tez.
+      // Do not re-embed the photo on every measurement — at 1x1 the layout stays
+      // the same (only "is there a photo or not" matters) and measuring is faster.
       const TINY='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
       const probe=Object.assign({},d,{photo:d.photo?TINY:null});
       let s=1;
@@ -1301,23 +1303,23 @@ function techRows(d) {
 }
 
 function drawEduTable(doc,rows,x,y,W,accentR,accentG,accentB,s) {
-  /* Ek row ki oonchai ab uske SABSE LAMBE cell se tay hoti hai.
-     Pehle oonchai fix 7mm thi aur text apne aap wrap ho jaata tha, to
-     doosri line seedhi agli row ke upar baith jaati thi. */
+  /* A row's height is now decided by its TALLEST cell.
+     Previously the height was fixed at 7mm and text wrapped on its own, so
+     the second line landed right on top of the next row. */
   s = s || 1;
   const FS = 9 * s, HFS = 8.5 * s, PAD = 2, MINH = 8 * s;
-  /* Line ki doori KHUD mat chuno — jab doc.text() ko line ka array diya
-     jaata hai, jsPDF apne lineHeightFactor se doori tay karta hai. Alag
-     hisaab rakhne par row ki oonchai aur asli text ki oonchai me farq
-     reh jaata, aur wahi farq neeche wali row par chadh jaata. */
+  /* Do NOT pick the line spacing yourself — when doc.text() is given an
+     array of lines, jsPDF sets the spacing from its lineHeightFactor. Keeping
+     a separate calculation left a gap between the row height and the real text
+     height, and that gap spilled onto the row below. */
   const mm = pt => pt * 25.4 / 72;
   const LHF = (doc.getLineHeightFactor && doc.getLineHeightFactor()) || 1.15;
 
-  /* Ek shabd apne column me na samaye to jsPDF use BEECH SE tod deta hai
-     — "Second" ban jaata hai "Seco" + "nd". Isliye us column ka font
-     utna chhota kar dete hain ki uska sabse lamba shabd samaa jaye.
-     Poore column par ek hi naap lagta hai, cell-cell par alag nahi,
-     warna ek hi column me alag-alag size dikhta. */
+  /* If a word does not fit in its column, jsPDF breaks it IN THE MIDDLE
+     — "Second" becomes "Seco" + "nd". So that column's font is made
+     just small enough for its longest word to fit.
+     One size applies to the whole column, not cell by cell,
+     otherwise a single column would show different sizes. */
   const fitFS = (words, maxW, start) => {
     let f = start;
     for (let g = 0; g < 16; g++) {
@@ -1330,19 +1332,18 @@ function drawEduTable(doc,rows,x,y,W,accentR,accentG,accentB,s) {
     return f;
   };
 
-  // Column chaudai = table ki chaudai ka hissa. Isse table hamesha
-  // theek x+W par khatam hota hai — kisi bhi template se, kisi bhi
-  // margin par.
+  // Column width = a share of the table width. This way the table always
+  // ends exactly at x+W — with any template and any margin.
   //
-  // Bantwara naap kar chuna hai, andaaze se nahi. 9pt par:
+  // The split was chosen by measuring, not guessing. At 9pt:
   //   "Bachelor of Computer Application (B.C.A.)"        ~59mm
   //   "Chaudhary Charan Singh University, Meerut"        ~62mm
-  //   saal / division / percentage                    sab <12mm
-  // Isliye pehle do column ko khula rakha hai — wahi do wrap hote the,
-  // aur wahi wrap purane code me neeche wali row par chadh jaata tha.
+  //   year / division / percentage                    all <12mm
+  // So the first two columns are kept wide — those were the two that wrapped,
+  // and in the old code that wrap spilled onto the row below.
   const share = [.3516, .3681, .0824, .0879, .11];
   const cW = share.map(p => W * p);
-  cW[4] = W - (cW[0] + cW[1] + cW[2] + cW[3]);   // rounding ka bacha hua
+  cW[4] = W - (cW[0] + cW[1] + cW[2] + cW[3]);   // rounding remainder
   const cX = []; let cx = x;
   cW.forEach(w => { cX.push(cx); cx += w; });
 
@@ -1370,7 +1371,7 @@ function drawEduTable(doc,rows,x,y,W,accentR,accentG,accentB,s) {
   // ── rows ──
   doc.setFont('helvetica', 'normal');
   const cell = (r, ci) => String([r.name, r.board, r.year, r.div, r.pct][ci] || '');
-  // Har column ka apna naap — us column ke sabse lambe SHABD se tay.
+  // Each column gets its own size — decided by the longest WORD in that column.
   const cFS = cW.map((w, ci) => {
     const words = [];
     rows.forEach(r => cell(r, ci).split(' ').forEach(t => words.push(t)));
@@ -1407,18 +1408,18 @@ function drawEduTable(doc,rows,x,y,W,accentR,accentG,accentB,s) {
 // ── TEMPLATE 1: Classic Standard (exactly like your resume.docx) ──────────────
 async function buildT1(doc,d){
   const W=210,M=14;
-  /* S = auto-fit scale. genPDF pehle is template ko chupchaap ek baar
-     banata hai sirf naapne ke liye, phir yahi function dobara S ke saath
-     chalta hai. Chhota resume bada ho kar page bhar deta hai, bada resume
-     thoda sikud kar ek page par aa jaata hai.
-     S na mile to sab kuch bilkul pehle jaisa — S=1. */
+  /* S = auto-fit scale. genPDF first builds this template silently once
+     just to measure it, then this function runs again with S.
+     A short resume grows to fill the page, a long resume shrinks
+     slightly to fit on one page.
+     Without S everything stays exactly as before — S=1. */
   const S=d._s||1;
   const fs=n=>doc.setFontSize(n*S);
 
   // Top border line
   doc.setDrawColor(0,0,0);doc.setLineWidth(.5);doc.line(M,8,W-M,8);
 
-  // RESUME heading (header jaan-boojh kar fix hai — photo ki jagah fix hai)
+  // RESUME heading (the header is deliberately fixed — the photo slot is fixed)
   doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(0,0,0);
   doc.text('RESUME',W/2,16,{align:'center'});
   doc.setLineWidth(.3);doc.line(M,18,W-M,18);
@@ -1441,8 +1442,8 @@ async function buildT1(doc,d){
     ['Email ID',d.email],
   ].filter(r=>r[1]);
 
-  // Label ka khana bhi S ke saath badhta hai, warna bade font me
-  // "Present Address" colon ke upar chadh jaata.
+  // The label box grows with S too, otherwise with a large font
+  // "Present Address" would overlap the colon.
   const COLON=M+42*S, VALX=M+47*S;
   fs(9);
   for(const [lbl,val] of pInfo){
@@ -1450,7 +1451,7 @@ async function buildT1(doc,d){
     doc.text(lbl,M,y);
     doc.setFont('helvetica',lbl==='NAME'?'bold':'normal');
     doc.text(':',COLON,y);
-    // Photo ke bagal me ho to text photo se pehle ruk jaana chahiye.
+    // When next to the photo, the text must stop before the photo.
     const RIGHT=(d.photo&&y<68)?(W-55-2):(W-M);
     const lines=doc.splitTextToSize(val||'',RIGHT-VALX);
     doc.text(lines,VALX,y);
@@ -1534,7 +1535,7 @@ async function buildT1(doc,d){
   doc.text('Place: '+(d.place||(d.addr||'').split(',')[0]),M+55,y);
   doc.text('Sign: '+(d.sign||d.name),W-M,y,{align:'right'});
   doc.setLineWidth(.5);doc.line(M,H-8,W-M,H-8);
-  return y;              // auto-fit ko naap chahiye
+  return y;              // auto-fit needs the measurement
 }
 
 const H=297;
@@ -1621,14 +1622,14 @@ async function buildT2(doc,d){
   doc.text('Date: '+(d.decdate||'___________'),M,y);doc.text('Place: '+(d.place||d.addr.split(',')[0]),M+55,y);doc.text('Sign: '+(d.sign||d.name),W-M,y,{align:'right'});
   doc.setFillColor(30,58,95);doc.rect(0,H-8,W,8,'F');
   doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','normal');
-  doc.text('Smart printing. Simply connected. | QR Se Resume Banao',W/2,H-2.5,{align:'center'});
+  doc.text('Smart printing. Simply connected. | Create your resume from a QR code',W/2,H-2.5,{align:'center'});
 }
 
 // ── TEMPLATE 3: Modern Two Column ────────────────────────────────────────────
-// Ye apne thumbnail jaisa banta hai: upar dark header band, neeche 40/60
-// do column. Pehle ye T6 (Photo Sidebar) ki tarah left photo-sidebar
-// banata tha, isliye dono template ek jaise dikhte the — customer ne
-// yahi report kiya tha. Ab dono alag hain.
+// This is built like its thumbnail: a dark header band on top and two
+// 40/60 columns below. It used to build a left photo sidebar like T6
+// (Photo Sidebar), so both templates looked the same — a customer
+// reported exactly that. Now the two are different.
 async function buildT3(doc,d){
   const W=210,H=297,HDR=34,CW=80,RX=CW+7;
 
@@ -1649,9 +1650,9 @@ async function buildT3(doc,d){
   doc.setFontSize(7.8);doc.setTextColor(205,220,240);
   const cline=[d.phone,d.phone2,d.email].filter(Boolean).join('   |   ');
   if(cline)doc.text(cline,12,hy,{maxWidth:tw0});
-  // Photo optional hai. Thumbnail me nahi hai, par customer ne upload kiya
-  // ho to use chupchaap phenkna theek nahi — header ke daayin rakh dete hain.
-  // Layout isse hilta nahi, aur T6 se alag bhi dikhta hai.
+  // The photo is optional. The thumbnail has none, but if the customer uploaded
+  // one it is wrong to silently drop it — it goes on the right side of the header.
+  // The layout does not shift, and it still looks different from T6.
   if(hasPhoto){
     try{
       doc.addImage(d.photo,'JPEG',W-42,5,30,24);
@@ -1697,7 +1698,7 @@ async function buildT3(doc,d){
     doc.setDrawColor(37,99,235);doc.setLineWidth(.5);doc.line(tx,my+1.8,W-12,my+1.8);
     my+=7;
   }
-  // Education/Technical table — right column ki chaudai ke hisaab se
+  // Education/Technical table — sized to the right column's width
   function table(rows){
     if(!rows.length)return;
     doc.setFillColor(30,58,95);doc.rect(tx,my,tw,6,'F');
@@ -1714,7 +1715,7 @@ async function buildT3(doc,d){
       doc.text(r.year||'',tx+65,my+4.5);doc.text(r.div||'',tx+79,my+4.5);doc.text(r.pct||'',tx+92,my+4.5);
       my+=6.5;
     });
-    my+=7;   // agla heading table se sat na jaye
+    my+=7;   // keep the next heading from sticking to the table
   }
 
   if(d.obj){
@@ -1859,7 +1860,7 @@ async function buildT5(doc,d){
   doc.text('Date: '+(d.decdate||'___________'),M,y);doc.text('Place: '+(d.place||d.addr.split(',')[0]),M+55,y);doc.text('Sign: '+(d.sign||d.name),W-M,y,{align:'right'});
   doc.setFillColor(22,101,52);doc.rect(0,H-8,W,8,'F');
   doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','normal');
-  doc.text('Smart printing. Simply connected. | QR Se Resume Banao',W/2,H-2.5,{align:'center'});
+  doc.text('Smart printing. Simply connected. | Create your resume from a QR code',W/2,H-2.5,{align:'center'});
 }
 
 // ── TEMPLATE 6: Photo Left Sidebar ────────────────────────────────────────────
@@ -1936,9 +1937,9 @@ async function buildT6(doc,d){
 async function renderPrev(blob) {
   try {
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    // URL string (blob:...) pass karne par pdf.js andar hi fetch() karta hai,
-    // jise CSP ka connect-src 'self' block kar deta hai — isliye seedha raw
-    // bytes (ArrayBuffer) do, koi network call hoga hi nahi.
+    // Passing a URL string (blob:...) makes pdf.js call fetch() internally,
+    // which CSP's connect-src 'self' blocks — so pass the raw bytes
+    // (ArrayBuffer) directly and no network call happens at all.
     const buf=await blob.arrayBuffer();
     const pdf=await pdfjsLib.getDocument({data:buf}).promise;
     const page=await pdf.getPage(1);
@@ -1946,7 +1947,7 @@ async function renderPrev(blob) {
     const cvs=document.getElementById('cvs');
     cvs.height=vp.height;cvs.width=vp.width;
     await page.render({canvasContext:cvs.getContext('2d'),viewport:vp}).promise;
-  } catch(e){console.warn('Preview:',e);toast('⚠️ Preview nahi ban paya, par resume theek hai — print kar sakte ho');}
+  } catch(e){console.warn('Preview:',e);toast('⚠️ Preview failed, but your resume is fine — you can still print it');}
 }
 
 // ══════════════════════════════════════════════
@@ -1968,8 +1969,8 @@ function updPrice(){
 // PAYMENT
 // ══════════════════════════════════════════════
 async function uploadJob() {
-  if(!pdfBlob){toast('Resume pehle generate karo!');return null;}
-  showLoad('📤 Resume upload ho raha hai...');
+  if(!pdfBlob){toast('Please generate the resume first!');return null;}
+  showLoad('📤 Uploading resume...');
   try {
     const fd=new FormData();
     fd.append('file',new File([pdfBlob],'resume_'+Date.now()+'.pdf',{type:'application/pdf'}));
@@ -1991,9 +1992,9 @@ async function payOnline(){
     const od=await or.json();
     if(!od.orderId) throw new Error(od.error||'Order failed');
     hideLoad();
-    new Razorpay({key:od.keyId,amount:od.amount,currency:'INR',name:'QR Se Resume',description:'Resume Print',order_id:od.orderId,
+    new Razorpay({key:od.keyId,amount:od.amount,currency:'INR',name:'Echel Resume',description:'Resume Print',order_id:od.orderId,
       handler:async function(resp){
-        showLoad('✅ Verify ho raha hai...');
+        showLoad('✅ Verifying...');
         const vr=await fetch('/api/payment/razorpay/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...resp,jobId:jid})});
         const vd=await vr.json();hideLoad();
         if(vd.success)showSuccess('online',jid,od.amount/100);
@@ -2019,14 +2020,14 @@ function showSuccess(method,jid,amount){
   const icon=document.getElementById('sIcon'),box=document.getElementById('sBox');
   if(method==='online'){
     icon.textContent='✅';icon.style.background='linear-gradient(135deg,#16a34a,#4ade80)';
-    document.getElementById('sTitle').textContent='Payment Ho Gaya!';
-    box.className='s-box online';document.getElementById('sBoxT').textContent='🖨️ Printing Shuru!';
-    document.getElementById('sBoxM').textContent='Aapka resume automatically print ho raha hai. Thodi der mein ready milega! 🎉';
+    document.getElementById('sTitle').textContent='Payment Successful!';
+    box.className='s-box online';document.getElementById('sBoxT').textContent='🖨️ Printing Started!';
+    document.getElementById('sBoxM').textContent='Your resume is printing automatically. It will be ready shortly! 🎉';
   }else{
     icon.textContent='🏪';icon.style.background='linear-gradient(135deg,#d97706,#fcd34d)';
-    document.getElementById('sTitle').textContent='Queue Mein Hai!';
-    box.className='s-box counter';document.getElementById('sBoxT').textContent='Counter Pe Cash Dein';
-    document.getElementById('sBoxM').textContent='Dukaan ke counter pe ₹'+amount+' dein. Resume print hoga. Dhanyawad! 🙏';
+    document.getElementById('sTitle').textContent='In the Queue!';
+    box.className='s-box counter';document.getElementById('sBoxT').textContent='Pay Cash at Counter';
+    document.getElementById('sBoxM').textContent='Pay ₹'+amount+' at the shop counter and your resume will be printed. Thank you! 🙏';
   }
   document.getElementById('sOid').textContent='ORDER: '+jid;
   document.getElementById('sAmt').textContent='₹'+amount;
@@ -2038,7 +2039,7 @@ function showSuccess(method,jid,amount){
 // UTILS
 // ══════════════════════════════════════════════
 function downloadPDF() {
-  if (!pdfBlob) { toast('PDF available nahi hai!'); return; }
+  if (!pdfBlob) { toast('PDF is not available!'); return; }
   const name = (document.getElementById('f_name')?.value || 'Resume').trim().replace(/\s+/g,'_');
   const url  = URL.createObjectURL(pdfBlob);
   const a    = document.createElement('a');
@@ -2048,7 +2049,7 @@ function downloadPDF() {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 3000);
-  toast('📥 PDF download shuru ho gaya!');
+  toast('📥 PDF download started!');
 }
 
 function showLoad(t){document.getElementById('loadT').textContent=t||'';document.getElementById('loading').classList.add('show');}

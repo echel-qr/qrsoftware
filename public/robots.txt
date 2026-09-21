@@ -1,5 +1,5 @@
 # Echel — robots.txt
-# Homepage aur public pages crawl ho, app/private pages nahi.
+# The homepage and the public pages may be crawled; the app and private pages may not.
 
 User-agent: *
 Allow: /$
@@ -28,8 +28,8 @@ Disallow: /setup-payment
 Disallow: /print/
 Disallow: /resume/
 
-# AI / answer engines — inhe allow rakha hai taaki ChatGPT/Perplexity/Claude
-# Echel ko sahi tarah quote/recommend kar saken (GEO).
+# AI / answer engines are allowed, so that ChatGPT, Perplexity and Claude
+# can quote and recommend Echel correctly (GEO).
 User-agent: GPTBot
 Allow: /
 User-agent: OAI-SearchBot
@@ -51,6 +51,6 @@ Allow: /
 
 Sitemap: https://echel.in/sitemap.xml
 
-# AI assistants ke liye site ka summary (llms.txt convention)
+# A summary of the site for AI assistants (the llms.txt convention)
 # https://echel.in/llms.txt
 

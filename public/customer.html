@@ -12,18 +12,18 @@
 <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 <style>
 /* ══════════════════════════════════════════════════════════════
-   QR SE PRINT — CUSTOMER UI  (v2.0 design)
+   ECHEL — CUSTOMER UI  (v2.0 design)
 
-   IMPORTANT — ye file sirf DIKHNE ka kaam karti hai:
-   - Har purani class ka naam waisa ka waisa hai. JS inme se
-     .hidden .active .dragover .up-done .sel .on .done toggle karta
-     hai — sab yahan defined hain.
-   - Koi text nahi badla. i18n.js source text se match karke
-     English/Hinglish karta hai, isliye ek bhi string chhedna
-     translation tod deta.
-   - Advance unlock hone par 4 service cards aate hain
-     (Document / Resume / 4×6 Photo / Big Size) aur grid 1,2,3,4
-     kisi bhi ginti me ban sakta hai — teeno layouts yahan handle hain.
+   IMPORTANT — this file only handles how things LOOK:
+   - Every old class name is unchanged. The JS toggles
+     .hidden .active .dragover .up-done .sel .on .done on them
+     — all of them are defined here.
+   - The UI text is the English source. i18n.js matches the source text
+     to show the Manipuri translation, so when a string changes its
+     Manipuri entry must be updated too.
+   - When Advance is unlocked, 4 service cards appear
+     (Document / Resume / 4×6 Photo / Big Size) and the grid can hold
+     any count of 1, 2, 3 or 4 — all three layouts are handled here.
    ══════════════════════════════════════════════════════════════ */
 
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -82,8 +82,8 @@ body{
   display:grid;place-items:center;line-height:1;
 }
 .shop-info p{font-size:12.5px;color:#a8a8bd;margin-top:5px;line-height:1.5}
-/* Ek hi line me rakho — flex-wrap nahi. Phone par do line lene se
-   Upload card neeche chala jaata tha aur jagah barbaad hoti thi. */
+/* Keep it on one line — no flex-wrap. Taking two lines on phones pushed
+   the Upload card down and wasted space. */
 .price-badges{display:flex;gap:6px;margin-top:9px;flex-wrap:nowrap}
 .price-badge{
   background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.14);
@@ -185,7 +185,7 @@ body{
 }
 
 /* ── SERVICE CARDS (advance unlock) ────────────────────────── */
-/* Ginti 1 / 2 / 3 / 4 — grid JS set karta hai, dikhna yahan se. */
+/* Count 1 / 2 / 3 / 4 — the JS sets the grid, the look comes from here. */
 #svcMenu{display:grid;gap:11px;margin-bottom:14px}
 .svc-card{
   background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-lg);
@@ -202,7 +202,7 @@ body{
   color:var(--violet);letter-spacing:-.2px;
 }
 .svc-card > div:nth-child(3){font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:4px}
-/* har card ka apna rang — mockup jaisa */
+/* each card has its own colour — like the mockup */
 .svc-card[data-svc="photo"] > div:first-child{background:var(--pink-soft)}
 .svc-card[data-svc="photo"] > div:nth-child(2){color:var(--pink)}
 .svc-card[data-svc="big"] > div:first-child{background:#e0f2fe}
@@ -211,20 +211,20 @@ body{
 .svc-card[data-svc="doc"] > div:nth-child(2){color:#4f46e5}
 .svc-card.sel,.svc-card.on{border-color:var(--violet);background:#faf8ff;
   box-shadow:0 0 0 3px rgba(124,58,237,.09),var(--shadow-sm)}
-/* 1 card ya 3 card ka pehla — poori chaudai, icon side me */
+/* A single card, or the first of 3 cards — full width, icon on the side */
 .svc-card.svc-wide{display:grid;grid-template-columns:auto minmax(0,1fr);
   gap:0 15px;text-align:left;align-items:center;padding:17px 16px}
 .svc-card.svc-wide > div:first-child{grid-row:1/3;margin:0}
 .svc-card.svc-wide > div:nth-child(2){grid-column:2;grid-row:1}
 .svc-card.svc-wide > div:nth-child(3){grid-column:2;grid-row:2;margin-top:2px}
 
-/* Upload zone HAMESHA sabse upar, service cards uske neeche.
-   JS svcMenu ko zone se PEHLE insert karta hai, isliye order se sudhaarte
-   hain — DOM chhedne ki zaroorat nahi. */
+/* The upload zone is ALWAYS at the top, service cards below it.
+   The JS inserts svcMenu BEFORE the zone, so this is fixed with order —
+   no need to touch the DOM. */
 #secUpload{display:flex;flex-direction:column}
 #secUpload #uploadZone{order:1}
 #secUpload #svcMenu{order:2;margin-top:0;margin-bottom:14px}
-#secUpload .trust-row{order:3}          /* sabse neeche — pehle Upload dikhe */
+#secUpload .trust-row{order:3}          /* at the very bottom — Upload shows first */
 
 /* ── TRUST ROW ─────────────────────────────────────────────── */
 .trust-row{
@@ -466,8 +466,8 @@ body{
 
 /* ── CROP OVERLAY ──────────────────────────────────────────── */
 .crop-overlay{
-  /* Smart Scanner ka overlay 99999 par hai. Crop usi ke upar khulta hai
-     (scan ke kone theek karne ke liye), isliye isse zyada hona zaroori. */
+  /* The Smart Scanner overlay is at 99999. Crop opens on top of it
+     (to fix the scan corners), so this must be higher. */
   position:fixed;inset:0;z-index:100010;background:#0d0d14;
   display:flex;flex-direction:column;
 }
@@ -564,7 +564,7 @@ body{
 </style>
 <link rel="stylesheet" href="/echel-theme.css?v=1">
 <script src="/echel-brand.js?v=1" defer></script>
-<link rel="stylesheet" href="/fonts/meitei.css"><script src="/i18n.js" defer></script><script src="/i18n-extra.js" defer></script><script src="/i18n/mni-mtei.js" defer></script><script src="/echel-english.js" defer></script><script src="/echel-mayek.js" defer></script></head>
+<script src="/i18n.js" defer></script></head>
 <body class="echel-customer">
 <div class="wrap">
 
@@ -619,7 +619,7 @@ body{
   </div>
 
   <!-- STEP 2: A4 Canvas Editor -->
-  <!-- ═══ CHOICE: sab theek hai ya edit karna hai ═══ -->
+  <!-- ═══ CHOICE: everything is fine, or edit ═══ -->
   <div id="secChoice" class="hidden">
     <div class="card">
       <h2 style="margin-bottom:4px;">👀 File Received</h2>
@@ -693,8 +693,8 @@ body{
           <input type="range" id="borderSlider" min="1" max="20" value="4" oninput="onBorderSlider()">
           <span id="borderVal">4</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin:2px 4px 0;line-height:1.6;">
-          Of the sheet <b>each photo</b> will get a border on all sides — makes cutting easier
+        <p data-i18n-sentence style="font-size:11px;color:var(--muted);margin:2px 4px 0;line-height:1.6;">
+          <b>Each photo</b> on the sheet gets a border on all sides — this makes cutting easier
         </p>
       </div>
 
@@ -747,7 +747,7 @@ body{
       </div>
     </div>
 
-    <!-- ═══ UPLOAD PROGRESS — preview ke theek neeche ═══ -->
+    <!-- ═══ UPLOAD PROGRESS — right below the preview ═══ -->
     <div id="upProgWrap" style="display:none;margin:14px 0 4px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
         <span id="upProgLabel" style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:14px;color:var(--ink);">📤 Uploading File…</span>
@@ -778,8 +778,8 @@ body{
   </div>
 
   <!-- STEP 4a: Options (B&W/Color, Copies, Price) -->
-  <!-- MINI PRINT — ek A4 sheet par kai pages. Koi editing tool nahi:
-       sirf pages-per-sheet aur border. Live preview turant banta hai. -->
+  <!-- MINI PRINT — several pages on one A4 sheet. No editing tools:
+       only pages-per-sheet and border. The live preview is built instantly. -->
   <div id="secMini" class="hidden">
     <div class="card">
       <h3>🗒️ Mini Print</h3>
@@ -849,7 +849,7 @@ body{
       </div>
       <p id="copiesCapNote" style="display:none;font-size:11px;color:#c2410c;margin:6px 0 0;"></p>
       <div class="price-summary">
-        <div class="price-row"><span id="sumType">B&W Print</span><span id="sumPerPage">₹0/page</span></div>
+        <div class="price-row"><span id="sumType">B&amp;W Print</span><span id="sumPerPage">₹0/page</span></div>
         <div class="price-row"><span id="sumPages">1 page × 1 copy</span><span id="sumPagesAmt">₹0</span></div>
         <div class="price-total"><span>Total</span><strong id="sumTotal">₹0</strong></div>
       </div>
@@ -889,8 +889,8 @@ body{
       <strong id="finalAmount">₹5</strong>
     </div>
 
-    <!-- Resume yahin bana tha, customer ke paas copy nahi hoti — isliye
-         payment ke baad download ka option dete hain -->
+    <!-- The resume was created here and the customer has no copy — so we
+         offer a download option after payment -->
     <div id="dlBox" style="display:none;margin:16px 0;padding:16px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;text-align:center;">
       <div style="font-size:13.5px;font-weight:800;color:#166534;margin-bottom:4px;">📄 Save Your Resume</div>
       <div style="font-size:11.5px;color:#3f7a52;margin-bottom:12px;">May be useful later — download it now</div>
@@ -949,10 +949,10 @@ body{
               aria-label="Show password">&#128065;&#65039;</button>
     </div>
 
-    <button type="button" class="pw-go" onclick="submitPdfPassword()">&#128275; PDF Kholo</button>
+    <button type="button" class="pw-go" onclick="submitPdfPassword()">🔓 Open PDF</button>
     <button type="button" class="pw-cancel" onclick="cancelPdfPassword()">Cancel</button>
 
-    <p class="pw-note">Password sirf aapke phone me use hota hai &mdash; kahin save ya send nahi hota</p>
+    <p class="pw-note">The password is used only on your phone — it is never saved or sent anywhere</p>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -974,27 +974,26 @@ let state = {
   pageRangeMode: 'all', selectedPages: []
 };
 
-// pages: array of A4 sheets. Har page ke andar EK YA ZYADA "items" ho sakte
-// hain (jaise Aadhaar Front + Back same A4 page pe). Har item independently
-// drag/resize/edit hota hai.
+// pages: array of A4 sheets. Each page can hold ONE OR MORE "items"
+// (e.g. Aadhaar Front + Back on the same A4 page). Each item is dragged/resized/
+// edited independently.
 // page = { id, items: [item, ...], activeItemId }
-// item = { id, originalCanvas (kabhi change nahi hota), sourceCanvas (crop ke baad),
-//          workingCanvas (brightness/contrast ke baad), x, y, w, h,
-//          brightness, contrast, cropPoints (normalized 0-1, re-edit ke liye) }
+// item = { id, originalCanvas (never changes), sourceCanvas (after crop),
+//          workingCanvas (after brightness/contrast), x, y, w, h,
+//          brightness, contrast, cropPoints (normalized 0-1, for re-editing) }
 // Chain: originalCanvas --perspective crop--> sourceCanvas --brightness/contrast--> workingCanvas
-// Isliye crop aur adjustments ek dusre ko kabhi overwrite nahi karte.
+// So crop and adjustments never overwrite each other.
 let pages = [];
 let activePageIdx = 0;
 let currentPreviewPageIdx = 0;
 
-// A4 canvas ka CSS dimension FIXED hai (.a4-canvas{width:280px;height:396px}),
-// isliye hamesha hardcode karte hain — kabhi bhi a4.clientWidth/clientHeight
-// directly measure NAHI karte. Yeh isliye zaroori hai kyunki agar koi
-// function tab call ho jab secEditor "hidden" ho (display:none), to
-// clientWidth/clientHeight 0 milta hai — jisse layout calculations
-// Infinity/NaN ban jaate aur cheezein silently fail ho jaati (blank preview
-// jaisa bug isi wajah se aaya tha).
-// ═══ PAPER SIZES ═══ (mm me; display/output/PDF sab isi se derive)
+// The A4 canvas CSS dimensions are FIXED (.a4-canvas{width:280px;height:396px}),
+// so they are always hardcoded — a4.clientWidth/clientHeight is NEVER
+// measured directly. This matters because if a function is called while
+// secEditor is "hidden" (display:none), clientWidth/clientHeight returns 0 —
+// which turns the layout calculations into Infinity/NaN and things fail
+// silently (the blank-preview bug came from exactly this).
+// ═══ PAPER SIZES ═══ (in mm; display/output/PDF are all derived from this)
 const PAPER_SIZES = {
   '4x6':    { label: '4×6 Photo', wmm: 101.6, hmm: 152.4 },
   'a4':     { label: 'A4',        wmm: 210,   hmm: 297   },
@@ -1011,7 +1010,7 @@ function currentPaper() {
   if (state.orientation === 'landscape') { const t = w; w = h; h = t; }
   return { wmm: w, hmm: h };
 }
-// Display dims — paper/orientation ke saath badalte hain (isliye let)
+// Display dims — change with paper/orientation (hence let)
 let A4_DISPLAY_W = 280, A4_DISPLAY_H = 396;
 
 function toast(msg) {
@@ -1029,8 +1028,8 @@ function setStep(n) {
     s.className = 'step' + (i<n?' done':i===n?' active':'');
     s.querySelector('.dot').textContent = i<n?'✓':i;
   }
-  // Step 2 (Edit) par shop header hide — document adjust area + buttons ko
-  // poori screen mile. Baaki har step par header wapas.
+  // On Step 2 (Edit) hide the shop header — so the document adjust area + buttons get
+  // the full screen. The header comes back on every other step.
   const hdr = document.querySelector('.shop-header');
   if (hdr) hdr.style.display = (n === 2) ? 'none' : 'flex';
 }
@@ -1046,7 +1045,7 @@ async function init() {
       const errData = await shopRes.json();
       document.body.innerHTML = `<div style="max-width:420px;margin:80px auto;padding:30px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
         <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;margin-bottom:10px;">Shop Abhi Active Nahi Hai</h2>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;margin-bottom:10px;">Shop Is Not Active Yet</h2>
         <p style="color:#7a7a8c;font-size:14px;">${errData.error}</p>
       </div>`;
       return;
@@ -1054,21 +1053,21 @@ async function init() {
     if (shopRes.status === 404) {
       document.body.innerHTML = `<div style="max-width:420px;margin:80px auto;padding:30px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
         <div style="font-size:48px;margin-bottom:16px;">❌</div>
-        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;">Shop Nahi Mila</h2>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;">Shop Not Found</h2>
       </div>`;
       return;
     }
 
     const shop = await shopRes.json();
 
-    // ── Shop owner ki chuni hui Customer Language ──
-    // Panel ke "Customer Language" tab se aati hai. Shop ne kuch na chuna ho
-    // to English — yani website ka apna default.
+    // ── The Customer Language chosen by the shop owner ──
+    // Comes from the panel's "Customer Language" tab. If the shop chose nothing,
+    // it is English — the website's own default.
     //
-    // i18n.js `defer` se page ke AAKHIR me load hota hai, isliye yahan
-    // QSPi18n abhi hota hi nahi. Wo boot par bhasha localStorage se uthata
-    // hai — to seedhi value wahin likh dete hain. Na jhilmilahat, na race.
-    // (Cache ki wajah se i18n.js pehle hi aa gaya ho to turant bhi laga do.)
+    // i18n.js loads with `defer` at the END of the page, so QSPi18n does not
+    // exist here yet. On boot it reads the language from localStorage —
+    // so we write the value there directly. No flicker, no race.
+    // (If i18n.js already arrived from the cache, apply it immediately too.)
     try {
       const _lang = String(shop.default_lang || '').trim() || 'en';
       try { localStorage.setItem('qsp_lang', _lang); } catch (e) {}
@@ -1078,29 +1077,29 @@ async function init() {
       }
     } catch (e) {}
 
-    // ── Subscription khatam? Poora block ──
+    // ── Subscription expired? Block everything ──
     if (shop.subscription_expired) {
       document.body.innerHTML = `<div style="max-width:420px;margin:80px auto;padding:30px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
         <div style="font-size:52px;margin-bottom:16px;">⏸️</div>
-        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;margin-bottom:10px;">Shop Abhi Inactive Hai</h2>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;margin-bottom:10px;">Shop Is Inactive Right Now</h2>
         <p style="color:#7a7a8c;font-size:14px;line-height:1.6;">
           <b style="color:#3a3740;">${shop.name}</b><br>
-          <span>Online print service abhi inactive hai.</span><br>
-          <span>Shop owner se counter par baat karo.</span>
+          <span>Online print service is inactive right now.</span><br>
+          <span>Please talk to the shop owner at the counter.</span>
         </p>
       </div>`;
       return;
     }
 
-    // ── Shop band hai? Poora block — order flow shuru hi nahi hoga ──
+    // ── Shop closed? Block everything — the order flow will not start at all ──
     if (shop.paused) {
       document.body.innerHTML = `<div style="max-width:420px;margin:80px auto;padding:30px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
         <div style="font-size:52px;margin-bottom:16px;">🏪</div>
-        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;margin-bottom:10px;">Shop Abhi Band Hai</h2>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;margin-bottom:10px;">Shop Is Closed Right Now</h2>
         <p style="color:#7a7a8c;font-size:14px;line-height:1.6;">
           <b style="color:#3a3740;">${shop.name}</b><br>
-          <span>Abhi temporarily band hai.</span><br>
-          <span>Thodi der baad dobara QR scan karo.</span>
+          <span>Temporarily closed right now.</span><br>
+          <span>Please scan the QR again after some time.</span>
         </p>
       </div>`;
       return;
@@ -1113,13 +1112,13 @@ async function init() {
       banner.style.cssText = 'position:sticky;top:0;z-index:200;padding:10px 16px;text-align:center;font-size:13px;font-weight:700;font-family:sans-serif;' +
         (w === 'no_paper' ? 'background:#fee2e2;color:#b91c1c;' : 'background:#fef3c7;color:#92400e;');
       banner.textContent = w === 'no_paper'
-        ? '🔴 Shop mein paper khatam hai — print milne mein deri ho sakti hai, counter par puchh lo'
-        : '🟡 Shop mein ink kam hai — print quality halki ho sakti hai';
+        ? '🔴 The shop is out of paper — your print may be delayed, please ask at the counter'
+        : '🟡 The shop is low on ink — print quality may be light';
       document.body.prepend(banner);
     }
 
     state.shopDuplexMode = shop.duplex_mode || '';
-    // Owner ka logo — orange box ke andar (nahi hai to default 🖨️ rehta hai)
+    // The owner's logo — inside the orange box (if missing, the default 🖨️ stays)
     if (shop.shop_logo && shop.shop_logo.trim()) {
       const box = document.getElementById('shopIconBox');
       if (box) {
@@ -1141,8 +1140,8 @@ async function init() {
     checkResumeHandoff();
     state.priceBwDuplex    = parseFloat(shop.price_bw_duplex)    || 0;
     state.priceColorDuplex = parseFloat(shop.price_color_duplex) || 0;
-    // Shop ne duplex ko kis mode par chalu rakha hai. Field aayi hi na ho
-    // (purana server / purani shop) to ON hi maano — purana behaviour.
+    // The mode in which the shop has enabled duplex. If the field is missing
+    // (old server / old shop) treat it as ON — the old behaviour.
     state.duplexBwOn    = shop.duplex_bw_enabled    !== false;
     state.duplexColorOn = shop.duplex_color_enabled !== false;
     updateDuplexVisibility();
@@ -1160,17 +1159,17 @@ async function init() {
     state.razorpayKeyId = shop.razorpay_key_id || '';
     state.onlineAllowed = (state.shopPaymentMode === 'both' || state.shopPaymentMode === 'online_only') && !!state.shopGateway;
     state.counterAllowed = (state.shopPaymentMode === 'both' || state.shopPaymentMode === 'counter_only');
-  } catch(e) { toast('Shop load nahi hua'); }
+  } catch(e) { toast('Could not load the shop details'); }
 }
 init();
 
 // ═══════════════════════════════════════════════
 // FILE UPLOAD — converts PDF/image into one or more "pages"
 // ═══════════════════════════════════════════════
-// Customer ne agar SIRF ek PDF daala aur usme koi chhed-chhaad nahi ki,
-// to wahi original file bhejni hai. Warna hum har page ko image bana kar
-// naya PDF banate hain — 400 KB ki file 14 MB ki ho jaati hai, upload
-// reject ho jaata hai, aur text bhi dhundhla print hota hai.
+// If the customer added ONLY one PDF and changed nothing in it,
+// the original file must be sent. Otherwise every page is turned into an
+// image and a new PDF is built — a 400 KB file becomes 14 MB, the upload
+// is rejected, and the text prints blurry too.
 let ORIGINAL_PDF = null;      // { file, pages }
 
 async function handleFileUpload(input) {
@@ -1178,76 +1177,76 @@ async function handleFileUpload(input) {
   if (!files.length) return;
   input.value = ''; // allow re-selecting the same files later
 
-  // Pehli baar ek hi PDF aayi ho to use sambhal kar rakho
+  // If a single PDF arrived the first time, keep it safe
   if (!pages.length && files.length === 1 &&
       /\.pdf$/i.test(files[0].name || '') && files[0].size > 0) {
     ORIGINAL_PDF = { file: files[0], pages: 0 };
   } else {
-    ORIGINAL_PDF = null;      // aur kuch bhi ho to original ka sawaal hi nahi
+    ORIGINAL_PDF = null;      // in any other case the original is out of the question
   }
 
-  // secEditor PEHLE show karo, item add hone se pehle — warna a4Canvas
-  // abhi tak "display:none" hota hai jab clientWidth/clientHeight measure
-  // hoga (jo 0 milta hai display:none par)
+  // Show secEditor FIRST, before the item is added — otherwise a4Canvas
+  // is still "display:none" when clientWidth/clientHeight is measured
+  // (which returns 0 under display:none)
   const isFirstUpload = !document.getElementById('secUpload').classList.contains('hidden');
-  // Pehli baar kuch bhi aaye — PDF ho ya PHOTO — seedha editor mat kholo.
-  // Pehle "Sab theek hai / Edit karna hai" poocho. Zyadatar log kuch
-  // badalte hi nahi, aur editor se guzarne par file dobara banti hai
-  // (badi + dhundhli).
+  // Whatever arrives first — PDF or PHOTO — do not open the editor directly.
+  // First ask "Everything is fine / I want to edit". Most people change
+  // nothing, and going through the editor rebuilds the file
+  // (bigger + blurrier).
   //
-  // PEHLE ye sirf `!!ORIGINAL_PDF` par tha, yaani sirf PDF ke liye.
-  // Image upload karne par choice screen aata hi nahi tha aur editor
-  // seedha khul jaata tha. Photo waise bhi createItemFromCanvas() me
-  // apne aap A4 par center-fit ho jaati hai, isliye ab dono ka flow
-  // bilkul ek jaisa hai.
+  // This used to apply only when `!!ORIGINAL_PDF`, i.e. only to PDFs.
+  // For an uploaded image the choice screen never appeared and the editor
+  // opened directly. A photo is center-fitted onto A4 automatically in
+  // createItemFromCanvas() anyway, so now both follow
+  // exactly the same flow.
   const askFirst = isFirstUpload;
   if (isFirstUpload) {
     hide('secUpload');
-    show('secEditor');            // canvas measure hone ke liye zaroori
+    show('secEditor');            // required so the canvas can be measured
     setStep(2);
   }
 
-  // Saari files EK-EK karke, selection ke order me — PDF ke saare pages,
-  // images apne-apne A4 page par. Sab milke aage EK hi PDF banti hai
-  // (ek job, ek payment) — flow me aage kuch nahi badla.
+  // All files ONE BY ONE, in the order they were selected — every page of a PDF,
+  // each image on its own A4 page. Together they form ONE PDF later on
+  // (one job, one payment) — nothing further in the flow changed.
   let failed = 0;
-  let pwAborted = null;               // password lock/cancel hua to yahan aayega
+  let pwAborted = null;               // a password lock/cancel lands here
   for (let fi = 0; fi < files.length; fi++) {
     const file = files[fi];
     const ext = file.name.split('.').pop().toLowerCase();
     if (files.length > 1) toast(`⏳ File ${fi + 1}/${files.length}: ${file.name}`);
-    else toast('⏳ Document load ho raha hai...');
+    else toast('⏳ Loading document...');
 
     try {
       if (ext === 'pdf') {
         await loadPdfAsPages(file);
       } else {
         const srcCanvas = await fileToCanvas(file);
-        addPage([srcCanvas]); // naya page, ek hi item ke saath
+        addPage([srcCanvas]); // a new page with a single item
       }
     } catch(e) {
       failed++;
       if (e && e.name === 'PdfPasswordError') {
-        // 3 galat password, ya customer ne cancel dabaya — baaki
-        // files par jaane ka koi matlab nahi
+        // 3 wrong passwords, or the customer pressed cancel — no point
+        // in moving on to the remaining files
         pwAborted = e;
         pwAborted.fileName = pwAborted.fileName || file.name;
         break;
       }
-      toast(`❌ ${file.name} load nahi hui: ` + e.message);
+      toast(`❌ Could not load ${file.name}: ` + e.message);
     }
   }
 
   if (pwAborted) {
     renderEditor();
     handlePwAbort(pwAborted);
-    if (!pages.length) return;        // upload page par wapas — aage kuch nahi
+    if (!pages.length) return;        // back to the upload page — nothing further
   }
 
-  if (files.length > 1 && !failed) toast(`✅ ${files.length} files load ho gayi!`);
-  if (isFirstUpload && pages.length) activePageIdx = 0;  // pehla page samne
+  if (files.length > 1 && !failed) toast(`✅ ${files.length} files loaded!`);
+  if (isFirstUpload && pages.length) activePageIdx = 0;  // first page in front
   renderEditor();
-  // Simple PDF thi to editor ke bajaye pehle choice dikhao
+  // For a simple PDF, show the choice first instead of the editor
   if (askFirst && pages.length) {
     try { showChoiceScreen(); } catch (e) { show('secEditor'); }
   }
@@ -1274,28 +1273,28 @@ async function fileToCanvas(file) {
 // ══════════════════════════════
 // PASSWORD-PROTECTED PDF
 // ══════════════════════════════
-// pdf.js khud encrypted PDF sambhalta hai. loadingTask.onPassword tab
-// chalta hai jab PDF ko password chahiye:
-//   reason 1 = NEED_PASSWORD      (abhi tak kuch try nahi kiya)
-//   reason 2 = INCORRECT_PASSWORD (jo diya wo galat tha)
+// pdf.js handles encrypted PDFs itself. loadingTask.onPassword runs
+// when the PDF needs a password:
+//   reason 1 = NEED_PASSWORD      (nothing tried yet)
+//   reason 2 = INCORRECT_PASSWORD (the one given was wrong)
 //
-// Retry USI loading task ke andar hota hai. Ye jaan-bujh ke hai: pdf.js
-// ArrayBuffer ko worker me TRANSFER kar deta hai, isliye agar hum har
-// attempt par naya getDocument({data: buf}) karte to doosri baar
-// "detached ArrayBuffer" error aata. onPassword se ye problem hi nahi hoti.
+// The retry happens inside the SAME loading task. This is deliberate: pdf.js
+// TRANSFERS the ArrayBuffer to the worker, so if we called a new
+// getDocument({data: buf}) on every attempt, the second one would fail with a
+// "detached ArrayBuffer" error. onPassword avoids that problem entirely.
 
-const PW_MAX_ATTEMPTS = 3;          // 3 galat = error + upload page wapas
+const PW_MAX_ATTEMPTS = 3;          // 3 wrong = error + back to the upload page
 const PW_REASON_INCORRECT = 2;
 
 function PdfPasswordError(kind, fileName) {
   this.name = 'PdfPasswordError';
   this.kind = kind;                 // 'locked' | 'cancel'
   this.fileName = fileName || '';
-  this.message = (kind === 'locked') ? 'Password 3 baar galat' : 'Password cancel kiya';
+  this.message = (kind === 'locked') ? 'Wrong password 3 times' : 'Password cancelled';
 }
 PdfPasswordError.prototype = Object.create(Error.prototype);
 
-let pwResolver = null;              // overlay ka pending promise
+let pwResolver = null;              // the overlay's pending promise
 
 function promptPdfPassword(fileName, wrongCount) {
   return new Promise((resolve, reject) => {
@@ -1311,8 +1310,8 @@ function promptPdfPassword(fileName, wrongCount) {
     const errBox = document.getElementById('pwErr');
     if (wrongCount > 0) {
       const left = PW_MAX_ATTEMPTS - wrongCount;
-      errBox.textContent = '❌ Galat password — ' + left +
-        (left === 1 ? ' attempt bacha' : ' attempts bache');
+      errBox.textContent = '❌ Wrong password — ' + left +
+        (left === 1 ? ' attempt left' : ' attempts left');
       errBox.classList.remove('hidden');
     } else {
       errBox.textContent = '';
@@ -1331,7 +1330,7 @@ function closePwOverlay() {
 function submitPdfPassword() {
   if (!pwResolver) return;
   const val = document.getElementById('pwInput').value;
-  if (!val) { toast('⚠️ Password enter karo'); return; }
+  if (!val) { toast('⚠️ Enter the password'); return; }
   const r = pwResolver;
   pwResolver = null;
   closePwOverlay();
@@ -1357,7 +1356,7 @@ function onPwKeyDown(e) {
   if (e.key === 'Enter') { e.preventDefault(); submitPdfPassword(); }
 }
 
-// PDF kholne ka EK hi darwaza — locked ho ya na ho.
+// The ONLY way to open a PDF — locked or not.
 // Resolve: { pdf, encrypted }
 function openPdfDocument(data, fileName) {
   return new Promise((resolve, reject) => {
@@ -1392,22 +1391,22 @@ function openPdfDocument(data, fileName) {
   });
 }
 
-// Lock/cancel hone par kya karna hai.
-// • Kuch bhi load nahi hua tha → poora reset, upload page wapas (spec)
-// • Pehle se kuch pages load the (multi-file) → unhe bachao, bas ye file
-//   skip kar do — warna customer ka pehle ka kaam bekaar chala jaata
+// What to do on lock/cancel.
+// • Nothing had loaded → full reset, back to the upload page (spec)
+// • Some pages were already loaded (multi-file) → keep them and just
+//   skip this file — otherwise the customer's earlier work would be lost
 function handlePwAbort(err) {
   const locked = (err.kind === 'locked');
   if (!pages.length) {
     resetToUploadScreen();
     toast(locked
-      ? '❌ Password 3 baar galat — dobara file upload karo'
-      : '⬅️ Cancel ho gaya — dobara file upload karo');
+      ? '❌ Wrong password 3 times — please upload the file again'
+      : '⬅️ Cancelled — please upload the file again');
     return;
   }
   toast(locked
-    ? ('❌ ' + (err.fileName || 'File') + ' skip — password 3 baar galat')
-    : ('⬅️ ' + (err.fileName || 'File') + ' skip ho gayi'));
+    ? ('❌ ' + (err.fileName || 'File') + ' skipped — wrong password 3 times')
+    : ('⬅️ ' + (err.fileName || 'File') + ' skipped'));
 }
 
 function resetToUploadScreen() {
@@ -1428,28 +1427,28 @@ async function loadPdfAsPages(file) {
   const opened = await openPdfDocument(buf, file.name);
   const pdf = opened.pdf;
 
-  // ⚠️ ZAROORI: locked PDF thi to "original file jaisi ki taisi bhejo"
-  // wala shortcut BAND karo. Original bytes abhi bhi ENCRYPTED hain —
-  // agar wahi shop ke print agent ko chali gayi to wo file khol hi nahi
-  // paayega (ya password maangega, jo shop ke paas hai hi nahi).
-  // Encrypted case me hum hamesha rendered pages se nayi PDF banate hain,
-  // jo bina password ke normally print ho jaati hai.
+  // ⚠️ IMPORTANT: for a locked PDF, DISABLE the "send the original file as-is"
+  // shortcut. The original bytes are still ENCRYPTED —
+  // if they reached the shop's print agent it could not open the file
+  // (or it would ask for a password the shop does not have).
+  // In the encrypted case we always build a new PDF from the rendered pages,
+  // which prints normally without a password.
   if (opened.encrypted && ORIGINAL_PDF && ORIGINAL_PDF.file === file) {
     ORIGINAL_PDF.encrypted = true;
   }
 
-  // Print-grade rasterization. Pehle 1.3-1.5 tha (~100 DPI) — text print
-  // par dhundhla/draft jaisa dikhta tha. Ab 2.4 (~173 DPI). Zyada pages par
-  // scale ghatate hain warna low-end phone par memory crash.
-  // QUALITY-FIRST: flat high scale (~245 DPI source, 300 DPI output ke liye).
-  // 15+ pages par halka step-down (2.8 = ~200 DPI, phir bhi purane 1.6-2.0
-  // se bahut upar) — ye sasta-phone hedge nahi, browser ki memory-wall hai:
-  // 20 pages x full-res canvas = tab crash KISI bhi phone par.
+  // Print-grade rasterization. It used to be 1.3-1.5 (~100 DPI) — text looked
+  // blurry/draft-like in print. Now 2.4 (~173 DPI). For many pages the scale
+  // is reduced, otherwise low-end phones crash on memory.
+  // QUALITY-FIRST: flat high scale (~245 DPI source, for 300 DPI output).
+  // A slight step-down at 15+ pages (2.8 = ~200 DPI, still far above the old
+  // 1.6-2.0) — this is not a cheap-phone hedge, it is the browser memory wall:
+  // 20 pages x full-res canvas = the tab crashes on ANY phone.
   const RENDER_SCALE = pdf.numPages > 15 ? 2.8 : 3.4;
   let loadedCount = 0;
 
   for (let i = 1; i <= pdf.numPages; i++) {
-    toast(`⏳ Page ${i} / ${pdf.numPages} load ho raha hai...`);
+    toast(`⏳ Loading page ${i} / ${pdf.numPages}...`);
     try {
       const page = await pdf.getPage(i);
       const vp = page.getViewport({ scale: RENDER_SCALE });
@@ -1462,14 +1461,14 @@ async function loadPdfAsPages(file) {
       await new Promise(resolve => setTimeout(resolve, 30));
     } catch(pageErr) {
       console.error(`Page ${i} render error:`, pageErr);
-      toast(`⚠️ Page ${i} load nahi hui, baaki pages continue ho rahe hain...`);
+      toast(`⚠️ Page ${i} did not load, continuing with the remaining pages...`);
     }
   }
 
   if (loadedCount === 0) {
-    throw new Error('Koi bhi page load nahi hui — PDF corrupt ho sakta hai');
+    throw new Error('No page loaded — the PDF may be corrupt');
   }
-  toast(`✅ ${loadedCount} pages load ho gaye!`);
+  toast(`✅ ${loadedCount} pages loaded!`);
 }
 
 function createItemFromCanvas(sourceCanvas, isSecondaryItem) {
@@ -1489,8 +1488,8 @@ function createItemFromCanvas(sourceCanvas, isSecondaryItem) {
     x: isSecondaryItem ? a4W * 0.3 : (a4W - w) / 2,
     y: isSecondaryItem ? a4H * 0.35 : (a4H - h) / 2,
     w, h,
-    // Shuruaati position/size — baad me isse compare karke pata chalta hai
-    // ki customer ne kuch hilaya to nahi
+    // Initial position/size — comparing against it later tells us whether
+    // the customer moved anything
     _ix: isSecondaryItem ? a4W * 0.3 : (a4W - w) / 2,
     _iy: isSecondaryItem ? a4H * 0.35 : (a4H - h) / 2,
     _iw: w, _ih: h
@@ -1527,19 +1526,19 @@ async function handleAddDocument(input) {
   input.value = '';
 
   const page = getActivePageObj();
-  if (!page) { toast('⚠️ Pehle koi document upload karo'); return; }
+  if (!page) { toast('⚠️ Please upload a document first'); return; }
 
   for (let fi = 0; fi < files.length; fi++) {
     const file = files[fi];
     if (files.length > 1) toast(`⏳ File ${fi + 1}/${files.length}: ${file.name}`);
-    else toast('⏳ Document load ho raha hai...');
+    else toast('⏳ Loading document...');
     try {
       const ext = file.name.split('.').pop().toLowerCase();
       if (ext === 'pdf') {
-        // Add Document = ISI canvas par add. PDF ke SAARE pages current
-        // page par items ban ke aate hain (image ki tarah) — naye pages
-        // NAHI. High-res render (3.4) taaki quality image jaisi sharp ho;
-        // pehle 1.5 tha isliye PDF add "kaam nahi kar raha" jaisa dikhta tha.
+        // Add Document = add onto THIS canvas. ALL pages of the PDF arrive as items
+        // on the current page (like images) — NOT as new pages.
+        // High-res render (3.4) so the quality is as sharp as an image;
+        // it used to be 1.5, which is why adding a PDF looked like it "did not work".
         const buf = await file.arrayBuffer();
         const pdf = (await openPdfDocument(buf, file.name)).pdf;
         for (let pg = 1; pg <= pdf.numPages; pg++) {
@@ -1552,7 +1551,7 @@ async function handleAddDocument(input) {
           page.items.push(newItem);
           page.activeItemId = newItem.id;
         }
-        if (pdf.numPages > 1) toast(`✅ ${pdf.numPages} pages isi canvas par add ho gaye`);
+        if (pdf.numPages > 1) toast(`✅ ${pdf.numPages} pages added to this canvas`);
       } else {
         const canvas = await fileToCanvas(file);
         const newItem = createItemFromCanvas(canvas, true);
@@ -1562,15 +1561,15 @@ async function handleAddDocument(input) {
     } catch(e) {
       if (e && e.name === 'PdfPasswordError') {
         toast(e.kind === 'locked'
-          ? `❌ ${file.name} — password 3 baar galat, add nahi hui`
-          : `⬅️ ${file.name} add nahi hui`);
-        break;                                  // baaki files bhi rok do
+          ? `❌ ${file.name} — wrong password 3 times, not added`
+          : `⬅️ ${file.name} was not added`);
+        break;                                  // stop the remaining files too
       }
-      toast(`❌ ${file.name} load nahi hua: ` + e.message);
+      toast(`❌ Could not load ${file.name}: ` + e.message);
     }
   }
   renderEditor();
-  toast('✅ Add ho gaya!');
+  toast('✅ Added!');
 }
 
 // ═══════════════════════════════════════════════
@@ -1582,8 +1581,8 @@ function setServiceBadge() {
   if (state.service === 'photo4x6') { t.textContent = '📷 4×6 Photo — ' + (state.photoCount||4) + ' Photos'; b.style.display='block'; }
   else if (state.service === 'resume') { t.textContent = '📄 Resume Print'; b.style.display='block'; }
   else b.style.display = 'none';
-  // Upar header ke price chips bhi service ke hisaab se badlo —
-  // photo/resume mode me normal ₹/page chips misleading hain
+  // Also change the price chips in the header to match the service —
+  // the normal ₹/page chips are misleading in photo/resume mode
   const bw = document.getElementById('priceBWBadge');
   const cl = document.getElementById('priceColorBadge');
   if (bw && cl) {
@@ -1596,7 +1595,7 @@ function setServiceBadge() {
       cl.textContent = '📄 Resume: ₹' + rate;
     } else {
       bw.style.display = '';
-      // original chips wapas (shop prices se)
+      // restore the original chips (from the shop prices)
       if (state.priceBW) bw.textContent = 'B&W: ₹' + state.priceBW + '/page';
       if (state.priceColor) cl.textContent = 'Color: ₹' + state.priceColor + '/page';
     }
@@ -1609,7 +1608,7 @@ function _activeItem() {
   return page ? page.items.find(i => i.id === page.activeItemId) : null;
 }
 function _scaleItem(item, f) {
-  if (item.locked) return;          // sheet lock hai
+  if (item.locked) return;          // the sheet is locked
   if (!item._baseW) { item._baseW = item.w; item._baseH = item.h; }
   const cx = item.x + item.w/2, cy = item.y + item.h/2;
   item.w = Math.max(40, item._baseW * f);
@@ -1639,7 +1638,7 @@ document.addEventListener('touchstart', (e) => {
 }, { passive: true });
 document.addEventListener('touchmove', (e) => {
   if (_pinch && e.touches.length === 2) {
-    e.preventDefault();   // page zoom nahi, sirf document zoom
+    e.preventDefault();   // no page zoom, only document zoom
     const item = _activeItem(); if (!item) return;
     const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     const f = d / _pinch.d;
@@ -1694,8 +1693,8 @@ function renderCanvasItems() {
     div.appendChild(img);
 
 
-    // Locked sheet par handle dikhana galat hai — dabane par kuch hota
-    // hi nahi, customer ko lagta hai app hang hai
+    // Showing handles on a locked sheet is wrong — pressing them does
+    // nothing and the customer thinks the app has hung
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'resize-handle';
     if (!item.locked) div.appendChild(resizeHandle);
@@ -1731,7 +1730,7 @@ function removeItem(itemId) {
     page.activeItemId = page.items[0].id;
   }
   renderEditor();
-  toast('\uD83D\uDDD1\uFE0F Document hata diya');
+  toast('🗑️ Document removed');
 }
 
 let dragState = null;
@@ -1740,7 +1739,7 @@ function onItemPointerDown(e, itemId, mode) {
   const page = getActivePageObj();
   const item = page.items.find(i => i.id === itemId);
   if (!item) return;
-  // Photo sheet lock hai — hilane/resize karne se sirf print bigadta hai
+  // The photo sheet is locked — moving/resizing it only spoils the print
   if (item.locked) return;
   dragState = {
     itemId, mode, startX: e.clientX, startY: e.clientY,
@@ -1776,7 +1775,7 @@ function onItemPointerUp() {
 }
 
 // ══════════════════════════════════════════════════
-// PAGE NAVIGATION (multi-page PDFs ke liye)
+// PAGE NAVIGATION (for multi-page PDFs)
 // ══════════════════════════════════════════════════
 function renderPageIndicator() {
   const indicator = document.getElementById('pageIndicator');
@@ -1800,8 +1799,8 @@ function changeEditorPage(delta) {
 
 // ═══════════════════════════════════════════════
 // ═══ 4x6 PHOTO FLOW ═══
-// Passport-project ka layout (bugs fix karke): auto center-crop 45:35
-// (stretch KABHI nahi), 300 DPI sheet, 2mm gap + cut-guide borders.
+// The passport project's layout (with its bugs fixed): auto center-crop 45:35
+// (NEVER stretch), 300 DPI sheet, 2mm gap + cut-guide borders.
 function startPhotoFlow() {
   let inp = document.getElementById('photoFlowInput');
   if (!inp) {
@@ -1811,10 +1810,10 @@ function startPhotoFlow() {
     inp.onchange = async () => {
       const f = inp.files && inp.files[0];
       if (!f) return;
-      // input.value ko yahan clear NAHI karte — pehle bytes memory me aane do.
-      // Android par clear karte hi content:// wala file handle mar jaata tha
-      // aur baad me (count choose karne ke baad) blob URL khaali nikalta tha.
-      toast('⏳ Photo padh rahe hain...');
+      // input.value is NOT cleared here — let the bytes reach memory first.
+      // On Android, clearing it killed the content:// file handle
+      // and later (after choosing the count) the blob URL came back empty.
+      toast('⏳ Reading photo...');
       try {
         const img = await loadPhotoFile(f);
         askPhotoCount(img);
@@ -1831,15 +1830,15 @@ function startPhotoFlow() {
 }
 
 // ═══ PHOTO FILE LOADER (4×6 flow) ═══
-// "Photo load nahi hui" ki teen asli wajah thi, teeno yahan handle hain:
-//  1. HEIC/HEIF photo — Samsung/iPhone ka "High efficiency" mode. Chrome
-//     Android isko decode hi nahi karta. Ab साफ message milta hai.
-//  2. Google Photos / Drive se chuni file — bytes phone par hote hi nahi,
-//     File ka size 0 aata hai.
-//  3. Bahut badi photo (50MP+) — sasta phone decode par gir jaata tha.
-// Bytes select karte hi utaar lete hain, phir 3 alag decode raste try
-// karte hain, aur aakhir me photo ko normalize (resize + EXIF bake) karte
-// hain taki aage crop/sheet me kabhi terhi ya khaali na aaye.
+// "The photo did not load" had three real causes, all handled here:
+//  1. HEIC/HEIF photo — Samsung/iPhone "High efficiency" mode. Chrome on
+//     Android cannot decode it. Now a clear message is shown.
+//  2. A file chosen from Google Photos / Drive — the bytes are not on the
+//     phone, so the File size is 0.
+//  3. A very large photo (50MP+) — cheap phones crashed while decoding.
+// The bytes are copied as soon as the file is selected, then 3 different decode
+// paths are tried, and finally the photo is normalized (resize + EXIF bake)
+// so it never comes out skewed or empty later in crop/sheet.
 const PHOTO_MAX_SIDE = 3000;
 
 function __sniffImageType(buf) {
@@ -1878,8 +1877,8 @@ function __blobToDataURL(blob) {
   });
 }
 
-// Bitmap/Image ko ek saaf <img> me badalta hai: bada ho to resize, EXIF
-// rotation bake, transparent PNG ke peeche safed background.
+// Turns a Bitmap/Image into a clean <img>: resizes it if large, bakes the EXIF
+// rotation, and puts a white background behind transparent PNGs.
 async function __normalizePhoto(srcImg, w, h) {
   let tw = w, th = h;
   const big = Math.max(w, h);
@@ -1899,71 +1898,71 @@ async function __normalizePhoto(srcImg, w, h) {
 }
 
 async function loadPhotoFile(file) {
-  if (!file)      throw new Error('Koi photo select nahi hui — dobara try karo');
-  if (!file.size) throw new Error('Photo khaali mili. Google Photos/Drive ki jagah phone ki Gallery se choose karo.');
+  if (!file)      throw new Error('No photo selected — please try again');
+  if (!file.size) throw new Error('The photo is empty. Choose it from the phone\'s Gallery instead of Google Photos/Drive.');
 
   let buf;
   try { buf = await file.arrayBuffer(); }
-  catch(e) { throw new Error('Photo padhi nahi ja saki. Gallery se dobara select karo.'); }
-  if (!buf || !buf.byteLength) throw new Error('Photo khaali mili. Gallery se dobara select karo.');
+  catch(e) { throw new Error('The photo could not be read. Please select again from Gallery.'); }
+  if (!buf || !buf.byteLength) throw new Error('The photo is empty. Please select it again from the Gallery.');
 
   const kind = __sniffImageType(buf) || file.type || '';
   console.log('[4x6] file:', file.name, '| type:', file.type, '| size:', file.size, '| sniff:', kind);
 
-  // HEIC ko yahin reject nahi karte — iPhone/Safari ise decode kar leta hai.
-  // Pehle poori koshish, fail hone par hi HEIC-wala saaf message dete hain.
+  // HEIC is not rejected here — iPhone/Safari can decode it.
+  // Try everything first; only on failure show the clear HEIC message.
   const isHeic = kind === 'image/heic' || (!kind && /\.(heic|heif|hif)$/i.test(file.name || ''));
 
   const blob = new Blob([buf], { type: kind || 'image/jpeg' });
 
-  // Raasta 1 — createImageBitmap (sabse reliable, EXIF bhi khud handle karta hai)
+  // Path 1 — createImageBitmap (the most reliable, handles EXIF by itself)
   if (typeof createImageBitmap === 'function') {
     const opts = [{ imageOrientation: 'from-image' }, null];
     for (let oi = 0; oi < opts.length; oi++) {
       try {
         const bmp = opts[oi] ? await createImageBitmap(blob, opts[oi]) : await createImageBitmap(blob);
         if (bmp && bmp.width) return await __normalizePhoto(bmp, bmp.width, bmp.height);
-      } catch(e) { /* agla raasta */ }
+      } catch(e) { /* next path */ }
     }
   }
   // Raasta 2 — <img> + blob URL
   try {
     const im = await __imgFromSrc(URL.createObjectURL(blob), true);
     if (im.naturalWidth) return await __normalizePhoto(im, im.naturalWidth, im.naturalHeight);
-  } catch(e) { /* agla raasta */ }
-  // Raasta 3 — data URL (kuch phone blob URL block kar dete hain)
+  } catch(e) { /* next path */ }
+  // Path 3 — data URL (some phones block blob URLs)
   try {
     const im = await __imgFromSrc(await __blobToDataURL(blob), false);
     if (im.naturalWidth) return await __normalizePhoto(im, im.naturalWidth, im.naturalHeight);
-  } catch(e) { /* neeche wala error */ }
+  } catch(e) { /* the error below */ }
 
   if (isHeic) {
-    throw new Error('Ye HEIC photo hai — ye phone ka browser ise nahi kholta. Camera Settings me photo format "JPEG / Most compatible" karke dobara kheencho, ya photo ko JPG me convert karke daalo.');
+    throw new Error('This is a HEIC photo — this phone\'s browser can\'t open it. In Camera Settings set the photo format to "JPEG / Most compatible" and take it again, or convert the photo to JPG.');
   }
-  throw new Error('Is photo ka format browser support nahi karta (' + (kind || 'unknown') + '). JPG ya PNG photo try karo.');
+  throw new Error('This photo format is not supported by the browser (' + (kind || 'unknown') + '). Try a JPG or PNG photo.');
 }
 
 // ═══ 4×6 SHEET GEOMETRY ═══
-// Har count ke liye photo utni badi jitni sheet me aa jaye — bahar sirf
-// SHEET_MARGIN_MM ka white, photos ke beech SHEET_GAP_MM ka gap.
+// For each count the photo is as large as the sheet allows — only
+// SHEET_MARGIN_MM of white outside, and SHEET_GAP_MM of gap between photos.
 //
-// Pehle photo ka size FIX tha (28×37mm passport size) chahe sheet me
-// kitni bhi jagah bachi ho. Isse 4-photo wali sheet me 20.8mm side aur
-// 69.4mm neeche khaali jaata tha. Ab size sheet se nikalta hai.
+// The photo size used to be FIXED (28×37mm passport size) no matter how much
+// space was left on the sheet. A 4-photo sheet wasted 20.8mm at the side and
+// 69.4mm at the bottom. Now the size is derived from the sheet.
 //
-// Anupaat 28:37 wahi hai — crop window isi par bana hai. Sirf SIZE badla
-// hai, shape nahi, isliye chehra kahin se khinchta nahi.
-const SHEET_MARGIN_MM = 1.2;   // bahar ka white — cutting line isi me
-const SHEET_GAP_MM    = 1.5;   // do photo ke beech
+// The 28:37 ratio is unchanged — the crop window is built on it. Only the SIZE
+// changed, not the shape, so the face is never stretched.
+const SHEET_MARGIN_MM = 1.2;   // outer white — the cutting line goes in here
+const SHEET_GAP_MM    = 1.5;   // between two photos
 const PHOTO_AR        = 28 / 37;
 
-// count → sheet ka rukh aur grid. 10 me neeche ki do row ghumi hui hoti
-// hain (landscape) — usse sheet sabse achhi bharti hai, isliye wahi rakha.
+// count → sheet orientation and grid. With 10, the bottom two rows are rotated
+// (landscape) — that fills the sheet best, so it was kept.
 const SHEET_PLAN = {
   4:  { land: false, cols: 2, rows: 2, mixed: false },
   6:  { land: false, cols: 2, rows: 3, mixed: false },
   8:  { land: true,  cols: 4, rows: 2, mixed: false },
-  10: { land: false, cols: 3, rows: 2, mixed: true  },   // 3+3 seedhi, 2+2 ghumi
+  10: { land: false, cols: 3, rows: 2, mixed: true  },   // 3+3 upright, 2+2 rotated
   12: { land: false, cols: 3, rows: 4, mixed: false }
 };
 
@@ -1978,12 +1977,12 @@ function sheetGeom(count) {
 
   let pw, ph;
   if (plan.mixed) {
-    // 3 seedhi + 3 seedhi + 2 ghumi + 2 ghumi.
-    // Unchai = 2*ph + 2*pw + 3*gap  (ghumi row ki unchai pw hoti hai)
-    // pw ke term me: 2*(pw/AR) + 2*pw + 3*gap = availH
+    // 3 upright + 3 upright + 2 rotated + 2 rotated.
+    // Height = 2*ph + 2*pw + 3*gap  (a rotated row is pw tall)
+    // In terms of pw: 2*(pw/AR) + 2*pw + 3*gap = availH
     const byH = (availH - 3 * gap) / (2 / PHOTO_AR + 2);
     const byW = Math.min(
-      (availW - 2 * gap) / 3,                       // seedhi row: 3 photo
+      (availW - 2 * gap) / 3,                       // upright row: 3 photos
       ((availW - gap) / 2) * PHOTO_AR               // ghumi row: 2 photo (chaudai = ph)
     );
     pw = Math.floor(Math.min(byH, byW));
@@ -1995,7 +1994,7 @@ function sheetGeom(count) {
     ph = Math.round(pw / PHOTO_AR);
   }
 
-  // Poora block beech me — bacha hua white dono taraf barabar
+  // The whole block centered — the leftover white is equal on both sides
   const blockH = plan.mixed
     ? (2 * ph + 2 * pw + 3 * gap)
     : (plan.rows * ph + (plan.rows - 1) * gap);
@@ -2004,10 +2003,10 @@ function sheetGeom(count) {
   return { land: plan.land, W, H, pw, ph, gap, top, dpi, mm };
 }
 
-// Sheet ka poora painting yahin hota hai — SIRF yahan.
-// Pehle yehi code do jagah copy tha, aur ek copy me cutting line
-// jud gayi thi aur doosri me nahi. Isliye customer ke border chhune
-// par line gayab ho jaati thi. Ab ek hi jagah hai.
+// All painting of the sheet happens here — ONLY here.
+// This code used to be copied in two places; one copy got the cutting
+// line and the other did not. That is why the line disappeared when the
+// customer touched the border. Now there is only one place.
 function paintPhotoSheet(photo, count) {
   const G = sheetGeom(count);
   const { W, H, pw, ph, gap, top, dpi } = G;
@@ -2061,37 +2060,37 @@ function paintPhotoSheet(photo, count) {
   return { sheet: sheet, G: G };
 }
 
-// ── SHEET KO CANVAS ME LOCK KARO ──
-// Photo sheet ka aakar kagaz jaisa hi hota hai (4x6 sheet, 4x6 kagaz).
-// Isliye customer ka use hilana/chhota-bada karna sirf nuksan karta hai —
-// photo tirchhi chhap jaati hai ya kinare kat jaate hain. Ab wo chaaron
-// taraf 1.5 mm margin ke saath fit ho kar LOCK ho jaati hai.
-// Margin ka asli hisaab:
+// ── LOCK THE SHEET INTO THE CANVAS ──
+// The photo sheet has the same shape as the paper (4x6 sheet, 4x6 paper).
+// So letting the customer move/resize it only does harm —
+// the photo prints skewed or the edges get cut. Now it is fitted with a
+// 1.5 mm margin on all four sides and LOCKED.
+// The real margin calculation:
 //
-// Printer 4x6 ke kinare par (borderless mode ke bina) kareeb 3 mm chhapta
-// hi nahi. Isliye kagaz ke kinare se sabse paas wali photo tak kam se kam
-// 3 mm hona chahiye.
+// Without borderless mode, a printer does not print about 3 mm at the edge
+// of 4x6 paper. So the photo nearest to the paper edge needs at least
+// 3 mm of distance.
 //
-// Par sheet ko poora chhota kar dena MEHNGA padta hai — sheet 3 mm chhoti
-// karo to har photo bhi utni hi chhoti ho jaati hai: 28 mm wali passport
-// photo 26.4 mm ki reh jaati hai aur size hi galat ho jaata hai.
+// But shrinking the whole sheet is COSTLY — make the sheet 3 mm smaller
+// and every photo shrinks just as much: a 28 mm passport photo becomes
+// 26.4 mm and the size is simply wrong.
 //
-// Isliye har size ka apna hisaab: pehle dekho sheet ke ANDAR pehle se
-// kitni khaali jagah hai, phir sirf UTNA hi ghatao jitna kam pad raha ho.
-// Naapa hua (sheet ke andar sabse kam margin):
-//     4 photo  -> 5.0 mm   (kuch ghatane ki zaroorat nahi)
-//     6 photo  -> 4.7 mm   (zaroorat nahi)
-//     8 photo  -> 2.0 mm   (1 mm ghatega — 35.6 -> 35.1 mm)
-//    10 photo  -> 4.7 mm   (zaroorat nahi)
-//    12 photo  -> 4.0 mm   (zaroorat nahi)
-// Yaani sirf 8 wali sheet ko thoda ghatna padta hai, baaki poore size ki
-// rehti hain aur kinara phir bhi nahi katta.
-// Aap BORDERLESS chhapte ho, isliye printer ka 3mm non-printable
-// area yahan lagu nahi hota. Isse zyada rakhte to lockSheetItem
-// sheet ko chhota kar deta aur naya bada layout bekaar ho jaata.
+// So each size is calculated separately: first see how much empty space
+// already exists INSIDE the sheet, then reduce only by the amount still missing.
+// Measured (the smallest margin inside the sheet):
+//     4 photos  -> 5.0 mm   (no reduction needed)
+//     6 photos  -> 4.7 mm   (not needed)
+//     8 photos  -> 2.0 mm   (reduced by 1 mm — 35.6 -> 35.1 mm)
+//    10 photos  -> 4.7 mm   (not needed)
+//    12 photos  -> 4.0 mm   (not needed)
+// So only the 8-photo sheet has to shrink slightly; the rest keep their full
+// size and the edge is still not cut.
+// You print BORDERLESS, so the printer's 3mm non-printable area does not
+// apply here. Anything larger would make lockSheetItem shrink the sheet
+// and the new, larger layout would be wasted.
 const SHEET_EDGE_SAFE_MM = SHEET_MARGIN_MM;
 
-/** Sheet ke kinare se sabse paas wali photo ki doori, mm me. */
+/** Distance from the sheet edge to the nearest photo, in mm. */
 function sheetInnerMarginMM(count) {
   const G = sheetGeom(count);
   const { W, H, pw, ph, gap, top, mm } = G;
@@ -2145,20 +2144,20 @@ function lockSheetItem(item, count) {
 }
 
 // ── CUTTING LINES ──
-// Do jagah: photos ke BEECH, aur sheet ke BAAHAR ke 1.2mm white me.
-// Bahar wali line pehle nahi thi — dukaan wale ko kinara kahan kaatna hai
-// ye pata hi nahi chalta tha. Ab reference sheet jaisa poora frame banta hai.
-// 50% opacity par — print me dikhti hai par bhari nahi lagti, aur kaatne
-// ke baad kagaz ke saath hi nikal jaati hai.
+// In two places: BETWEEN the photos, and in the 1.2mm white OUTSIDE the sheet.
+// The outer line did not exist before — the shop could not tell where
+// to cut the edge. Now a complete frame is drawn, like the reference sheet.
+// At 50% opacity — visible in print but not heavy, and after cutting it
+// goes away with the paper.
 function drawCutLines(ctx, rows, dpi, G) {
   if (!rows || !rows.length) return;
   ctx.save();
   ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-  ctx.lineWidth   = Math.max(1, Math.round(dpi / 150));   // ~0.17 mm, patli
-  const d = Math.max(4, Math.round(dpi / 25));            // ~1 mm ka dash
+  ctx.lineWidth   = Math.max(1, Math.round(dpi / 150));   // ~0.17 mm, thin
+  const d = Math.max(4, Math.round(dpi / 25));            // a ~1 mm dash
   ctx.setLineDash([d, d]);
 
-  // Ek row ke andar, do photo ke beech — khadi line
+  // Within a row, between two photos — a vertical line
   rows.forEach(function (r) {
     for (let i = 1; i < r.items.length; i++) {
       const a = r.items[i - 1], b = r.items[i];
@@ -2167,7 +2166,7 @@ function drawCutLines(ctx, rows, dpi, G) {
     }
   });
 
-  // Do row ke beech — padi line, poori chaudai me
+  // Between two rows — a horizontal line across the full width
   for (let i = 1; i < rows.length; i++) {
     const a = rows[i - 1], b = rows[i];
     const y  = Math.round((a.y + a.h + b.y) / 2);
@@ -2177,8 +2176,8 @@ function drawCutLines(ctx, rows, dpi, G) {
     ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
   }
 
-  // ── BAAHAR KA FRAME ──
-  // Photos ke block ke chaaron taraf, 1.2mm ke white ke theek beech me.
+  // ── OUTER FRAME ──
+  // Around all four sides of the photo block, exactly in the middle of the 1.2mm white.
   if (G) {
     let L = Infinity, T = Infinity, R = 0, B = 0;
     rows.forEach(function (r) {
@@ -2190,7 +2189,7 @@ function drawCutLines(ctx, rows, dpi, G) {
       if (r.y + r.h > B) B = r.y + r.h;
     });
     if (L !== Infinity) {
-      const half = (SHEET_MARGIN_MM / 2) * G.mm;   // white ke theek beech
+      const half = (SHEET_MARGIN_MM / 2) * G.mm;   // exactly in the middle of the white
       ctx.strokeRect(Math.round(L - half), Math.round(T - half),
                      Math.round((R - L) + 2 * half), Math.round((B - T) + 2 * half));
     }
@@ -2198,8 +2197,8 @@ function drawCutLines(ctx, rows, dpi, G) {
   ctx.restore();
 }
 
-// count → kaunsi row me kitni photo. pRow = seedhi, lRow = 90° ghumi hui.
-// Grid SHEET_PLAN se aata hai, isliye layout aur size kabhi alag nahi ho sakte.
+// count → how many photos in each row. pRow = upright, lRow = rotated 90°.
+// The grid comes from SHEET_PLAN, so the layout and the size can never disagree.
 function layoutPhotoSheet(count, g, api) {
   const { ph, pw, gap, top } = g;
   const plan = SHEET_PLAN[count] || SHEET_PLAN[4];
@@ -2219,8 +2218,8 @@ function layoutPhotoSheet(count, g, api) {
 
 function askPhotoCount(img) {
   const P = window.__shopPrices || { p4: 0, p6: 0, p8: 0, p10: 0, p12: 0 };
-  // Har option ka apna button. Size sheetGeom se hi aata hai — hardcode nahi,
-  // isliye layout badla to yahan ka label apne aap sahi rehta hai.
+  // Each option gets its own button. The size comes from sheetGeom — not hardcoded,
+  // so if the layout changes the label here stays correct automatically.
   const OPTS = [[4, P.p4], [6, P.p6], [8, P.p8], [10, P.p10], [12, P.p12]];
   const btns = OPTS.map(function (o, i) {
     const n = o[0], rate = o[1];
@@ -2228,8 +2227,8 @@ function askPhotoCount(img) {
     const wmm = Math.round(g.pw / g.mm), hmm = Math.round(g.ph / g.mm);
     const brd = i === 0 ? '#b51c26' : '#e8e6f0';
     const bg  = i === 0 ? '#fff5f2' : '#fff';
-    // Option ki ginti taak (5) ho to aakhri button akela reh jaata hai —
-    // usko poori chaudai de do, warna grid me khaali box dikhta hai.
+    // If the number of options is odd (5), the last button ends up alone —
+    // give it the full width, otherwise an empty box shows in the grid.
     const wide = (i === OPTS.length - 1 && OPTS.length % 2 === 1)
                ? 'grid-column:1/-1;' : '';
     return '<button onclick="buildPhotoSheet(' + n + ')" style="' + wide + 'border:2px solid ' + brd +
@@ -2245,22 +2244,22 @@ function askPhotoCount(img) {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:24px;';
   ov.innerHTML = `<div style="background:#fff;border-radius:20px;padding:22px;max-width:340px;width:100%;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
     <div style="font-size:34px;">📷</div>
-    <h3 style="font-family:'Plus Jakarta Sans',sans-serif;margin:8px 0 4px;">Kitni photos chahiye?</h3>
-    <p style="font-size:12px;color:#7a7a8c;margin:0 0 16px;">Ek 4×6 sheet par — har option ka size neeche likha hai</p>
+    <h3 style="font-family:'Plus Jakarta Sans',sans-serif;margin:8px 0 4px;">How many photos do you need?</h3>
+    <p style="font-size:12px;color:#7a7a8c;margin:0 0 16px;">On one 4×6 sheet — the size of each option is written below</p>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">${btns}</div>
     <button onclick="document.getElementById('photoCountModal').remove()" style="margin-top:12px;background:none;border:none;color:#9b9690;font-size:12px;cursor:pointer;">Cancel</button>
   </div>`;
   document.body.appendChild(ov);
-  window.__photoImg = img;   // pehle se decode ho chuki hai
+  window.__photoImg = img;   // already decoded earlier
 }
 
 async function buildPhotoSheet(count, isRebuild) {
-  // Border badalne par dobara build hota hai — tab file dobara nahi
-  // maangni, purani photo hi use karni hai.
+  // Changing the border rebuilds the sheet — then do not ask for the file
+  // again, reuse the old photo.
   if (isRebuild && PHOTO_SHEET) {
     try {
       const { photo } = PHOTO_SHEET;
-      const built = paintPhotoSheet(photo, count);   // cutting line yahin ban jaati hai
+      const built = paintPhotoSheet(photo, count);   // the cutting line is drawn right here
       pages.length = 0;
       addPage([built.sheet]);
       applyPaper();
@@ -2269,28 +2268,28 @@ async function buildPhotoSheet(count, isRebuild) {
       renderEditor();
       return;
     } catch (e) {
-      console.warn('Rebuild fail:', e.message);
+      console.warn('Rebuild failed:', e.message);
       return;
     }
   }
 
   document.getElementById('photoCountModal')?.remove();
-  // Photo select karte hi decode ho chuki hai — yahan dobara load nahi karte
+  // The photo was decoded as soon as it was selected — it is not loaded again here
   const img = window.__photoImg;
-  if (!img || !img.width) { toast('❌ Photo mili nahi — dobara select karo'); return; }
-  openPhotoCrop(img, count);   // Pehle CROP window — confirm par sheet banegi
+  if (!img || !img.width) { toast('❌ Photo not found — please select again'); return; }
+  openPhotoCrop(img, count);   // First the CROP window — the sheet is built on confirm
 }
 
-// ═══ PHOTO CROP WINDOW (sirf passport-photo flow) ═══
-// Fixed 28:37 frame — photo ko drag karo, pinch/slider se zoom karo.
-// Jo frame ke andar dikhega, wahi har photo me aayega.
+// ═══ PHOTO CROP WINDOW (passport-photo flow only) ═══
+// Fixed 28:37 frame — drag the photo, zoom with pinch/slider.
+// Whatever shows inside the frame goes into every photo.
 let __crop = null;
 function openPhotoCrop(img, count) {
   const fw = Math.min(Math.round(window.innerWidth * 0.62), 252);
-  // Crop ka frame USI aakar ka hona chahiye jis aakar ki final photo
-  // banegi. Pehle ye hamesha 28:37 tha — 12 wali sheet ki photo 28:33.9
-  // hoti hai, isliye crop 28:37 me hota tha aur finishPhotoCrop() use
-  // 28:33.9 me thoos deta tha: chehra dab kar chaura ho jaata tha.
+  // The crop frame must have EXACTLY the shape of the final photo.
+  // It used to always be 28:37 — the photo on a 12-photo sheet is 28:33.9,
+  // so the crop was made at 28:37 and finishPhotoCrop() squeezed it into
+  // 28:33.9: the face got squashed and wider.
   const __g = sheetGeom(count);
   const fh = Math.round(fw * __g.ph / __g.pw);
   const s0 = Math.max(fw / img.width, fh / img.height);   // cover
@@ -2301,8 +2300,8 @@ function openPhotoCrop(img, count) {
   ov.id = 'photoCropModal';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
   ov.innerHTML = `
-    <div style="color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:16px;margin-bottom:4px;">✂️ Photo Crop Karo</div>
-    <div style="color:#ccc;font-size:12px;margin-bottom:14px;">Photo ko ungli se ghumao, do ungli/slider se zoom karo</div>
+    <div style="color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:16px;margin-bottom:4px;">✂️ Crop Photo</div>
+    <div style="color:#ccc;font-size:12px;margin-bottom:14px;">Rotate the photo with one finger, zoom with two fingers or the slider</div>
     <div id="cropFrame" style="width:${fw}px;height:${fh}px;overflow:hidden;position:relative;border:3px solid #b51c26;border-radius:8px;touch-action:none;background:#222;">
       <img id="cropImg" draggable="false" style="position:absolute;transform-origin:0 0;user-select:none;-webkit-user-drag:none;">
     </div>
@@ -2310,13 +2309,13 @@ function openPhotoCrop(img, count) {
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center;">
       <button onclick="cancelPhotoCrop()" style="background:#333;color:#fff;border:none;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer;font-family:inherit;">Cancel</button>
       <button onclick="fixPhotoPerspective()" style="background:#0f766e;color:#fff;border:none;border-radius:12px;padding:12px 18px;font-weight:800;cursor:pointer;font-family:inherit;">📐 Fix Photo</button>
-      <button onclick="finishPhotoCrop()" style="background:#b51c26;color:#fff;border:none;border-radius:12px;padding:12px 20px;font-weight:800;cursor:pointer;font-family:inherit;">✂️ Crop & Aage Badho</button>
+      <button onclick="finishPhotoCrop()" style="background:#b51c26;color:#fff;border:none;border-radius:12px;padding:12px 20px;font-weight:800;cursor:pointer;font-family:inherit;">✂️ Crop & Continue</button>
     </div>
     <div style="color:#8a8a99;font-size:11px;margin-top:9px;max-width:${fw}px;line-height:1.6;text-align:center;">
-      📐 Fix Photo — tedhi ya kone se mudi hui photo ho to kone kheench kar seedha karo
+      📐 Fix Photo — if the photo is tilted or bent at a corner, drag the corners to straighten it
     </div>`;
   document.body.appendChild(ov);
-  // src alag se — dataURL kai MB ka ho sakta hai, use innerHTML me daalna mehnga hai
+  // src set separately — a dataURL can be several MB; putting it into innerHTML is expensive
   document.getElementById('cropImg').src = img.src;
   __cropApply();
 
@@ -2359,7 +2358,7 @@ function openPhotoCrop(img, count) {
 function __cropSetScale(ns) {
   const c2 = __crop;
   ns = Math.max(c2.minS, Math.min(c2.minS * 4, ns));
-  // frame ke center wala point wahi rahe
+  // keep the point at the center of the frame in place
   const cx = (c2.fw / 2 - c2.tx) / c2.s, cy = (c2.fh / 2 - c2.ty) / c2.s;
   c2.s = ns;
   c2.tx = c2.fw / 2 - cx * ns;
@@ -2368,7 +2367,7 @@ function __cropSetScale(ns) {
 }
 function __cropApply() {
   const c2 = __crop;
-  // Image hamesha frame ko poora cover kare
+  // The image always covers the whole frame
   c2.tx = Math.min(0, Math.max(c2.fw - c2.img.width * c2.s, c2.tx));
   c2.ty = Math.min(0, Math.max(c2.fh - c2.img.height * c2.s, c2.ty));
   const el = document.getElementById('cropImg');
@@ -2381,17 +2380,17 @@ function cancelPhotoCrop() {
   document.getElementById('photoCropModal')?.remove();
   __crop = null;
 }
-// 📐 Fix Photo — tedhi/mudi photo ke liye.
-// Wahi Perspective Crop tool jo editor me hai (openCropOn), sirf ek
-// canvas ke saath. Kone theek karte hi seedha sheet ban jaati hai —
-// pan/zoom wala crop dobara nahi poochha jaata, kyunki kone khud
-// customer ne set kiye hain, wahi final photo hai.
+// 📐 Fix Photo — for a skewed/bent photo.
+// The same Perspective Crop tool as in the editor (openCropOn), with just one
+// canvas. As soon as the corners are fixed the sheet is built directly —
+// the pan/zoom crop is not asked again, because the customer set the
+// corners personally; that is the final photo.
 function fixPhotoPerspective() {
-  if (!__crop || !__crop.img) { toast('⚠️ Photo nahi mili'); return; }
+  if (!__crop || !__crop.img) { toast('⚠️ Photo not found'); return; }
   const img = __crop.img;
   const count = __crop.count;
 
-  // <img> ko canvas par le aao — openCropOn canvas hi leta hai
+  // put the <img> onto a canvas — openCropOn only takes a canvas
   const src = document.createElement('canvas');
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   const longest = Math.max(iw, ih);
@@ -2405,20 +2404,20 @@ function fixPhotoPerspective() {
 
   openCropOn(src, null,
     function (warped) {
-      // Kone confirm ho gaye — ab seedha sheet banao
+      // Corners confirmed — now build the sheet directly
       if (ov) ov.remove();
       __crop = null;
       document.body.style.overflow = '';
       buildSheetFromCanvas(warped, count);
     },
-    function () {                       // cancel — crop modal wapas
+    function () {                       // cancel — back to the crop modal
       if (ov) ov.style.visibility = '';
     });
 }
 
-// Perspective-fix ki hui photo ko passport naap par le jao, phir sheet.
-// Aakar sheetGeom se aata hai, isliye 12 wali sheet par bhi chehra
-// dabta nahi (uska anupaat 28:33.9 hai, 28:37 nahi).
+// Bring the perspective-fixed photo to passport size, then build the sheet.
+// The shape comes from sheetGeom, so even on the 12-photo sheet the face is
+// not squashed (its ratio is 28:33.9, not 28:37).
 function buildSheetFromCanvas(warped, count) {
   const G = sheetGeom(count);
   const out = document.createElement('canvas');
@@ -2427,7 +2426,7 @@ function buildSheetFromCanvas(warped, count) {
   ctx.imageSmoothingQuality = 'high';
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, G.pw, G.ph);
 
-  // cover-fit — khinchav nahi, bas kinare se thoda kam
+  // cover-fit — no stretching, just slightly less at the edges
   const r = Math.max(G.pw / warped.width, G.ph / warped.height);
   const dw = warped.width * r, dh = warped.height * r;
   ctx.drawImage(warped, (G.pw - dw) / 2, (G.ph - dh) / 2, dw, dh);
@@ -2437,9 +2436,9 @@ function buildSheetFromCanvas(warped, count) {
 
 function finishPhotoCrop() {
   const c2 = __crop;
-  // Photo ka final size count se aata hai (8 wali sheet ki photo badi hai).
-  // Yahin sahi size par kaatna zaroori hai — baad me chhoti photo ko bada
-  // karte to blur aa jata.
+  // The final photo size comes from the count (the 8-photo sheet has larger photos).
+  // Cutting at the right size right here is essential — enlarging a small photo
+  // later would make it blurry.
   const G = sheetGeom(c2.count);
   const pw = G.pw, ph = G.ph;
   const sx = -c2.tx / c2.s, sy = -c2.ty / c2.s;
@@ -2456,20 +2455,20 @@ function finishPhotoCrop() {
 }
 
 function buildSheetFromPhoto(photo, count) {
-  toast('⏳ Photo sheet ban rahi hai...');
+  toast('⏳ Creating photo sheet...');
   try {
-    // Sheet ka rukh aur photo ka size — dono count se (sheetGeom dekho).
-    // 8 wali sheet LANDSCAPE 6×4 hoti hai, baaki PORTRAIT 4×6.
+    // Sheet orientation and photo size — both from the count (see sheetGeom).
+    // The 8-photo sheet is LANDSCAPE 6×4, the rest are PORTRAIT 4×6.
     const built = paintPhotoSheet(photo, count);
     const G = built.G;
     const sheet = built.sheet;
     const { dpi, mm } = G;
     const pw = photo.width, ph = photo.height;
 
-    // NORMAL pipeline me: sheet = ek page, paper 4x6, service tag.
-    // 8 wali sheet landscape hai — currentPaper() orientation dekh kar
-    // mm swap kar deta hai, isliye PDF bhi 152.4×101.6 ki banti hai aur
-    // agent use 4×6 kagaz par poora fit kar deta hai.
+    // In the NORMAL pipeline: sheet = one page, 4x6 paper, service tag.
+    // The 8-photo sheet is landscape — currentPaper() checks the orientation and
+    // swaps the mm, so the PDF is also 152.4×101.6 and the
+    // agent fits it fully onto 4×6 paper.
     state.paperSize = '4x6';
     state.orientation = G.land ? 'landscape' : 'portrait';
     state.service = 'photo4x6';
@@ -2478,35 +2477,35 @@ function buildSheetFromPhoto(photo, count) {
     state.colorMode = 'color';
     const selEl = document.getElementById('paperSizeSel');
     if (selEl) selEl.value = '4x6';
-    // Orientation button ka label bhi sach bole
+    // The orientation button label must tell the truth too
     const oriEl = document.getElementById('orientBtn');
     if (oriEl) oriEl.textContent = G.land ? '📃 Landscape' : '📄 Portrait';
 
-    // Border badalne par sheet dobara banani padti hai, isliye photo aur
-    // count sambhal kar rakho
+    // Changing the border means the sheet has to be rebuilt, so keep the photo and
+    // the count safe
     PHOTO_SHEET = { photo, count, pw, ph, dpi, mm };
     const bb = document.getElementById('borderBtn');
-    if (bb) bb.style.display = '';       // ab border ka option kaam ka hai
+    if (bb) bb.style.display = '';       // now the border option is useful
 
     const isFirstUpload = !document.getElementById('secUpload').classList.contains('hidden');
     if (isFirstUpload) { hide('secUpload'); show('secEditor'); setStep(2); }
     pages.length = 0;
     addPage([sheet]);
     applyPaper();
-    // Sheet ko kagaz par 1.5 mm margin ke saath fit karke lock kar do
+    // Fit the sheet onto the paper with a 1.5 mm margin and lock it
     lockSheetItem(pages[0] && pages[0].items && pages[0].items[0], count);
     activePageIdx = 0;
     renderEditor();
-    toast(`✅ ${count}-photo sheet ready! Aage badho`);
+    toast(`✅ ${count}-photo sheet ready! Continue`);
   } catch(e) {
     toast('❌ ' + e.message);
   }
 }
 
-// data: URL ko seedha Blob me convert karta hai — fetch() NAHI use karta,
-// kyunki CSP ka "connect-src 'self'" fetch() ko data:/blob: URLs pe block
-// kar deta hai (Chrome "TypeError: Failed to fetch" deta hai). Ye function
-// sirf base64 decode karta hai, koi network call nahi — isliye CSP-safe hai.
+// Converts a data: URL straight into a Blob — it does NOT use fetch(),
+// because CSP's "connect-src 'self'" blocks fetch() on data:/blob: URLs
+// (Chrome reports "TypeError: Failed to fetch"). This function only
+// decodes base64 and makes no network call — so it is CSP-safe.
 function dataUrlToBlob(dataUrl) {
   const commaIdx = dataUrl.indexOf(',');
   const meta = dataUrl.slice(0, commaIdx);
@@ -2519,13 +2518,13 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([arr], { type: mime });
 }
 
-// ═══ RESUME HANDOFF (resume.html se PDF aata hai) ═══
+// ═══ RESUME HANDOFF (the PDF comes from resume.html) ═══
 async function checkResumeHandoff() {
   let h;
   try { h = JSON.parse(sessionStorage.getItem('qsp_resume_handoff') || 'null'); } catch(e) { return; }
   if (!h || !h.dataUrl || h.shopId !== shopId) return;
   sessionStorage.removeItem('qsp_resume_handoff');
-  toast('⏳ Resume load ho raha hai...');
+  toast('⏳ Loading resume...');
   try {
     const blob = dataUrlToBlob(h.dataUrl);
     const file = new File([blob], 'resume.pdf', { type: 'application/pdf' });
@@ -2537,26 +2536,26 @@ async function checkResumeHandoff() {
     await loadPdfAsPages(file);
     activePageIdx = 0;
     renderEditor();
-    // Resume tool me template/preview/price sab ho chuka — canvas dobara
-    // dikhana confusion hai. Seedha Payment step pe jao.
+    // The resume tool has already handled template/preview/price — showing the
+    // canvas again is confusing. Go straight to the Payment step.
     hide('secEditor'); hide('secPreviewStep');
     show('secPayment'); setStep(4);
     updatePriceSummary();
-    // File server par upload karna zaroori hai — iske bina payment
-    // "File upload karo pehle!" pe atkega
-    toast('⏳ Resume upload ho raha hai...');
+    // Uploading the file to the server is required — without it payment
+    // gets stuck on "Please upload a file first!"
+    toast('⏳ Uploading resume...');
     await uploadAllPages();
-    toast('✅ Resume ready — bas payment karo, print automatic');
-  } catch(e) { toast('❌ Resume load fail: ' + e.message); }
+    toast('✅ Resume ready — just pay, print is automatic');
+  } catch(e) { toast('❌ Resume failed to load: ' + e.message); }
 }
 
 // ═══ ADVANCED GATE ═══
-// Shop ne Advance Feature unlock kiya hai? Aur uske andar ke 4 module
-// (Document/Legal · Resume · 4×6 Photo · Big Size A3) me se kaun ON hai?
-//  - Kuch bhi ON nahi / locked : customer ko sirf plain A4 (dropdown chhupa)
-//  - Kuch ON hai               : sirf UNHI ka card dikhega, aur grid ka
-//                                layout card ki ginti ke hisaab se badlega
-//                                taki koi khaali box area na bache.
+// Has the shop unlocked the Advance Feature? And which of its 4 modules
+// (Document/Legal · Resume · 4×6 Photo · Big Size A3) are ON?
+//  - Nothing ON / locked : the customer gets plain A4 only (dropdown hidden)
+//  - Something ON        : only THOSE cards show, and the grid
+//                          layout changes with the number of cards
+//                          so that no empty box area is left.
 function applyAdvancedGate(shop) {
   const advPaid = !!shop.advanced_unlocked;   // server = kharida AND master ON
   const M = {
@@ -2565,14 +2564,14 @@ function applyAdvancedGate(shop) {
     photo:  advPaid && shop.adv_4x6_active    !== false,  // 4×6 Photo
     big:    advPaid && shop.adv_a3_active     !== false,  // A3 / A2 / A1
     mini:   advPaid && shop.adv_mini_active   !== false,  // Mini Print
-    // Smart Scanner ADD-ON hai, base pack ka hissa nahi. Server
-    // /api/shop/:id me `owned_features` dekh kar adv_scan_active
-    // bhejta hai:
-    //   • Premium (₹999)      → apne aap true
-    //   • ₹49 diya / superadmin → true
-    //   • baaki sab            → false
-    // Isliye yahan `=== true` hi rahega. `!== false` KABHI mat karna —
-    // us se purani har shop ko field aaye bina hi free mil jaata.
+    // Smart Scanner is an ADD-ON, not part of the base pack. The server
+    // checks `owned_features` in /api/shop/:id and sends
+    // adv_scan_active:
+    //   • Premium (₹999)        → true automatically
+    //   • paid ₹49 / superadmin → true
+    //   • everyone else         → false
+    // So this must stay `=== true`. NEVER use `!== false` —
+    // that would give it free to every old shop that lacks the field.
     scan:   advPaid && shop.adv_scan_active   === true    // Smart Scanner
   };
   const anyOn = M.doc || M.resume || M.photo || M.big || M.mini || M.scan;
@@ -2586,9 +2585,9 @@ function applyAdvancedGate(shop) {
     rc: parseFloat(shop.price_resume_color)||0,
     rb: parseFloat(shop.price_resume_bw)||0
   };
-  // Big Size (A3/A2/A1) ka apna per-page rate. Shop ne set nahi kiya
-  // (0/blank) to normal B&W/Color rate hi lagta hai — bilkul waise hi
-  // jaise pehle chal raha tha. Server par bhi yahi rule hai.
+  // Big Size (A3/A2/A1) has its own per-page rate. If the shop has not set it
+  // (0/blank), the normal B&W/Color rate applies — exactly as
+  // before. The server applies the same rule.
   window.__bigPrices = {
     a3: { bw: parseFloat(shop.price_a3_bw)||0, color: parseFloat(shop.price_a3_color)||0 },
     a2: { bw: parseFloat(shop.price_a2_bw)||0, color: parseFloat(shop.price_a2_color)||0 },
@@ -2600,7 +2599,7 @@ function applyAdvancedGate(shop) {
   const zone = document.getElementById('uploadZone');
 
   if (!window.__shopAdvanced) {
-    if (sel) sel.style.display = 'none';   // A4-only, koi dropdown nahi
+    if (sel) sel.style.display = 'none';   // A4 only, no dropdown
     if (ori) ori.style.display = 'none';
     state.paperSize = 'a4';
     state.orientation = 'portrait';
@@ -2608,8 +2607,8 @@ function applyAdvancedGate(shop) {
   }
 
   // ── Paper dropdown ──
-  // A4 hamesha rehta hai (base product hai). Baaki size apne module ke
-  // saath hi aate hain, warna customer aisa size chun leta jo shop deti nahi.
+  // A4 is always present (it is the base product). Other sizes only come with
+  // their module, otherwise a customer could pick a size the shop does not offer.
   const sizeOK = { '4x6': M.photo, 'a4': true, 'a5': M.doc, 'letter': M.doc,
                    'legal': M.doc, 'a3': M.big, 'a2': M.big, 'a1': M.big };
   if (sel) {
@@ -2621,48 +2620,48 @@ function applyAdvancedGate(shop) {
       if (ok) visible++;
     });
     if (sizeOK[sel.value] === false) { sel.value = 'a4'; state.paperSize = 'a4'; }
-    sel.style.display = visible > 1 ? '' : 'none';   // ek hi size ho to dropdown bekaar
+    sel.style.display = visible > 1 ? '' : 'none';   // with only one size a dropdown is pointless
   }
   if (ori) ori.style.display = '';
 
-  // ── Service cards ── sirf ON module, aur grid unki ginti se
+  // ── Service cards ── only modules that are ON, and the grid follows their count
   if (zone && !document.getElementById('svcMenu')) {
     const CARDS = [
-      { key:'doc',    on:M.doc,    icon:'📄', title:'Document Print',  sub:'PDF / Photo — A4 se Legal',
+      { key:'doc',    on:M.doc,    icon:'📄', title:'Document Print',  sub:'PDF / Photo — A4 to Legal',
         act:"selectService('doc')" },
-      { key:'resume', on:M.resume, icon:'📝', title:'Resume Maker',    sub:'6 designs — banao, print karo',
+      { key:'resume', on:M.resume, icon:'📝', title:'Resume Maker',    sub:'6 professional designs, print instantly',
         act:"location.href='/resume/'+shopId" },
       { key:'photo',  on:M.photo,  icon:'📷', title:'4×6 Photo Print', sub:'Passport photos — 4, 6, 8 or 10 per sheet',
         act:"startPhotoFlow()" },
-      { key:'big',    on:M.big,    icon:'📐', title:'Big Size Print',  sub:'A3 / A2 / A1 bade kagaz',
+      { key:'big',    on:M.big,    icon:'📐', title:'Big Size Print',  sub:'A3 / A2 / A1 large paper',
         act:"selectService('big')" },
-      { key:'mini',   on:M.mini,   icon:'🗒️', title:'Mini Print',      sub:'Ek page par 2, 4, 6, 8, 9, 12 ya 16 pages',
+      { key:'mini',   on:M.mini,   icon:'🗒️', title:'Mini Print',      sub:'2, 4, 6, 8, 9, 12 or 16 pages on one sheet',
         act:"startMiniFlow()" },
-      { key:'scan',   on:M.scan,   icon:'📸', title:'Smart Scanner',   sub:'Document ka photo — scan jaisa saaf page',
+      { key:'scan',   on:M.scan,   icon:'📸', title:'Smart Scanner',   sub:'Photo of a document — a clean, scan-like page',
         act:"startSmartScanner()" }
     ].filter(c => c.on);
 
     const n = CARDS.length;
-    // Doc ON ho tabhi pehle se select — wahi default upload mode hai.
-    // Resume/Photo card tap karte hi apna alag flow kholte hain, unhe
-    // pehle se "selected" dikhana galat lagta hai.
+    // Preselect only when Doc is ON — that is the default upload mode.
+    // The Resume/Photo cards open their own flows when tapped, so showing them
+    // as "selected" in advance feels wrong.
     const preselect = M.doc ? 'doc' : null;
 
     const menu = document.createElement('div');
     menu.id = 'svcMenu';
     menu.dataset.count = String(n);
-    //  1 card → poori chaudai   |  2 card → 2 column
-    //  3 card → pehla poora + neeche 2 (koi khaali box nahi)
-    //  4 card → 2×2 (jaisa pehle tha)
+    //  1 card → full width   |  2 cards → 2 columns
+    //  3 cards → first full + 2 below (no empty box)
+    //  4 cards → 2×2 (as before)
     menu.style.cssText = 'display:grid;gap:10px;margin-bottom:14px;grid-template-columns:' +
       (n === 1 ? 'minmax(0,1fr)' : 'repeat(2,minmax(0,1fr))') + ';';
 
     menu.innerHTML = CARDS.map((c, i) => {
       const wide = (n === 1) || (n === 3 && i === 0);
       const on   = c.key === preselect;
-      // Saara look CSS se aata hai (.svc-card / .svc-wide / .sel) — inline
-      // style yahan se hata di hai taaki 1/2/3/4 kitne bhi card hon, sab
-      // ek jaise premium dikhein aur theme ek jagah se badle.
+      // The whole look comes from CSS (.svc-card / .svc-wide / .sel) — the inline
+      // styles were removed here so that however many cards there are (1/2/3/4),
+      // they all look equally premium and the theme changes in one place.
       return '<div class="svc-card' + (wide ? ' svc-wide' : '') + (on ? ' sel' : '') +
         '" data-svc="' + c.key + '" onclick="' + c.act + '"' +
         (wide ? ' style="grid-column:1/-1;"' : '') + '>' +
@@ -2674,14 +2673,14 @@ function applyAdvancedGate(shop) {
     zone.parentNode.insertBefore(menu, zone);
   }
 
-  // Upload Document zone UNIVERSAL hai — HAMESHA dikhega. Ye base document
-  // print sabke liye khula rehta hai (bina advance ke bhi). Advance ke 4
-  // module sirf neeche wale option cards ko on/off karte hain, is zone ko nahi.
+  // The Upload Document zone is UNIVERSAL — it ALWAYS shows. Basic document
+  // printing stays open to everyone (even without Advance). The 4 Advance
+  // modules only switch the option cards below on/off, never this zone.
   if (zone) zone.style.display = '';
 }
 
 function selectService(svc) {
-  // Selection ab class se — inline style CSS ke naye design se ladti thi
+  // Selection now uses a class — the inline style conflicted with the new CSS design
   document.querySelectorAll('.svc-card').forEach(c => {
     c.classList.toggle('sel', c.dataset.svc === svc);
   });
@@ -2689,7 +2688,7 @@ function selectService(svc) {
   if (svc === 'big') {
     state.paperSize = 'a3';
     if (sel) sel.value = 'a3';
-    toast('📐 Big Size mode — A3 select hua (dropdown se A2/A1 bhi le sakte ho)');
+    toast('📐 Big Size mode — A3 selected (you can also pick A2/A1 from the dropdown)');
   } else {
     state.paperSize = 'a4';
     if (sel) sel.value = 'a4';
@@ -2702,7 +2701,7 @@ function selectService(svc) {
 // ═══ PAPER SIZE / ORIENTATION ═══
 function applyPaper() {
   const { wmm, hmm } = currentPaper();
-  // Display: paper ko 300x420 box me fit karo (phone-friendly)
+  // Display: fit the paper into a 300x420 box (phone-friendly)
   const k = Math.min(300 / wmm, 420 / hmm);
   const oldW = A4_DISPLAY_W, oldH = A4_DISPLAY_H;
   A4_DISPLAY_W = Math.round(wmm * k);
@@ -2711,21 +2710,21 @@ function applyPaper() {
   el.style.width = A4_DISPLAY_W + 'px';
   el.style.height = A4_DISPLAY_H + 'px';
 
-  // CONTENT bhi page ke saath adjust ho:
-  // - EK item wala page (aam case): item ko naye page par AUTO-FIT + center
-  //   karo — page landscape hua to photo bhi naye layout me poora baithe.
-  //   (Pehle relative remap tha — item purani jagah chipka rehta tha,
-  //    user ko lagta tha orientation kaam hi nahi kar raha.)
-  // - Multiple items: relative remap — unka aapas ka layout na bigde.
+  // The CONTENT must adjust with the page too:
+  // - A page with ONE item (the common case): AUTO-FIT + center the item on the
+  //   new page — if the page turns landscape the photo fits the new layout fully.
+  //   (It used to be a relative remap — the item stayed stuck in its old place and
+  //    users thought orientation did not work at all.)
+  // - Multiple items: relative remap — their layout relative to each other stays intact.
   pages.forEach(pg => {
     if (pg.items.length === 1) {
       const it = pg.items[0];
-      // PAGE PALTA TO DOCUMENT BHI PALTE — jaise printer landscape mode me
-      // portrait doc ko ghuma deta hai. Aspect mismatch (portrait doc,
-      // landscape page ya ulta) par document 90° auto-rotate hota hai,
-      // phir page bhar ke fit. Sirf tab jab:
-      //  - document seedha ho (0/90/180/270 — free-rotate wale ko mat chhedo)
-      //  - document square na ho (usme rotate ka matlab nahi)
+      // WHEN THE PAGE TURNS, THE DOCUMENT TURNS TOO — just as a printer in landscape
+      // mode rotates a portrait document. On an aspect mismatch (portrait document,
+      // landscape page or the reverse) the document auto-rotates by 90°, then
+      // fits to fill the page. Only when:
+      //  - the document is straight (0/90/180/270 — do not touch free-rotated ones)
+      //  - the document is not square (rotating it would be meaningless)
       const pageLand = A4_DISPLAY_W > A4_DISPLAY_H;
       const iw = it.workingCanvas.width, ih = it.workingCanvas.height;
       const itemLand = iw > ih;
@@ -2764,11 +2763,11 @@ function applyPaper() {
 function changePaperSize() {
   state.paperSize = document.getElementById('paperSizeSel').value;
   applyPaper();
-  // Size badla to rate bhi badal sakta hai — summary turant refresh
+  // A size change can change the rate too — refresh the summary immediately
   if (typeof updatePriceSummary === 'function') updatePriceSummary();
   const big = getBigSizeRate();
-  toast('📐 ' + (PAPER_SIZES[state.paperSize] || {}).label + ' select hua' +
-        (big > 0 ? ' — ₹' + money(big) + '/page' : ' — print isi size par niklega'));
+  toast('📐 ' + (PAPER_SIZES[state.paperSize] || {}).label + ' selected' +
+        (big > 0 ? ' — ₹' + money(big) + '/page' : ' — the print will come out at this size'));
 }
 
 function toggleOrientation() {
@@ -2783,13 +2782,13 @@ function toggleOrientation() {
 // ═══════════════════════════════════════════════
 function toolAutoA4() {
   const item = getActiveItem();
-  if (!item) { toast('⚠️ Pehle koi document select karo'); return; }
+  if (!item) { toast('⚠️ Please select a document first'); return; }
   if (item.locked) {
-    // Sheet pehle se theek fit hai. Dobara fit karne par 1.5 mm margin
-    // chala jaata aur kinare wali photo kat sakti thi.
+    // The sheet is already fitted correctly. Fitting it again would lose the 1.5 mm
+    // margin and could cut off the photos at the edge.
     lockSheetItem(item);
     renderCanvasItems();
-    toast('📌 Photo sheet pehle se sahi fit hai');
+    toast('📌 The photo sheet already fits correctly');
     return;
   }
   const a4W = A4_DISPLAY_W, a4H = A4_DISPLAY_H;
@@ -2801,21 +2800,21 @@ function toolAutoA4() {
   item.y = (a4H - h) / 2;
   item.w = w; item.h = h;
   renderCanvasItems();
-  toast('🤖 A4 mein fit ho gaya!');
+  toast('🤖 Fitted to A4!');
 }
 
 // ══════════════════════════════════════════════════
 // TOOL: Brightness / Contrast
 // ══════════════════════════════════════════════════
-// ═══ BLACK BORDER — sheet par HAR PHOTO ke chaaron taraf ═══
-// Border photo ke around lagta hai, page ke bahar nahi — taaki kaatne me
-// aasani ho aur har photo ka apna frame dikhe.
+// ═══ BLACK BORDER — around all four sides of EVERY PHOTO on the sheet ═══
+// The border goes around the photo, not outside the page — so cutting is
+// easier and each photo gets its own frame.
 let PHOTO_SHEET = null;                       // { photo, count, pw, ph, dpi, mm }
 let PHOTO_BORDER = { on: false, width: 4 };
 
 function toolToggleBorder() {
   if (!PHOTO_SHEET) {
-    toast('⚠️ Ye sirf 4×6 photo sheet ke liye hai');
+    toast('⚠️ This is only for the 4×6 photo sheet');
     return;
   }
   const panel = document.getElementById('borderPanel');
@@ -2829,7 +2828,7 @@ function toolToggleBorder() {
 
 function syncBorderPanel() {
   const t = document.getElementById('borderToggleBtn');
-  t.textContent = PHOTO_BORDER.on ? 'Chalu hai' : 'Band hai';
+  t.textContent = PHOTO_BORDER.on ? 'On' : 'Off';
   t.style.background = PHOTO_BORDER.on ? '#111114' : '';
   t.style.color = PHOTO_BORDER.on ? '#fff' : '';
   document.getElementById('borderSlider').value = PHOTO_BORDER.width;
@@ -2850,20 +2849,20 @@ function onBorderSlider() {
   rebuildPhotoSheet();
 }
 
-// Border badla to sheet dobara banao — photo waisi ki waisi rehti hai,
-// sirf uske chaaron taraf ki line badalti hai.
+// Border changed — rebuild the sheet. The photo stays exactly the same;
+// only the line around it changes.
 function rebuildPhotoSheet() {
   if (!PHOTO_SHEET) return;
   try {
     buildPhotoSheet(PHOTO_SHEET.count, true);
   } catch (e) {
-    console.warn('Sheet dobara nahi ban paayi:', e.message);
+    console.warn('The sheet could not be rebuilt:', e.message);
   }
 }
 
 function toolToggleAdjust() {
   const item = getActiveItem();
-  if (!item) { toast('⚠️ Pehle koi document select karo'); return; }
+  if (!item) { toast('⚠️ Please select a document first'); return; }
 
   const panel = document.getElementById('adjustPanel');
   const btn = document.getElementById('adjustBtn');
@@ -2891,13 +2890,13 @@ function applyAdjustments() {
   renderCanvasItems();
 }
 
-// sourceCanvas (cropped ya original) par brightness/contrast apply karke
-// workingCanvas banata hai. Crop apply hone ke baad bhi yahi chalta hai
-// taaki existing brightness/contrast settings crop ke upar preserve rahein.
-// Kisi bhi angle par rotate. Bounding box: |w·cosθ|+|h·sinθ| — poori image
-// hamesha dikhе, kuch katta nahi. 90° steps par exact swap (quality loss 0).
-// Hamesha SOURCE se render hota hai (renderWorking chain), isliye baar-baar
-// ghumane par bhi quality kharab nahi hoti — ek hi baar resample.
+// Applies brightness/contrast to sourceCanvas (cropped or original) to build
+// workingCanvas. It also runs after a crop is applied, so the existing
+// brightness/contrast settings are preserved on top of the crop.
+// Rotation at any angle. Bounding box: |w·cosθ|+|h·sinθ| — the whole image
+// is always visible, nothing is cut. Exact swap at 90° steps (zero quality loss).
+// It always renders from the SOURCE (renderWorking chain), so repeated
+// rotations never degrade quality — it is resampled only once.
 function rotateCanvas(src, deg) {
   const rad = deg * Math.PI / 180;
   const cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
@@ -2905,8 +2904,8 @@ function rotateCanvas(src, deg) {
   out.width  = Math.max(1, Math.round(src.width * cos + src.height * sin));
   out.height = Math.max(1, Math.round(src.width * sin + src.height * cos));
   const ctx = out.getContext('2d');
-  // Corners WHITE — transparent chhodne par JPEG-export me black ho jate
-  // hain (JPEG me alpha nahi hota). White = kagaz ka rang, har jagah sahi.
+  // Corners are WHITE — left transparent, they turn black in the JPEG export
+  // (JPEG has no alpha). White = the paper colour, correct everywhere.
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, out.width, out.height);
   ctx.translate(out.width / 2, out.height / 2);
@@ -2948,9 +2947,9 @@ function renderWorking(item) {
 }
 
 // ═══ ROTATION CORE ═══
-// Absolute set — image ka on-screen SCALE preserve hota hai (box bounding
-// ke hisaab se badhta/ghata hai, image ka size nahi badalta). Center fixed,
-// page ke andar clamp. 0° par wapas aao to original size wapas.
+// Absolute set — the image's on-screen SCALE is preserved (the bounding box
+// grows/shrinks, the image size does not change). The center stays fixed,
+// clamped inside the page. Going back to 0° restores the original size.
 function setItemRotation(item, deg) {
   deg = ((deg % 360) + 360) % 360;
   const prevScale = item.w / item.workingCanvas.width;   // display px / canvas px
@@ -2961,7 +2960,7 @@ function setItemRotation(item, deg) {
 
   item.w = item.workingCanvas.width  * prevScale;
   item.h = item.workingCanvas.height * prevScale;
-  // Page se bahar na jaye — pehle shrink, phir clamp
+  // Keep it inside the page — shrink first, then clamp
   const sc = Math.min(1, (A4_DISPLAY_W * 0.98) / item.w, (A4_DISPLAY_H * 0.98) / item.h);
   item.w *= sc; item.h *= sc;
   item.x = Math.max(0, Math.min(cx - item.w / 2, A4_DISPLAY_W - item.w));
@@ -2971,12 +2970,12 @@ function setItemRotation(item, deg) {
   _syncRotUI(item);
 }
 
-// Quick buttons — current rotation me jodo
+// Quick buttons — add to the current rotation
 function nudgeRotation(delta) {
   const item = getActiveItem();
-  if (!item) { toast('⚠️ Pehle koi document select karo'); return; }
+  if (!item) { toast('⚠️ Please select a document first'); return; }
   setItemRotation(item, (item.rotation || 0) + delta);
-  toast(item.rotation === 0 ? '↺ Seedha ho gaya' : `🔄 ${_rotDisplay(item.rotation)}°`);
+  toast(item.rotation === 0 ? '↺ Straightened' : `🔄 ${_rotDisplay(item.rotation)}°`);
 }
 
 // Free slider — rAF throttle (har pixel-move par heavy render na chale)
@@ -2998,11 +2997,11 @@ function resetRotation() {
   const item = getActiveItem();
   if (!item) return;
   setItemRotation(item, 0);
-  toast('↺ Seedha ho gaya');
+  toast('↺ Straightened');
 }
 
-// -180..180 display form (170° dikhane se -10° zyada samajh aata hai... nahi,
-// slider -180..180 hai to wahi form use karo)
+// -180..180 display form (showing -10° is clearer than 170°; the slider
+// runs -180..180, so use the same form)
 function _rotDisplay(r) { r = ((r % 360) + 360) % 360; return r > 180 ? r - 360 : r; }
 function _syncRotUI(item) {
   const sl = document.getElementById('rotSlider');
@@ -3013,10 +3012,10 @@ function _syncRotUI(item) {
 
 function toolToggleRotate() {
   const item = getActiveItem();
-  if (!item) { toast('⚠️ Pehle koi document select karo'); return; }
+  if (!item) { toast('⚠️ Please select a document first'); return; }
   const panel = document.getElementById('rotatePanel');
   const btn = document.getElementById('rotateBtn');
-  // adjust panel band karo — ek waqt me ek hi panel
+  // close the adjust panel — only one panel at a time
   document.getElementById('adjustPanel').classList.add('hidden');
   document.getElementById('adjustBtn').classList.remove('active');
   panel.classList.toggle('hidden');
@@ -3032,24 +3031,24 @@ function resetAdjustments() {
   document.getElementById('adjBrightnessVal').textContent = 0;
   document.getElementById('adjContrastVal').textContent = 0;
   item.brightness = 0; item.contrast = 0;
-  renderWorking(item);   // rotation preserve — sirf b/c hata
+  renderWorking(item);   // keep the rotation — only b/c removed
   renderCanvasItems();
   toast('↺ Brightness/Contrast reset');
 }
 
 // ══════════════════════════════════════════════════
 // TOOL: Perspective Crop (Photoshop-style, 4-point)
-// Hamesha originalCanvas se crop hota hai — non-destructive.
-// Dobara kholne par pichle points wapas milte hain (cropPoints).
+// Always crops from originalCanvas — non-destructive.
+// Reopening restores the previous points (cropPoints).
 // ══════════════════════════════════════════════════
-const CROP_MAX_SRC = 2400;   // isse bade photos warp se pehle downscale — warna low-end phone freeze
+const CROP_MAX_SRC = 2400;   // photos larger than this are downscaled before the warp — otherwise low-end phones freeze
 const CROP_HANDLE_R = 13, CROP_HIT_R = 34, CROP_LOUPE_R = 52, CROP_LOUPE_ZOOM = 2.5;
 
 let crop = null; // active crop session state
 
 function toolPerspectiveCrop() {
   const item = getActiveItem();
-  if (!item) { toast('⚠️ Pehle koi document select karo'); return; }
+  if (!item) { toast('⚠️ Please select a document first'); return; }
 
   const orig = item.originalCanvas;
   let src = orig;
@@ -3080,16 +3079,16 @@ function toolPerspectiveCrop() {
   cropDraw();
 }
 
-// Crop tool ko editor ke `item` se aazad karo.
-// Smart Scanner ko wahi kone-ghasitne wali screen chahiye, par uske paas
-// koi editor item hota hi nahi — sirf ek canvas hota hai. Naya UI banane
-// ke bajaye yahi wala dobara use ho jaata hai: saara drag, loupe,
-// convex-check, warp — sab ek hi jagah, isliye ek jagah sudhar sabko milta.
+// Decouple the crop tool from the editor's `item`.
+// The Smart Scanner needs the same corner-dragging screen, but it has no
+// editor item at all — just a canvas. Instead of building a new UI,
+// this one is reused: all the drag, loupe, convex check and warp live in
+// one place, so every fix made there benefits everyone.
 //
-//   src      — jis canvas par crop karna hai
-//   initPts  — shuruaati 4 kone (image ke apne pixel me), null = 12% andar
-//   onApply  — warped canvas ke saath bulaya jaata hai
-//   onCancel — customer ne cancel dabaya
+//   src      — the canvas to crop
+//   initPts  — the initial 4 corners (in the image's own pixels), null = 12% inside
+//   onApply  — called with the warped canvas
+//   onCancel — the customer pressed cancel
 function openCropOn(src, initPts, onApply, onCancel) {
   const pts = (initPts && initPts.length === 4)
     ? initPts.map(p => ({ x: p.x, y: p.y }))
@@ -3121,9 +3120,9 @@ function cropLayout() {
   cv.style.width = vw + 'px'; cv.style.height = vh + 'px';
   cv.width = vw * crop.dpr; cv.height = vh * crop.dpr;
   crop.scale = scale;
-  // Fitted image ek baar offscreen render — har drag frame me sirf yeh
-  // cheap drawImage hota hai, poora source dobara scale nahi hota.
-  // Yahi smooth 60fps drag ka raaz hai.
+  // The fitted image is rendered offscreen once — each drag frame only does this
+  // cheap drawImage, the full source is never scaled again.
+  // That is the secret of the smooth 60fps drag.
   crop.bmp = document.createElement('canvas');
   crop.bmp.width = cv.width; crop.bmp.height = cv.height;
   crop.bmp.getContext('2d').drawImage(crop.src, 0, 0, cv.width, cv.height);
@@ -3145,7 +3144,7 @@ function cropDraw(loupeAt) {
   ctx.clearRect(0, 0, cv.width, cv.height);
   ctx.drawImage(crop.bmp, 0, 0);
 
-  // bahar ka area dark mask
+  // dark mask over the outside area
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, cv.width, cv.height);
@@ -3156,7 +3155,7 @@ function cropDraw(loupeAt) {
   ctx.fill('evenodd');
   ctx.restore();
 
-  // quad outline + grid line (Photoshop jaisa feel)
+  // quad outline + grid lines (a Photoshop-like feel)
   ctx.beginPath();
   ctx.moveTo(v[0].x, v[0].y);
   for (let i = 1; i < 4; i++) ctx.lineTo(v[i].x, v[i].y);
@@ -3176,9 +3175,9 @@ function cropDraw(loupeAt) {
     ctx.stroke();
   }
 
-  // loupe (magnifier) — dragging ke time corner ka zoomed view, warna
-  // finger ke neeche exact corner dikhta hi nahi ("cropping bilkul wahi
-  // point" requirement isi se solve hoti hai)
+  // loupe (magnifier) — a zoomed view of the corner while dragging, otherwise
+  // the exact corner under the finger cannot be seen (this is what solves the
+  // "crop exactly at that point" requirement)
   if (loupeAt && crop.dragIdx >= 0) {
     const p = crop.pts[crop.dragIdx];
     const r = CROP_LOUPE_R * crop.dpr;
@@ -3227,8 +3226,8 @@ document.getElementById('cropCanvas').addEventListener('pointermove', (e) => {
   if (!crop || crop.dragIdx < 0) return;
   e.preventDefault();
   crop.lastPointer = cropEventPos(e);
-  // rAF throttle — pointermove events frame-rate se zyada fire hote hain,
-  // bina throttle ke low-end phones par drag laggy ho jata hai
+  // rAF throttle — pointermove events fire faster than the frame rate;
+  // without throttling, dragging lags on low-end phones
   if (!crop.raf) {
     crop.raf = requestAnimationFrame(() => {
       if (!crop) return;
@@ -3261,10 +3260,10 @@ function cropCancel() {
   if (cb) { try { cb(); } catch (e) {} }
 }
 
-// Crop hatao — original photo full wapas
+// Remove the crop — the full original photo is back
 function cropFullPhoto() {
   if (!crop) return;
-  // Standalone: kone hata kar poori photo hi aage bhej do
+  // Standalone: drop the corners and pass the whole photo on
   if (!crop.item && crop.onApply) {
     const cb = crop.onApply, src = crop.src;
     cropClose();
@@ -3280,19 +3279,19 @@ function cropFullPhoto() {
   renderWorking(item);
   cropClose();
   renderCanvasItems();
-  toast('↺ Full photo wapas aa gaya');
+  toast('↺ Full photo restored');
 }
 
 function cropApply() {
   if (!crop) return;
   if (!isConvexQuad(crop.pts)) {
-    toast('⚠️ Points cross ho gaye hain — corners theek se set karo');
+    toast('⚠️ The points are crossing — set the corners properly');
     return;
   }
-  toast('⏳ Crop ho raha hai...');
+  toast('⏳ Cropping...');
   const { item, src, pts } = crop;
 
-  // Standalone (Smart Scanner): koi item nahi — warped canvas callback ko
+  // Standalone (Smart Scanner): no item — hand the warped canvas to the callback
   if (!item && crop.onApply) {
     const cb = crop.onApply;
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -3302,24 +3301,24 @@ function cropApply() {
     }));
     return;
   }
-  // do rAF — pehle toast paint ho jaye, phir heavy warp chale
+  // two rAFs — let the toast paint first, then run the heavy warp
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const warped = perspectiveWarp(src, pts);
     item.cropPoints = pts.map(p => ({ x: p.x / src.width, y: p.y / src.height }));
     item.sourceCanvas = warped;
-    renderWorking(item); // brightness/contrast + rotation crop ke upar dobara apply
-    // A4 par aspect ratio WORKING canvas se — rotation 90/270 par bhi sahi
+    renderWorking(item); // re-apply brightness/contrast + rotation on top of the crop
+    // The aspect ratio on A4 comes from the WORKING canvas — correct even at 90/270 rotation
     const ratio = item.workingCanvas.width / item.workingCanvas.height;
     item.h = item.w / ratio;
     if (item.h > A4_DISPLAY_H * 0.92) { item.h = A4_DISPLAY_H * 0.92; item.w = item.h * ratio; }
     cropClose();
     renderCanvasItems();
-    toast('✂️ Crop ho gaya!');
+    toast('✂️ Cropped!');
   }));
 }
 
-// Self-intersecting quad (points cross) par homography garbage output deti
-// hai — pehle hi rok do
+// A self-intersecting quad (crossed points) makes the homography output garbage
+// — stop it right away
 function isConvexQuad(p) {
   let sign = 0;
   for (let i = 0; i < 4; i++) {
@@ -3334,9 +3333,9 @@ function isConvexQuad(p) {
   return true;
 }
 
-// Homography solve: output-rect ke corners ko source quad par map karne
-// wala 3x3 matrix (8 unknowns, Gaussian elimination). Photoshop ka
-// perspective crop bhi yahi math use karta hai.
+// Homography solve: the 3x3 matrix that maps the output-rect corners onto the
+// source quad (8 unknowns, Gaussian elimination). Photoshop's
+// perspective crop uses the same math.
 function computeHomography(srcPts, dstPts) {
   const A = [], b = [];
   for (let i = 0; i < 4; i++) {
@@ -3359,18 +3358,18 @@ function computeHomography(srcPts, dstPts) {
   return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
 }
 
-// Inverse mapping + bilinear sampling: har output pixel ke liye source me
-// exact sub-pixel position nikaal ke smooth sample karta hai — isi se
-// "bilkul wahi point tak crop" milta hai, koi jagged edges nahi.
-// Chaar kone ko HAMESHA ek hi kram me lao: [upar-baayen, upar-daayen,
-// neeche-daayen, neeche-baayen].
+// Inverse mapping + bilinear sampling: for every output pixel, compute the exact
+// sub-pixel position in the source and sample it smoothly — this is what gives
+// "crop exactly up to that point", with no jagged edges.
+// ALWAYS bring the four corners in the same order: [top-left, top-right,
+// bottom-right, bottom-left].
 //
-// Warp pts[0] ko upar-baayen maanta hai. Par crop screen par customer
-// jis handle ko jahan kheenche, kram wahi ban jaata hai — agar usne
-// "upar-baayen" wala handle card ke neeche-daayen kone par rakha, to
-// output 180° ulta aata tha. Jagah se kram nikaalne par ye khatam.
-//   x+y sabse kam  → upar-baayen      x+y sabse zyada → neeche-daayen
-//   y-x sabse kam  → upar-daayen      y-x sabse zyada → neeche-baayen
+// The warp treats pts[0] as top-left. But on the crop screen the order is
+// wherever the customer drags each handle — if they put the "top-left"
+// handle on the card's bottom-right corner, the output came out rotated
+// 180°. Deriving the order from position ends that.
+//   smallest x+y  → top-left        largest x+y → bottom-right
+//   smallest y-x  → top-right       largest y-x → bottom-left
 function orderQuad(pts) {
   if (!pts || pts.length !== 4) return pts;
   const s = pts.map(p => p.x + p.y), d = pts.map(p => p.y - p.x);
@@ -3383,7 +3382,7 @@ function orderQuad(pts) {
   };
   const tl = idx(s, 'min'), br = idx(s, 'max');
   const tr = idx(d, 'min'), bl = idx(d, 'max');
-  // Chaaron alag na nikle (patla ya tirchha quad) to chhedo mat
+  // If the four do not come out distinct (a thin or skewed quad), leave them alone
   const set = {};
   [tl, tr, br, bl].forEach(i => { set[i] = 1; });
   if (Object.keys(set).length !== 4) return pts;
@@ -3443,39 +3442,39 @@ function perspectiveWarp(source, quad) {
 // NAVIGATION between steps
 // ═══════════════════════════════════════════════
 function backToUpload() {
-  if (!confirm('Wapas jaane se abhi tak ke saare pages hat jaayenge. Confirm karo?')) return;
+  if (!confirm('Going back will remove all pages so far. Are you sure?')) return;
   pages = [];
   activePageIdx = 0;
-  // ORIGINAL_PDF bhi saaf karna ZAROORI hai. Pehle sirf pages hatte the
-  // par ORIGINAL_PDF bacha reh jaata tha — phir customer Smart Scanner
-  // ya Mini Print se naye page banata, aur buildOutputFile() ka
-  // pdfUntouched() shortcut PURANI PDF ko hi shop ko bhej deta tha.
+  // Clearing ORIGINAL_PDF too is ESSENTIAL. Previously only the pages were removed
+  // but ORIGINAL_PDF stayed behind — then when the customer created new pages
+  // with the Smart Scanner or Mini Print, the pdfUntouched() shortcut in
+  // buildOutputFile() sent the OLD PDF to the shop.
   ORIGINAL_PDF = null;
   hide('secEditor');
   show('secUpload');
   setStep(1);
 }
 
-// Page ke andar saare items (front+back, etc.) ko ek SINGLE A4-size
-// canvas mein merge karte hain — yahi final print/preview image hai.
-// CRITICAL BUG fix: goToPreview() pehle secEditor ko "hide" karta hai
-// (display:none), USKE BAAD renderPreviewImage() -> renderMergedPageCanvas()
-// chalता hai. Hidden element ka clientWidth/clientHeight hamesha 0 hota
-// hai — jisse scaleX/scaleY Infinity/NaN ban jaate the, aur drawImage()
-// silently fail ho jaata, poori preview BLANK WHITE reh jaati thi (jaisa
-// screenshot mein dikha). Fix: A4_DISPLAY_W/H (fixed constants, top of
-// file) use karte hain, kabhi bhi clientWidth measure nahi karte yahan.
+// All items on a page (front+back, etc.) are merged into a SINGLE A4-size
+// canvas — this is the final print/preview image.
+// CRITICAL BUG fix: goToPreview() first "hides" secEditor
+// (display:none), and only AFTER THAT renderPreviewImage() -> renderMergedPageCanvas()
+// runs. A hidden element's clientWidth/clientHeight is always 0 —
+// which turned scaleX/scaleY into Infinity/NaN, drawImage() failed
+// silently, and the whole preview stayed BLANK WHITE (as seen in the
+// screenshot). Fix: use A4_DISPLAY_W/H (fixed constants at the top of the
+// file) and never measure clientWidth here.
 function renderMergedPageCanvas(page) {
-  // Output px selected paper se. DPI size ke hisaab se — bade paper par
-  // DPI ghatate hain warna A1 ka canvas (~125MB) phone crash kar dega.
+  // Output px from the selected paper. DPI depends on size — on large paper the
+  // DPI is reduced, otherwise an A1 canvas (~125MB) would crash the phone.
   const { wmm, hmm } = currentPaper();
   const area = wmm * hmm;
-  // 300 DPI normal papers ke liye (4x6/A5/A4/Letter/Legal — Legal bhi
-  // normal desktop printer ka kagaz hai isliye included). Bade sizes
-  // (A3/A2/A1) wahi purane tiers — warna canvas memory phone crash karegi.
-  // Photo (4x6) me detail chahiye — 300 DPI. Document me 200 DPI bilkul
-  // kaafi hai aur file ~55% chhoti ho jaati hai (300 DPI par 15-page PDF
-  // 14 MB ka ban jata tha, jo Cloudinary reject kar deta hai).
+  // 300 DPI for normal papers (4x6/A5/A4/Letter/Legal — Legal is also
+  // normal desktop printer paper, so it is included). Large sizes
+  // (A3/A2/A1) keep the old tiers — otherwise canvas memory crashes the phone.
+  // Photos (4x6) need detail — 300 DPI. For documents 200 DPI is plenty
+  // and the file gets ~55% smaller (at 300 DPI a 15-page PDF became
+  // 14 MB, which Cloudinary rejects).
   const isPhoto = (state.service === 'photo4x6');
   const docDpi = isPhoto ? 300 : 200;
   const dpi = area <= 216*356*1.02 ? docDpi : (area <= 297*420*1.05 ? 150 : (area <= 420*594*1.05 ? 120 : 96));
@@ -3484,7 +3483,7 @@ function renderMergedPageCanvas(page) {
   out.width = A4_W; out.height = A4_H;
   const ctx = out.getContext('2d');
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';   // camera photos ke downscale crisp rahen
+  ctx.imageSmoothingQuality = 'high';   // keep downscaled camera photos crisp
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, A4_W, A4_H);
 
@@ -3500,7 +3499,7 @@ function renderMergedPageCanvas(page) {
 }
 
 async function goToPreview() {
-  if (!pages.length) { toast('⚠️ Koi document upload karo pehle'); return; }
+  if (!pages.length) { toast('⚠️ Please upload a document first'); return; }
   hide('secEditor');
   show('secPreviewStep');
   setStep(3);
@@ -3518,7 +3517,7 @@ async function goToPreview() {
     state.selectedPages = [1];
   }
   renderPreviewImage();
-  toast('⏳ Upload ho raha hai...');
+  toast('⏳ Uploading...');
   await uploadAllPages();
 }
 
@@ -3584,13 +3583,13 @@ function updateRangeFromInput() {
 // ═══════════════════════════════════════════════
 // UPLOAD — merge all pages into ONE file and send to server
 // ═══════════════════════════════════════════════
-// ═══ DO RASTE: "Sab theek hai" ya "Edit karna hai" ═══
+// ═══ TWO PATHS: "Everything is fine" or "I want to edit" ═══
 function showChoiceScreen() {
   try {
     const n = pages.length;
     document.getElementById('choiceSub').textContent =
-      n + (n === 1 ? ' page' : ' pages') + ' — ek nazar dekh lo';
-    // Pehle page ka preview
+      n + (n === 1 ? ' page' : ' pages') + ' — take a look';
+    // Preview of the first page
     const src = renderMergedPageCanvas(pages[0]);
     const out = document.getElementById('choiceCanvas');
     const maxW = 520;
@@ -3610,7 +3609,7 @@ function showChoiceScreen() {
 
 function chooseAllGood() {
   hide('secChoice');
-  goToPreview();          // editor bilkul skip — original file bachi rahegi
+  goToPreview();          // skip the editor entirely — the original file is kept
 }
 
 function chooseEdit() {
@@ -3620,21 +3619,21 @@ function chooseEdit() {
   try { renderEditor(); } catch (e) {}
 }
 
-// Kya customer ne PDF me kuch badla? Data se hi pata chal jaata hai —
-// har edit ka alag hook lagane ki zaroorat nahi (koi chhoot jaata to bug banta).
+// Did the customer change anything in the PDF? The data itself tells us —
+// no need for a separate hook for every edit (missing one would cause a bug).
 function pdfUntouched() {
   if (!ORIGINAL_PDF || !ORIGINAL_PDF.file) return false;
   if (ORIGINAL_PDF.encrypted) return false;   // locked PDF — original bytes
-                                              // ab bhi encrypted hain, print
-                                              // agent unhe khol nahi paayega
+                                              // are still encrypted, so the print
+                                              // agent could not open them
   if (!pages.length) return false;
-  if (ORIGINAL_PDF.pages && pages.length !== ORIGINAL_PDF.pages) return false;   // page add/delete hua
-  if (state.paperSize && state.paperSize !== 'a4') return false;                 // A3 waghairah chuna
+  if (ORIGINAL_PDF.pages && pages.length !== ORIGINAL_PDF.pages) return false;   // a page was added/deleted
+  if (state.paperSize && state.paperSize !== 'a4') return false;                 // A3 or similar chosen
   if (state.orientation && state.orientation !== 'portrait') return false;
   if (state.service && state.service !== 'doc') return false;                    // resume/photo tool
   const near = (a, b) => Math.abs((a || 0) - (b || 0)) < 0.5;
   return pages.every(p => {
-    if (!p.items || p.items.length !== 1) return false;                          // doosra document joda
+    if (!p.items || p.items.length !== 1) return false;                          // another document was added
     const it = p.items[0];
     return it.brightness === 0 && it.contrast === 0 && it.rotation === 0 &&
            !it.cropPoints &&
@@ -3644,19 +3643,19 @@ function pdfUntouched() {
 }
 
 async function buildOutputFile() {
-  // Kuch nahi badla to original PDF hi bhejo — chhoti file, saaf text,
-  // aur upload bhi turant ho jaata hai.
+  // If nothing changed, send the original PDF — a small file, crisp text,
+  // and the upload finishes instantly too.
   if (pdfUntouched()) {
     const f = ORIGINAL_PDF.file;
-    console.log('Original PDF bheja ja raha hai (' + Math.round(f.size / 1024) + ' KB) — dobara banane ki zaroorat nahi');
+    console.log('Sending the original PDF (' + Math.round(f.size / 1024) + ' KB) — no need to rebuild');
     return { blob: f, fileName: f.name || 'document.pdf', isOriginal: true };
   }
 
-  // HAMESHA PDF — single page bhi. Pehle 1-page par JPG jata tha, par
-  // JPG me physical size nahi hoti — 4x6 job printer par A4 me stretch
-  // ho jata tha. PDF ke page-pt me asli size embedded rehti hai.
+  // ALWAYS a PDF — even for a single page. A 1-page job used to go as a JPG,
+  // but a JPG has no physical size — a 4x6 job stretched to A4 on the
+  // printer. A PDF's page points embed the real size.
   const { jsPDF } = window.jspdf;
-  // PDF page selected paper size + orientation me — print isi par niklega
+  // The PDF page uses the selected paper size + orientation — the print comes out on it
   const { wmm, hmm } = currentPaper();
   const wpt = wmm * 72 / 25.4, hpt = hmm * 72 / 25.4;
   const pdf = new jsPDF({
@@ -3667,7 +3666,7 @@ async function buildOutputFile() {
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
 
-  // Har page ka canvas ek baar banao — dobara banana mehnga hai
+  // Build each page's canvas once — rebuilding is expensive
   const canvases = pages.map(p => renderMergedPageCanvas(p));
 
   const makePdf = (quality) => {
@@ -3682,24 +3681,24 @@ async function buildOutputFile() {
     return doc.output('blob');
   };
 
-  // PASSPORT PHOTO ko sabse achhi quality chahiye — chehre ki detail
-  // compress hote hi kharab dikhti hai. Photo sheet waise bhi chhoti hoti
-  // hai (1-2 MB), isliye size ki fikr nahi.
-  // Document me 0.85 theek hai — text saaf rehta hai aur file chhoti.
+  // A PASSPORT PHOTO needs the best quality — facial detail looks bad as
+  // soon as it is compressed. A photo sheet is small anyway
+  // (1-2 MB), so size is not a concern.
+  // For documents 0.85 is fine — the text stays crisp and the file small.
   const isPhotoJob = (state.service === 'photo4x6');
   const baseQ = isPhotoJob ? 0.96 : 0.85;
 
   let blob = makePdf(baseQ);
 
-  // Safety net: file bahut badi ho to quality ghata kar chhoti karo.
-  // Photo par ye chalta hi nahi (wo kabhi itni badi hoti hi nahi), aur
-  // agar kabhi laga bhi to 0.85 se neeche nahi jaayega — warna passport
-  // photo dhundhli ho jaayegi.
-  const LIMIT = 9 * 1024 * 1024;         // Cloudinary free ka raw limit 10 MB
+  // Safety net: if the file is very large, lower the quality to shrink it.
+  // This never triggers for photos (they are never that large), and even
+  // if it ever did, it will not go below 0.85 — otherwise the passport
+  // photo would turn blurry.
+  const LIMIT = 9 * 1024 * 1024;         // Cloudinary free plan raw limit: 10 MB
   const steps = isPhotoJob ? [0.90, 0.85] : [0.7, 0.55, 0.42];
   for (const q of steps) {
     if (blob.size <= LIMIT) break;
-    console.warn('File badi hai (' + Math.round(blob.size/1048576) + ' MB) — quality ' + q + ' par dobara bana rahe hain');
+    console.warn('File is large (' + Math.round(blob.size/1048576) + ' MB) — rebuilding at quality ' + q);
     blob = makePdf(q);
   }
   console.log('Final file: ' + Math.round(blob.size/1024) + ' KB'
@@ -3707,9 +3706,9 @@ async function buildOutputFile() {
   return { blob, fileName: isPhotoJob ? 'photo.pdf' : 'document.pdf' };
 }
 
-// File ab SEEDHA Cloudinary jaati hai — server se hoke nahi.
-// Isse server ka bandwidth bachta hai aur upload tez bhi hota hai.
-// Direct upload kisi wajah se fail ho to purana tarika apne aap chal jata hai.
+// The file now goes STRAIGHT to Cloudinary — not through the server.
+// This saves server bandwidth and makes the upload faster too.
+// If the direct upload fails for any reason, the old method runs automatically.
 // ═══ UPLOAD PROGRESS ═══
 function upProgShow(on) {
   const w = document.getElementById('upProgWrap');
@@ -3720,8 +3719,8 @@ function upProgShow(on) {
     const l = document.getElementById('upProgLabel');
     const h = document.getElementById('upProgHint');
     const p = document.getElementById('upProgPct');
-    if (l) { l.textContent = '📤 File Upload Ho Rahi Hai…'; l.classList.remove('up-done'); }
-    if (h) h.textContent = 'Ruko, band mat karo';
+    if (l) { l.textContent = '📤 Uploading File…'; l.classList.remove('up-done'); }
+    if (h) h.textContent = 'Please wait, don\'t close';
     if (p) p.style.color = '#b51c26';
     const b = document.getElementById('upProgBar');
     if (b) b.style.background = 'linear-gradient(90deg,#b51c26,#c81e28)';
@@ -3737,11 +3736,11 @@ function upProgSet(pct) {
   if (p) p.textContent = pct + '%';
 }
 /**
- * Upload 100% hone par chhoti si "ho gaya" beep.
- * Koi audio file download nahi karte — WebAudio se do sur bajate hain,
- * isliye na koi extra file, na koi bandwidth.
- * Phone silent ho ya browser sound block kare to chupchaap skip ho jaata
- * hai — upload par koi asar nahi.
+ * A short "done" beep when the upload reaches 100%.
+ * No audio file is downloaded — WebAudio plays two notes,
+ * so there is no extra file and no bandwidth.
+ * If the phone is silent or the browser blocks sound, it is skipped
+ * silently — the upload is not affected.
  */
 function playUploadDoneSound(){
   try{
@@ -3750,7 +3749,7 @@ function playUploadDoneSound(){
     const ac = new AC();
     if(ac.state === 'suspended' && ac.resume) ac.resume();
     const now = ac.currentTime;
-    // Do chadhte sur — "ting-ting" jaisa
+    // Two rising notes — like "ting-ting"
     [[880, 0], [1318.5, 0.11]].forEach(function(n){
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = 'sine';
@@ -3762,7 +3761,7 @@ function playUploadDoneSound(){
       o.start(now + n[1]); o.stop(now + n[1] + 0.22);
     });
     setTimeout(function(){ try{ ac.close(); }catch(e){} }, 900);
-  }catch(e){ /* sound na baje to bhi upload theek hai */ }
+  }catch(e){ /* the upload is fine even if the sound does not play */ }
 }
 
 function upProgDone() {
@@ -3776,9 +3775,9 @@ function upProgDone() {
   if (s) s.style.display = 'none';
   if (b) b.style.background = 'linear-gradient(90deg,#16a34a,#5eead4)';
   if (p) p.style.color = '#16a34a';
-  if (l) { l.textContent = '✅ File Upload Ho Gayi'; l.classList.add('up-done'); }
-  if (h) h.textContent = 'Ab aage badh sakte ho';
-  // Thodi der baad chhupa do — screen saaf rahe
+  if (l) { l.textContent = '✅ File Uploaded'; l.classList.add('up-done'); }
+  if (h) h.textContent = 'You can continue now';
+  // Hide it after a moment — keep the screen clean
   setTimeout(function(){ upProgShow(false); }, 3500);
 }
 function upProgFail(msg) {
@@ -3788,12 +3787,12 @@ function upProgFail(msg) {
   const s = document.getElementById('upProgShine');
   if (s) s.style.display = 'none';
   if (b) b.style.background = '#e11d48';
-  if (l) l.textContent = '❌ Upload Fail Hua';
-  if (h) h.textContent = msg || 'Dobara koshish karo';
+  if (l) l.textContent = '❌ Upload Failed';
+  if (h) h.textContent = msg || 'Please try again';
 }
 
-// Cloudinary ko XHR se bhejte hain — fetch me upload ka progress
-// nahi milta, aur bina progress ke customer ko lagta hai ki app atak gayi.
+// The file is sent to Cloudinary with XHR — fetch gives no upload progress,
+// and without progress the customer thinks the app is stuck.
 function xhrUpload(url, formData, onProgress) {
   return new Promise(function (resolve, reject) {
     const xhr = new XMLHttpRequest();
@@ -3805,20 +3804,20 @@ function xhrUpload(url, formData, onProgress) {
       let j = null;
       try { j = JSON.parse(xhr.responseText); } catch (err) {}
       if (xhr.status >= 200 && xhr.status < 300) resolve(j || {});
-      else reject(new Error((j && j.error && j.error.message) || ('Upload fail (' + xhr.status + ')')));
+      else reject(new Error((j && j.error && j.error.message) || ('Upload failed (' + xhr.status + ')')));
     };
     xhr.onerror = function () { reject(new Error('Network problem')); };
-    xhr.ontimeout = function () { reject(new Error('Bahut der lag gayi')); };
+    xhr.ontimeout = function () { reject(new Error('The upload timed out')); };
     xhr.timeout = 180000;
     xhr.send(formData);
   });
 }
 
 // ═══════════════════════════════════════════════
-// UPLOAD LIMITS (server ke saath match karte hain)
-// Yahan block karne ka fayda: file Cloudinary tak jaati hi nahi, customer
-// ka data aur waqt dono bachte hain. Server par bhi yahi checks lage hain —
-// yeh sirf convenience hai, security nahi.
+// UPLOAD LIMITS (they match the server)
+// Blocking here means the file never even reaches Cloudinary, saving the
+// customer's data and time. The server applies the same checks —
+// this is only a convenience, not security.
 // ═══════════════════════════════════════════════
 const MAX_UPLOAD_MB = 20;
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
@@ -3826,21 +3825,21 @@ const MAX_PDF_PAGES = 20;
 
 function fmtMB(bytes) { return (bytes / 1048576).toFixed(1) + ' MB'; }
 
-/** SHA-256 hash — server isse pehchanta hai ki wahi file baar-baar to nahi aa rahi. */
+/** SHA-256 hash — lets the server recognise the same file being sent again and again. */
 async function fileHashHex(blob) {
   try {
-    if (!(window.crypto && crypto.subtle)) return null;   // http:// par nahi milta
+    if (!(window.crypto && crypto.subtle)) return null;   // not available on http://
     const buf = await blob.arrayBuffer();
     const digest = await crypto.subtle.digest('SHA-256', buf);
     return Array.from(new Uint8Array(digest))
       .map(b => b.toString(16).padStart(2, '0')).join('');
   } catch (e) {
     console.warn('[hash] skipped:', e.message);
-    return null;    // hash na bane to upload rukna nahi chahiye
+    return null;    // if the hash cannot be built, the upload must not stop
   }
 }
 
-/** Upload se PEHLE size + page check. Fail hone par saaf message throw karta hai. */
+/** Size + page check BEFORE the upload. Throws a clear message on failure. */
 function preflightUploadCheck(blob, pageCount) {
   if (blob && blob.size > MAX_UPLOAD_BYTES) {
     throw new Error(`File too large (${fmtMB(blob.size)}). Maximum ${MAX_UPLOAD_MB} MB is allowed.`);
@@ -3852,13 +3851,13 @@ function preflightUploadCheck(blob, pageCount) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// MINI PRINT — ek A4 sheet par kai pages
+// MINI PRINT — several pages on one A4 sheet
 //
-// 18-page PDF + 4 per sheet = 5 sheet. Customer 5 sheet ka hi paisa
-// deta hai (18 ka nahi) — usko bachat, shop ka kagaz aur ink bachta hai.
+// 18-page PDF + 4 per sheet = 5 sheets. The customer pays for 5 sheets only
+// (not 18) — the customer saves money, and the shop saves paper and ink.
 //
-// Yahan koi editing tool nahi: sirf pages-per-sheet aur border.
-// Har badlav par preview turant dobara banta hai.
+// No editing tools here: only pages-per-sheet and border.
+// The preview is rebuilt instantly on every change.
 // ══════════════════════════════════════════════════════════════
 const MINI_LAYOUTS = {
   2:  { c:1, r:2 },  4:  { c:2, r:2 },  6:  { c:2, r:3 },
@@ -3868,16 +3867,16 @@ const MINI_CHOICES = [2,4,6,8,9,12,16];
 
 const mini = {
   active: false,
-  per: 4,            // ek sheet par kitne pages
+  per: 4,            // how many pages on one sheet
   border: true,      // default ON (spec)
-  sheets: [],        // bane hue A4 canvases
+  sheets: [],        // the A4 canvases already built
   building: false,
-  again: false       // build ke beech me user ne option badla
+  again: false       // the user changed the option in the middle of a build
 };
 
 function startMiniFlow(){
-  // Mini Print par click karte hi SEEDHA file picker khulta hai.
-  // Pehle "pehle file upload karo" bolta tha — wo ulta tha.
+  // Clicking Mini Print opens the file picker DIRECTLY.
+  // It used to say "upload a file first" — that was backwards.
   mini.active = true;
   mini.per = 4;
   mini.border = true;
@@ -3901,30 +3900,30 @@ async function onMiniFilesChosen(e){
   const files = Array.from(e.target.files || []);
   if(!files.length){ mini.active = false; return; }
 
-  // Wahi upload/parse rasta jo normal flow use karta hai — saari
-  // limits (20MB, 20 page, duplicate) apne aap lagti hain.
+  // The same upload/parse path as the normal flow — all the
+  // limits (20MB, 20 pages, duplicate) apply automatically.
   hide('secUpload'); hide('secChoice'); hide('secEditor'); hide('secPreviewStep');
   show('secMini');
   setStep(2);
   const box = document.getElementById('miniPreview');
-  if(box) box.innerHTML = '<div class="mini-loading">File padhi ja rahi hai…</div>';
+  if(box) box.innerHTML = '<div class="mini-loading">Reading file…</div>';
   window.scrollTo({top:0, behavior:'smooth'});
 
   try{
     pages.length = 0;
     activePageIdx = 0;
     for(const f of files){
-      // Limits pehle — 20MB / 20 page wali jaanch normal flow jaisi
+      // Limits first — the same 20MB / 20-page check as the normal flow
       preflightUploadCheck(f, 0);
       const ext = (f.name.split('.').pop() || '').toLowerCase();
       if(ext === 'pdf'){
-        await loadPdfAsPages(f);         // wahi function jo normal flow use karta hai
+        await loadPdfAsPages(f);         // the same function the normal flow uses
       }else{
         addPage([await fileToCanvas(f)], true);
       }
     }
     if(!pages.length){
-      toast('File padhi nahi ja saki', 'err');
+      toast('Could not read the file', 'err');
       miniBack();
       return;
     }
@@ -3934,7 +3933,7 @@ async function onMiniFilesChosen(e){
     buildMiniPreview();
   }catch(err){
     console.error('[mini] file load failed', err);
-    toast((err && err.message) || 'File load nahi hui', 'err');
+    toast((err && err.message) || 'File did not load', 'err');
     miniBack();
   }
 }
@@ -3966,7 +3965,7 @@ function miniSheetCount(){
   return Math.ceil(pages.length / mini.per);
 }
 
-/** Ek A4 sheet banao: startIdx se shuru karke mini.per pages tak. */
+/** Build one A4 sheet: starting at startIdx, up to mini.per pages. */
 function buildMiniSheet(startIdx, dpi){
   const L = MINI_LAYOUTS[mini.per];
   const A4_W = Math.round(210 / 25.4 * dpi);
@@ -3977,7 +3976,7 @@ function buildMiniSheet(startIdx, dpi){
   const ctx = sheet.getContext('2d');
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, A4_W, A4_H);
 
-  // Sheet ka bahari margin + cells ke beech ka gap (screenshot jaisa patla)
+  // The sheet's outer margin + the gap between cells (thin, like the screenshot)
   const margin = Math.round(A4_W * 0.030);
   const gap    = Math.round(A4_W * 0.014);
   const cellW  = (A4_W - margin*2 - gap*(L.c-1)) / L.c;
@@ -3990,7 +3989,7 @@ function buildMiniSheet(startIdx, dpi){
     const cx = margin + col * (cellW + gap);
     const cy = margin + row * (cellH + gap);
 
-    // Us page ka poora A4 canvas banao, phir cell me fit karo
+    // Build that page's full A4 canvas, then fit it into the cell
     const src = composePageCanvas(pages[srcIdx], Math.max(110, Math.round(dpi/2.2)));
     if(!src) continue;
 
@@ -4000,7 +3999,7 @@ function buildMiniSheet(startIdx, dpi){
     ctx.drawImage(src, x, y, w, h);
 
     if(mini.border){
-      // Screenshot jaisa: har chhote page ke chaaro taraf patli kaali line
+      // Like the screenshot: a thin black line around each small page
       ctx.strokeStyle = '#000';
       ctx.lineWidth = Math.max(1, Math.round(A4_W * 0.0013));
       ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
@@ -4009,7 +4008,7 @@ function buildMiniSheet(startIdx, dpi){
   return sheet;
 }
 
-/** Ek page ke saare items ko ek A4 canvas par rakho (editor jaisa hi). */
+/** Put all items of one page onto an A4 canvas (same as the editor). */
 function composePageCanvas(page, dpi){
   try{
     const A4_W = Math.round(210 / 25.4 * dpi);
@@ -4017,19 +4016,19 @@ function composePageCanvas(page, dpi){
     const c = document.createElement('canvas');
     c.width = A4_W; c.height = A4_H;
     const x = c.getContext('2d');
-    // Chhoti cell me downscale hota hai — smoothing ke bina text dhundhla
-    // dikhta hai. Wahi setting jo asli print (buildPageCanvas) use karta hai.
+    // It is downscaled into a small cell — without smoothing the text looks
+    // blurry. The same setting the real print (buildPageCanvas) uses.
     x.imageSmoothingEnabled = true;
     x.imageSmoothingQuality = 'high';
     x.fillStyle = '#fff'; x.fillRect(0, 0, A4_W, A4_H);
     const sx = A4_W / A4_DISPLAY_W, sy = A4_H / A4_DISPLAY_H;
     (page.items || []).forEach(function(it){
-      // Item par 'canvas' naam ki property hoti hi nahi. Shape hai:
+      // An item has no property called 'canvas'. The shape is:
       // originalCanvas -> sourceCanvas (crop) -> workingCanvas (bright/contrast).
-      // Pehle yahan it.canvas check tha, jo hamesha undefined hota tha —
-      // isliye HAR item skip ho jaata tha aur mini print ka preview khali
-      // safed dabbon jaisa dikhta tha. Wahi canvas lete hain jo asli print
-      // leta hai, aur peeche fallback bhi rakha hai.
+      // This used to check it.canvas, which was always undefined —
+      // so EVERY item was skipped and the mini print preview looked like
+      // empty white boxes. Now it takes the same canvas the real print takes,
+      // with a fallback behind it.
       const cv = it.workingCanvas || it.sourceCanvas || it.originalCanvas;
       if(!cv) return;
       x.drawImage(cv, it.x * sx, it.y * sy, it.w * sx, it.h * sy);
@@ -4042,19 +4041,19 @@ function composePageCanvas(page, dpi){
 }
 
 async function buildMiniPreview(){
-  // Build ke beech me option badla to dobara chala do
+  // If the option changed during the build, run it again
   if(mini.building){ mini.again = true; return; }
   mini.building = true;
 
   const box = document.getElementById('miniPreview');
   const btn = document.getElementById('miniNextBtn');
   if(btn) btn.disabled = true;
-  if(box) box.innerHTML = '<div class="mini-loading">Preview ban raha hai…</div>';
+  if(box) box.innerHTML = '<div class="mini-loading">Building preview…</div>';
 
   try{
     const total = miniSheetCount();
-    // Preview ke liye sirf PEHLI sheet — halka aur turant
-    await new Promise(function(r){ setTimeout(r, 20); });   // UI ko saans lene do
+    // Only the FIRST sheet for the preview — light and instant
+    await new Promise(function(r){ setTimeout(r, 20); });   // let the UI breathe
     const first = buildMiniSheet(0, 150);
 
     if(box){
@@ -4067,13 +4066,13 @@ async function buildMiniPreview(){
 
     const sum = document.getElementById('miniSummary');
     if(sum){
-      // Rate wahi jo abhi chuna hua hai — 5 sheet × ₹5 = ₹25 (B&W),
-      // 5 sheet × ₹10 = ₹50 (color). Sheet ke hisaab se, original page ke nahi.
+      // The rate is the currently selected one — 5 sheets × ₹5 = ₹25 (B&W),
+      // 5 sheets × ₹10 = ₹50 (color). Per sheet, not per original page.
       //
-      // Page-range rate bhi KAGAZ ki ginti par lagta hai (sheet x copies) -
-      // job aage sheet ban kar hi jaata hai, aur server bhi wahi ginti leta hai.
-      // Yahan getPerPageRate() nahi bula sakte: is waqt `pages` me abhi
-      // purane page hain, sheet nahi.
+      // The page-range rate also applies to the number of SHEETS (sheets x copies) -
+      // the job travels on as sheets, and the server uses the same count.
+      // getPerPageRate() cannot be called here: at this point `pages` still holds
+      // the old pages, not the sheets.
       const baseRate = (state.colorMode === 'color') ? state.priceColor : state.priceBW;
       const miniSheets = total * (parseInt(state.copies, 10) || 1);
       const miniSlab = slabPriceFor(state.pageSlabs,
@@ -4084,14 +4083,14 @@ async function buildMiniPreview(){
       sum.innerHTML =
           pages.length + ' pages → <b>' + total + ' sheet' + (total>1?'s':'') + '</b>'
         + ' (' + mini.per + ' per sheet)<br>'
-        + 'Aap sirf <b>' + total + ' sheet</b> ka paisa denge'
-        + (price ? ' — abhi ke rate se <b>₹' + Math.round(price) + '</b>' : '')
-        + '<br><span style="font-size:11.5px;color:var(--muted)">Bachat: '
-        + (pages.length - total) + ' sheet kam</span>';
+        + 'You pay only for <b>' + total + ' sheet' + (total>1?'s':'') + '</b>'
+        + (price ? ' — at the current rate <b>₹' + Math.round(price) + '</b>' : '')
+        + '<br><span style="font-size:11.5px;color:var(--muted)">That is '
+        + (pages.length - total) + ' sheets less than printing one page per sheet</span>';
     }
   }catch(e){
     console.error('[mini] preview failed', e);
-    if(box) box.innerHTML = '<div class="mini-loading">Preview nahi ban paya — dobara try karo</div>';
+    if(box) box.innerHTML = '<div class="mini-loading">Could not build the preview — please try again</div>';
   }finally{
     mini.building = false;
     if(btn) btn.disabled = false;
@@ -4099,21 +4098,21 @@ async function buildMiniPreview(){
   }
 }
 
-/** Confirm: saari sheets bana kar unhe hi asli pages bana do. */
+/** Confirm: build all the sheets and make them the real pages. */
 async function miniConfirm(){
   const btn = document.getElementById('miniNextBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ Sheets ban rahi hain…'; }
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Preparing sheets…'; }
   try{
     const total = miniSheetCount();
     const built = [];
     for(let i = 0; i < total; i++){
       built.push(buildMiniSheet(i * mini.per, 220));
       if(btn) btn.textContent = '⏳ Sheet ' + (i+1) + '/' + total + '…';
-      await new Promise(function(r){ setTimeout(r, 10); });   // UI freeze na ho
+      await new Promise(function(r){ setTimeout(r, 10); });   // so the UI does not freeze
     }
 
-    // Purane pages hata kar nayi mini sheets daal do — aage ka flow
-    // (preview → page range → payment) bilkul waisa hi chalega.
+    // Remove the old pages and insert the new mini sheets — the rest of the flow
+    // (preview → page range → payment) runs exactly the same.
     pages.length = 0;
     activePageIdx = 0;
     built.forEach(function(c){ addPage([c], true); });
@@ -4124,28 +4123,28 @@ async function miniConfirm(){
     goToPreview();
   }catch(e){
     console.error('[mini] build failed', e);
-    toast('Sheets nahi ban payin — dobara try karo', 'err');
+    toast('Could not build the sheets — please try again', 'err');
   }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Aage Bado →'; }
+    if(btn){ btn.disabled = false; btn.textContent = 'Continue →'; }
   }
 }
 
 function miniBack(){
   mini.active = false;
-  ORIGINAL_PDF = null;      // upar backToUpload wali hi wajah
+  ORIGINAL_PDF = null;      // same reason as backToUpload above
   hide('secMini');
   show('secUpload');
   setStep(1);
 }
 
 async function uploadDirect(blob, fileName) {
-  // 0) Cloudinary ko chhoone se pehle local check — reject hua to
-  //    ek byte bhi upload nahi hoti.
+  // 0) A local check before touching Cloudinary — if rejected,
+  //    not a single byte is uploaded.
   preflightUploadCheck(blob, pages.length);
   const fileHash = await fileHashHex(blob);
 
-  // 1) Server se signature lo (chhota request). Server yahi metadata dobara
-  //    check karta hai — limit toot gayi to signature milta hi nahi.
+  // 1) Get a signature from the server (a small request). The server checks the
+  //    same metadata again — if a limit is exceeded, no signature is issued.
   const sr = await fetch('/api/upload/sign', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Customer-Id': qspCustomerId() },
@@ -4158,15 +4157,15 @@ async function uploadDirect(blob, fileName) {
     })
   });
   const sig = await sr.json();
-  if (!sr.ok || !sig.success) throw new Error(sig.error || 'Signature nahi mila');
+  if (!sr.ok || !sig.success) throw new Error(sig.error || 'Could not get an upload signature');
 
-  // 2) File SEEDHA Cloudinary ko
+  // 2) The file goes STRAIGHT to Cloudinary
   //
-  // ZAROORI: filename me extension MAT do. Agar naam '.pdf' pe khatam hota
-  // hai to Cloudinary public_id me bhi '.pdf' jod deta hai, aur phir uski
-  // "PDF delivery" security file ko block kar deti hai — agent download
-  // par 401 Unauthorized milta hai aur print kabhi nikalta hi nahi.
-  // (Purana server-side upload bhi bina extension ke hi karta tha.)
+  // IMPORTANT: do NOT put an extension in the filename. If the name ends in '.pdf',
+  // Cloudinary also appends '.pdf' to the public_id, and then its
+  // "PDF delivery" security blocks the file — the agent download gets
+  // 401 Unauthorized and the print never comes out.
+  // (The old server-side upload also worked without an extension.)
   const fd = new FormData();
   fd.append('file', blob, sig.publicId);
   fd.append('api_key', sig.apiKey);
@@ -4174,22 +4173,22 @@ async function uploadDirect(blob, fileName) {
   fd.append('public_id', sig.publicId);
   fd.append('signature', sig.signature);
 
-  // 92% tak file jaane ka progress; baaki 8% confirm ke liye rakha hai
+  // progress up to 92% while the file travels; the remaining 8% is kept for the confirm
   const cd = await xhrUpload(sig.uploadUrl, fd, function (pct) {
     upProgSet(pct * 0.92);
   });
-  if (!cd || !cd.public_id) throw new Error('Cloudinary upload fail');
+  if (!cd || !cd.public_id) throw new Error('Cloudinary upload failed');
   upProgSet(94);
 
-  // 3) Server ko sirf details bhejo (file nahi)
-  // Cloudinary raw upload par public_id me extension jud jaata hai
-  // (qrprint_abc -> qrprint_abc.pdf). Isliye dono bhejte hain:
-  // signedPublicId = jo server ne sign kiya, publicId = jo Cloudinary ne diya.
+  // 3) Send only the details to the server (not the file)
+  // A Cloudinary raw upload appends the extension to the public_id
+  // (qrprint_abc -> qrprint_abc.pdf). So both are sent:
+  // signedPublicId = what the server signed, publicId = what Cloudinary returned.
   const conf = await fetch('/api/upload/confirm', {
     method: 'POST',
-    // Device id yahan bhi. Job ISI call par banti hai — id na bhejein to
-    // job par "kisne bheji" khali reh jaata hai, aur block wala pehra
-    // pehchanne ko kuch bhi nahi hota.
+    // The device id goes here too. The job is created ON THIS call — without the id,
+    // "who sent it" stays empty on the job, and the blocking guard has
+    // nothing to identify it by.
     headers: { 'Content-Type': 'application/json', 'X-Customer-Id': qspCustomerId() },
     body: JSON.stringify({
       shopId,
@@ -4203,16 +4202,16 @@ async function uploadDirect(blob, fileName) {
     })
   });
   const data = await conf.json();
-  if (!conf.ok || !data.success) throw new Error(data.error || 'Confirm fail');
+  if (!conf.ok || !data.success) throw new Error(data.error || 'Upload confirmation failed');
   upProgSet(100);
   return data;
 }
 
-/* Customer ki device id — sirf "ek hi banda baar-baar" pakadne ke liye.
-   Ye personal kuch nahi hai: ek random number jo isi browser me pada
-   rehta hai. Na naam, na phone, na koi tracking. localStorage band ho
-   (incognito) to har baar nayi ban jaati hai — us soorat me IP wala
-   chaura jaal kaam karta hai. */
+/* The customer's device id — only to catch "the same person again and again".
+   Nothing personal: just a random number stored in this browser.
+   No name, no phone, no tracking. If localStorage is unavailable
+   (incognito) a new one is created every time — in that case the broader
+   IP-based net takes over. */
 function qspCustomerId() {
   try {
     var v = localStorage.getItem('qrsp_cid');
@@ -4243,16 +4242,16 @@ async function uploadViaServer(blob, fileName) {
   return data;
 }
 
-// Jo file upload hui wahi customer ko download ke liye bhi chahiye
-// (khaas kar resume — wo yahin bana tha, uske paas copy nahi hoti).
+// The uploaded file is also needed for the customer's download
+// (especially a resume — it was created here and the customer has no copy).
 let LAST_PDF_BLOB = null;
 let LAST_PDF_NAME = 'document.pdf';
 
 async function uploadAllPages() {
   upProgShow(true);
   try {
-    // File banane me bhi waqt lagta hai (bade PDF me), isliye us hisse ka
-    // bhi thoda progress dikhao — warna bar 0% par atka lagta hai.
+    // Building the file also takes time (for a large PDF), so show some progress
+    // for that part too — otherwise the bar looks stuck at 0%.
     upProgSet(3);
     const { blob, fileName } = await buildOutputFile();
     LAST_PDF_BLOB = blob;
@@ -4263,9 +4262,9 @@ async function uploadAllPages() {
     try {
       data = await uploadDirect(blob, fileName);
     } catch (e) {
-      console.warn('Direct upload fail, purane tarike se try kar rahe hain:', e.message);
+      console.warn('Direct upload failed, trying the old way:', e.message);
       const l = document.getElementById('upProgLabel');
-      if (l) l.textContent = '📤 Dusre raste se bhej rahe hain…';
+      if (l) l.textContent = '📤 Sending another way…';
       data = await uploadViaServer(blob, fileName);
     }
     state.jobId = data.jobId;
@@ -4311,10 +4310,10 @@ function toggleDuplex() {
   updateSummary();
 }
 
-// Dual-Side ka card sirf tab dikhta hai jab shop ne duplex chalu rakha ho
-// AUR abhi jo mode chuna hai (B&W ya Color) us par duplex allowed ho.
-// Owner Advance Feature me dono ko alag-alag on/off kar sakta hai, kyunki
-// aksar duplex sirf ek hi printer par chalta hai.
+// The Dual-Side card only shows when the shop has duplex enabled
+// AND duplex is allowed for the currently selected mode (B&W or Color).
+// The owner can switch each one on/off separately under Advance Feature, because
+// duplex often works on only one printer.
 function updateDuplexVisibility() {
   const row = document.getElementById('duplexRow');
   if (!row) return;
@@ -4323,10 +4322,10 @@ function updateDuplexVisibility() {
                                  : state.duplexBwOn    !== false);
   row.style.display = allowed ? 'block' : 'none';
 
-  // Card chhup gaya par duplex pehle se chuna hua tha — to use band bhi
-  // karo. Warna customer ko dikhta kuch nahi aur bill/print me duplex laga
-  // reh jaata. Server bhi aise order ko duplex nahi maanta, isliye yahin
-  // saaf kar dena hi sahi hai.
+  // The card was hidden but duplex was already selected — so switch it off too.
+  // Otherwise the customer sees nothing, yet duplex stays applied to the bill/print.
+  // The server does not treat such an order as duplex either, so clearing
+  // it right here is correct.
   if (!allowed && state.duplex) {
     state.duplex = false;
     const card = document.getElementById('optDuplex');
@@ -4343,13 +4342,13 @@ function setColorMode(mode) {
   updateDuplexVisibility();
   updatePriceSummary();
 }
-/* Ek job me kitne kagaz tak — server ka MAX_JOB_SHEETS yahi hai.
-   Dono jagah ek hi ginti honi chahiye, warna page par 10 copy chun kar
-   customer payment tak pahunchta aur wahan reject hota. */
+/* The maximum number of sheets in one job — this is the server's MAX_JOB_SHEETS.
+   Both places must use the same number, otherwise a customer could pick
+   10 copies on the page, reach payment and be rejected there. */
 var MAX_JOB_SHEETS = 20;
 
-/* Itni copies tak ja sakte hain (kagaz = page x copies).
-   20-page ki 1 copy, 5-page ki 4, 1-page ki 20. */
+/* How many copies are allowed (sheets = pages x copies).
+   1 copy of 20 pages, 4 of 5 pages, 20 of 1 page. */
 function maxCopiesAllowed() {
   var per = getEffectivePageCount() || 1;
   return Math.max(1, Math.floor(MAX_JOB_SHEETS / per));
@@ -4360,8 +4359,8 @@ function copiesCapNote() {
   if (!el) return;
   var cap = maxCopiesAllowed();
   if (state.copies >= cap && cap * (getEffectivePageCount() || 1) >= MAX_JOB_SHEETS) {
-    el.textContent = 'Ek baar me zyada se zyada ' + MAX_JOB_SHEETS
-                   + ' kagaz — isse zyada counter par karwa lo.';
+    el.textContent = 'At most ' + MAX_JOB_SHEETS
+                   + ' sheets at a time — for more, ask at the counter.';
     el.style.display = '';
   } else {
     el.style.display = 'none';
@@ -4381,23 +4380,23 @@ function getEffectivePageCount() {
   return (state.selectedPages && state.selectedPages.length) ? state.selectedPages.length : pages.length;
 }
 // Service rate: photo4x6 => sheet rate (4/6/8/10), resume => resume rate.
-// Rate 0 ho to normal per-page fallback — SERVER bhi yahi logic use karta
-// hai, isliye jo yahan dikhega wahi charge hoga.
+// If the rate is 0, fall back to the normal per-page rate — the SERVER uses the same
+// logic, so what shows here is exactly what gets charged.
 // -- Page-range (slab) rate --------------------------------------------
-// Shop chahe to "2-5 page = 2 rupaye" jaisa rate rakh sakta hai.
-// Ye daam PER PAGE hai, poore job ka nahi:
-//     4 page  aur range 2-5 ka rate 2    =>  4 x 2   = 8
-//     8 page  aur range 6-10 ka rate 1.5 =>  8 x 1.5 = 12
+// A shop can set a rate such as "2-5 pages = 2 rupees".
+// This price is PER PAGE, not for the whole job:
+//     4 pages and the 2-5 range rate is 2    =>  4 x 2   = 8
+//     8 pages and the 6-10 range rate is 1.5 =>  8 x 1.5 = 12
 //
-// Pehle isay poore job ka flat daam maana jaata tha - isi wajah se 4 page
-// aur 8 page dono ka ek hi bill banta tha. Customer ne yahi pakda tha:
-// "8 print karo to 50 rs. aur 4 print karo to 50 rs."
+// It used to be treated as a flat price for the whole job — which is why 4 pages
+// and 8 pages produced the same bill. A customer caught exactly this:
+// "printing 8 costs Rs 50 and printing 4 also costs Rs 50."
 //
-// Job kisi bhi range me na aaye (jaise sirf 1 page) to normal B&W/Color
-// rate hi lagta hai. Overlap ho to sabse chhoti (sabse khaas) range jeetegi.
+// If the job falls into no range (e.g. just 1 page), the normal B&W/Color
+// rate applies. On overlaps the smallest (most specific) range wins.
 //
-// SERVER par bhi bilkul yahi hisaab hona chahiye. Dono ek jaisa rehna
-// zaroori hai - warna customer ko dikhta kuch aur hai aur katta kuch aur.
+// The SERVER must use exactly the same calculation. Keeping both identical
+// is essential - otherwise the customer sees one amount and is charged another.
 function slabPriceFor(raw, colorMode, pages) {
   let o = {};
   try { o = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch(e){ return null; }
@@ -4425,12 +4424,12 @@ function getServiceRate() {
     return state.colorMode === 'bw' ? (P.rb||0) : (P.rc||0);
   return 0;
 }
-// Duplex chuna ho aur shop ne duplex ka alag rate rakha ho to wahi rate lagta hai.
-// Server bhi yahi karta hai (price_bw_duplex / price_color_duplex), isliye
-// screen par dikhne wala price aur payment ka price ab hamesha same rahega.
+// If duplex is selected and the shop has a separate duplex rate, that rate applies.
+// The server does the same (price_bw_duplex / price_color_duplex), so the price
+// shown on screen and the payment price now always match.
 /**
- * Chune hue paper size ka apna rate (A3/A2/A1). Set na ho to 0.
- * 4×6 photo yahan nahi aata — uska apna sheet-rate getServiceRate() me hai.
+ * The selected paper size's own rate (A3/A2/A1). 0 if not set.
+ * The 4×6 photo does not come here — its own sheet rate is in getServiceRate().
  */
 function getBigSizeRate() {
   const B = (window.__bigPrices || {})[state.paperSize];
@@ -4438,36 +4437,36 @@ function getBigSizeRate() {
   const v = state.colorMode === 'bw' ? B.bw : B.color;
   return v > 0 ? v : 0;
 }
-// Slab kis ginti par lagta hai: kitne KAGAZ nikal rahe hain - yaani
-// page x copies. 3 page ki 3 copy = 9 kagaz, isliye 6-10 wali range
-// lagegi. Server bhi bilkul yahi ginti bhejta hai (finalPages x effCopies).
+// Which count the slab applies to: how many SHEETS come out — that is,
+// pages x copies. 3 copies of 3 pages = 9 sheets, so the 6-10 range
+// applies. The server sends exactly the same count (finalPages x effCopies).
 //
-// Rate is ginti se chuna jaata hai, par lagta har page par hai -
-// getTotal() usay page aur copies dono se guna karta hai.
+// The rate is chosen from this count but applied per page -
+// getTotal() multiplies it by both pages and copies.
 function getSlabPageCount() {
   return getEffectivePageCount() * (parseInt(state.copies, 10) || 1);
 }
 function getPerPageRate() {
-  // Bada kagaz sabse pehle: A3/A2/A1 ka rate set ho to wahi chalega.
-  // Duplex ke saath bhi yahi - bada kagaz hi asli lagat hai.
+  // Large paper first: if an A3/A2/A1 rate is set, it applies.
+  // The same with duplex — the large paper is the real cost.
   const big = getBigSizeRate();
   if (big > 0) return big;
 
   const isBw = state.colorMode === 'bw';
 
-  // Shop ne duplex ka apna rate rakha ho to wahi jeetega. Wo shop ka
-  // jaan-boojh kar rakha hua rate hai, slab usse upar nahi jaata.
+  // If the shop has its own duplex rate, that wins. It is a rate the shop
+  // set deliberately; the slab does not override it.
   const dupRate = isBw ? state.priceBwDuplex : state.priceColorDuplex;
   if (state.duplex && dupRate > 0) return dupRate;
 
-  // Page-range rate - mil jaye to yahi per-page rate ban jaata hai.
+  // Page-range rate - if one matches, it becomes the per-page rate.
   const slab = slabPriceFor(state.pageSlabs, isBw ? 'bw' : 'color',
                             getSlabPageCount());
   if (slab != null) return slab;
 
   return isBw ? state.priceBW : state.priceColor;
 }
-// Paisa 2 decimal tak — 2.5 x 3 = 7.5 jaisa sahi dikhe, 7.500000001 nahi
+// Money to 2 decimals — so 2.5 x 3 shows as 7.5, not 7.500000001
 function money(v) {
   const n = Math.round((parseFloat(v) || 0) * 100) / 100;
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
@@ -4483,14 +4482,14 @@ function updatePriceSummary() {
   const rate = getServiceRate();
   const printPages = getEffectivePageCount();
   const bwCard = document.getElementById('optBW');
-  // 4x6 photo hamesha color — B&W card chhupao taaki galat option na dikhe
+  // 4x6 photos are always color — hide the B&W card so the wrong option never shows
   if (bwCard) bwCard.style.display = (state.service === 'photo4x6' && rate > 0) ? 'none' : '';
-  // Cards ke price labels bhi service ke hisaab se (₹/page ki jagah asli rate)
+  // The card price labels also follow the service (the real rate instead of ₹/page)
   const bwP = document.getElementById('optBWPrice');
   const clP = document.getElementById('optColorPrice');
   const P2 = window.__shopPrices || {};
-  // Big size chuna hai to card par bhi USI size ka rate dikhe, warna
-  // customer ko payment page par alag amount dekh kar shak hota hai.
+  // When a big size is chosen, the card must show the rate of THAT size, otherwise
+  // the customer gets suspicious seeing a different amount on the payment page.
   const BIG = (window.__bigPrices || {})[state.paperSize] || null;
   if (clP) {
     if (state.service === 'photo4x6' && rate > 0) clP.textContent = '₹' + rate + '/sheet';
@@ -4520,7 +4519,7 @@ function updatePriceSummary() {
   const dupOn = state.duplex &&
     ((state.colorMode === 'bw' && state.priceBwDuplex > 0) ||
      (state.colorMode !== 'bw' && state.priceColorDuplex > 0));
-  // Bade size par label me size bhi likho — bill saaf samajh aata hai
+  // For big sizes include the size in the label — the bill is easier to understand
   const bigLbl = (getBigSizeRate() > 0 && PAPER_SIZES[state.paperSize])
     ? ' — ' + PAPER_SIZES[state.paperSize].label : '';
   document.getElementById('sumType').textContent =
@@ -4535,7 +4534,7 @@ function updatePriceSummary() {
 // PAYMENT
 // ═══════════════════════════════════════════════
 function goToPayment() {
-  if (!state.jobId) { toast('❌ Pehle file upload karo!'); return; }
+  if (!state.jobId) { toast('❌ Please upload a file first!'); return; }
   hide('secOptions');
   show('secPayment');
 
@@ -4547,21 +4546,21 @@ function goToPayment() {
   counterBtn.style.display = state.counterAllowed ? 'flex' : 'none';
 
   if (state.shopPaymentMode === 'counter_only') {
-    note.textContent = '💵 Yeh shop sirf Counter Payment accept karta hai';
+    note.textContent = '💵 This shop accepts Counter Payment only';
   } else if (state.shopPaymentMode === 'online_only') {
     if (state.onlineAllowed) {
-      note.textContent = '🌐 Yeh shop sirf Online Payment accept karta hai';
+      note.textContent = '🌐 This shop accepts Online Payment only';
     } else {
-      note.textContent = '⚠️ Online payment abhi setup nahi hua hai, shop owner se contact karo';
+      note.textContent = '⚠️ Online payment is not set up yet, please contact the shop owner';
       onlineBtn.style.display = 'flex';
       onlineBtn.disabled = true;
       onlineBtn.style.opacity = '0.5';
     }
   } else {
     if (state.onlineAllowed) {
-      note.textContent = '✅ Online ya Counter — jo chahiye chuno';
+      note.textContent = '✅ Online or Counter — choose either';
     } else {
-      note.textContent = '⚠️ Online payment abhi available nahi — Counter pe pay karo';
+      note.textContent = '⚠️ Online payment not available right now — pay at the counter';
       onlineBtn.style.display = 'flex';
       onlineBtn.disabled = true;
       onlineBtn.style.opacity = '0.5';
@@ -4570,8 +4569,8 @@ function goToPayment() {
 }
 
 async function payOnline() {
-  if (!state.jobId) { toast('❌ File upload karo pehle!'); return; }
-  toast('💳 Payment create ho raha hai...');
+  if (!state.jobId) { toast('❌ Please upload a file first!'); return; }
+  toast('💳 Creating payment...');
   try {
     const res = await fetch('/api/payment/online/create', {
       method: 'POST',
@@ -4591,20 +4590,20 @@ async function payOnline() {
     }
 
     if (data.gateway === 'cashfree') {
-      // SDK load hua? (CSP/adblocker/slow net se fail ho sakta hai)
+      // Did the SDK load? (it can fail due to CSP/ad blockers/slow network)
       if (typeof Cashfree !== 'function') {
-        toast('❌ Cashfree load nahi hua — page refresh karke dobara Pay karo');
+        toast('❌ Cashfree didn\'t load — refresh the page and press Pay again');
         return;
       }
       if (!data.paymentSessionId) {
-        toast('❌ Payment session nahi mila — dobara try karo');
+        toast('❌ Payment session not found — please try again');
         return;
       }
       try {
-        toast('💳 Cashfree page khul raha hai...');
+        toast('💳 Opening the Cashfree page...');
         const cashfree = Cashfree({ mode: 'production' });
-        // _self par page Cashfree pe redirect ho jaata hai (yahan wapas nahi aata).
-        // Agar wapas aaya to redirect nahi hua — blank/crash ke bajaye saaf error dikhao.
+        // With _self the page redirects to Cashfree (it does not come back here).
+        // If it did come back, the redirect did not happen — show a clear error instead of a blank screen/crash.
         const result = await cashfree.checkout({
           paymentSessionId: data.paymentSessionId,
           redirectTarget: '_self'
@@ -4612,9 +4611,9 @@ async function payOnline() {
         if (result && result.error) {
           toast('❌ Cashfree: ' + (result.error.message || 'the payment page could not load'));
         } else if (result && result.redirect) {
-          // SDK redirect kar raha hai — kuch mat karo
+          // The SDK is redirecting — do nothing
         } else {
-          toast('⏳ Cashfree page nahi khula — dobara Pay Online dabao');
+          toast('⏳ The Cashfree page didn\'t open — press Pay Online again');
         }
       } catch (err) {
         toast('❌ Cashfree error: ' + (err && err.message ? err.message : 'unknown'));
@@ -4645,7 +4644,7 @@ async function payOnline() {
           if (verifyData.success) {
             showSuccess('online', getTotal());
           } else {
-            toast('⏳ Payment mil gaya! Print 2-3 minute me apne aap nikal jayega — yahi rukna.');
+            toast('⏳ Payment received! Your print will come out automatically in 2-3 minutes — please wait here.');
           }
         },
         prefill: {},
@@ -4663,7 +4662,7 @@ async function payOnline() {
 }
 
 async function payCounter() {
-  if (!state.jobId) { toast('❌ File upload karo pehle!'); return; }
+  if (!state.jobId) { toast('❌ Please upload a file first!'); return; }
   try {
     const res = await fetch('/api/payment/counter', {
       method: 'POST',
@@ -4694,27 +4693,27 @@ async function sendFeedback(up) {
       body: JSON.stringify({ up })
     });
   } catch(e) {}
-  // Thumbs chhupao, shukriya dikhao (chahe network fail — user ko farq nahi)
+  // Hide the thumbs, show a thank-you (even if the network fails — the user will not notice)
   document.querySelectorAll('#fbBox button').forEach(b => b.style.display='none');
   document.querySelector('#fbBox > div:first-child').style.display='none';
   document.getElementById('fbThanks').style.display='block';
 }
 
-// Print ready ki awaaz — dukaan me shor hota hai, isliye customer aur
-// dukaandar dono ko pata chal jaata hai ki print nikal raha hai.
-// Browser bina user-click ke sound nahi bajne deta; yahan customer ne
-// abhi payment/counter button dabaya hai, isliye allow ho jaata hai.
+// The print-ready sound — shops are noisy, so both the customer and the
+// shopkeeper learn that the print is coming out.
+// Browsers do not allow sound without a user click; here the customer has
+// just pressed the payment/counter button, so it is allowed.
 function playPrintSound() {
   try {
     const a = new Audio('/print-ready.mp3');
     a.volume = 1.0;
     const p = a.play();
-    if (p && p.catch) p.catch(function(){ /* browser ne roka — koi baat nahi */ });
-  } catch (e) { /* sound na baje to bhi order to ho hi gaya */ }
+    if (p && p.catch) p.catch(function(){ /* the browser blocked it — no problem */ });
+  } catch (e) { /* even if the sound does not play, the order has been placed */ }
 }
 
 function downloadMyPdf() {
-  if (!LAST_PDF_BLOB) { toast('❌ File ab available nahi hai'); return; }
+  if (!LAST_PDF_BLOB) { toast('❌ File is no longer available'); return; }
   try {
     const url = URL.createObjectURL(LAST_PDF_BLOB);
     const a = document.createElement('a');
@@ -4723,12 +4722,12 @@ function downloadMyPdf() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    // Turant revoke mat karo — kuch browser me download shuru hone se
-    // pehle hi link mar jata hai
+    // Do not revoke immediately — in some browsers the link dies before the
+    // download even starts
     setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
-    toast('✅ Download shuru');
+    toast('✅ Download started');
   } catch (e) {
-    toast('❌ Download nahi hua: ' + e.message);
+    toast('❌ Download failed: ' + e.message);
   }
 }
 
@@ -4739,7 +4738,7 @@ function showSuccess(method, amount) {
   setStep(4);
   playPrintSound();
 
-  // Resume ka download — customer ke paas iski koi copy nahi hoti
+  // Resume download — the customer has no other copy of it
   const dl = document.getElementById('dlBox');
   if (dl) dl.style.display = (state.service === 'resume' && LAST_PDF_BLOB) ? 'block' : 'none';
 
@@ -4752,24 +4751,24 @@ function showSuccess(method, amount) {
   if (method === 'online') {
     icon.className = 'sicon online';
     icon.textContent = '✓';
-    document.getElementById('successTitle').textContent = 'Payment Ho Gaya!';
+    document.getElementById('successTitle').textContent = 'Payment Successful!';
     collectBox.className = 'collect-box online';
-    document.getElementById('collectTitle').textContent = '🖨️ Print Ho Raha Hai!';
-    document.getElementById('collectMsg').textContent = 'Payment verify ho gayi. Printer se aapka document print ho raha hai. Thodi der mein print nikal aayega!';
+    document.getElementById('collectTitle').textContent = '🖨️ Printing!';
+    document.getElementById('collectMsg').textContent = 'Payment verified. Your document is being printed and will be ready shortly!';
     document.getElementById('amountLabel').textContent = 'Paid Online';
   } else {
-    // Counter order me print TURANT shuru nahi hota — pehle shop owner ko
-    // apne PC par order accept karna hota hai. Isliye yahan "print ho raha
-    // hai" likhna galat tha (online payment wala message tha). Ab customer
-    // ko asli baat batate hain: 120 second me accept na hua to server file
-    // delete kar deta hai (STUCK_JOB_TIMEOUT_SEC=120, sweeper isi par chalta hai).
+    // For a counter order printing does NOT start immediately — the shop owner
+    // first has to accept the order on their PC. So saying "printing" here
+    // was wrong (that was the online-payment message). Now the customer is
+    // told the truth: if it is not accepted within 120 seconds the server deletes
+    // the file (STUCK_JOB_TIMEOUT_SEC=120; the sweeper runs on this).
     icon.className = 'sicon counter';
     icon.textContent = '💵';
-    document.getElementById('successTitle').textContent = 'Order Bhej Diya!';
+    document.getElementById('successTitle').textContent = 'Order Sent!';
     collectBox.className = 'collect-box counter';
-    document.getElementById('collectTitle').textContent = '💵 Counter Pe Jao!';
-    document.getElementById('collectMsg').textContent = 'Shop Owner ne agar Pay at Counter order accept nahi kiya to 120 second me file server se automatic delete ho jayegi aur print nahi niklega.';
-    document.getElementById('amountLabel').textContent = 'Counter Pe Dena Hai';
+    document.getElementById('collectTitle').textContent = '💵 Go to the Counter!';
+    document.getElementById('collectMsg').textContent = 'If the shop owner does not accept your Pay at Counter order, the file will be automatically deleted from the server within 120 seconds and will not be printed.';
+    document.getElementById('amountLabel').textContent = 'Pay at Counter';
   }
 }
 </script>
@@ -4777,12 +4776,12 @@ function showSuccess(method, amount) {
 <div id="langSwitch" style="position:fixed;bottom:14px;left:12px;z-index:400;opacity:.9;">
   <select id="langSel" data-i18n-customer onchange="setLang(this.value)" style="border:1.5px solid #e8e6f0;border-radius:10px;padding:6px 8px;font-size:12px;font-weight:700;background:#fff;color:#111;"></select>
 </div>
-<!-- purana inline i18n hata diya: ab /i18n.js (English default + Hinglish) sab handle karta hai -->
+<!-- the old inline i18n was removed: /i18n.js now handles everything (English source + Manipuri) -->
 <script>
-/* Upload zone — drag karte waqt visual feedback.
-   File drop khud browser handle karta hai (input zone ko cover karta hai),
-   ye script sirf .dragover class lagata/hataata hai. Koi existing
-   handler ya upload logic bilkul nahi chhuta. */
+/* Upload zone — visual feedback while dragging.
+   The browser handles the file drop itself (the input covers the zone);
+   this script only adds/removes the .dragover class. No existing
+   handler or upload logic is touched at all. */
 (function(){
   var z = document.getElementById('uploadZone');
   if (!z) return;
@@ -4794,8 +4793,8 @@ function showSuccess(method, amount) {
 </script>
 
 <script>
-/* White-label shop ho to footer me PARTNER ka naam. Shop API se aata hai;
-   na mile to default 'Echel' hi rehta hai. */
+/* For a white-label shop, show the PARTNER's name in the footer. It comes from the
+   shop API; if missing, the default 'Echel' stays. */
 (function(){
   var m = location.pathname.match(/\/print\/([^\/?#]+)/);
   if (!m) return;
@@ -4806,7 +4805,7 @@ function showSuccess(method, amount) {
         var brand = d.wl_brand || d.powered_by;
         var el = document.getElementById('poweredByName');
         if (el) el.textContent = d.powered_by;
-        // Copyright + "Developed by" bhi partner ka — humara naam kahin nahi
+        // Copyright + "Developed by" also belong to the partner — our name appears nowhere
         var lg = document.getElementById('footerLegal');
         if (lg) lg.textContent = '\u00a9 ' + new Date().getFullYear() + ' ' + brand + ' \u00b7 All Rights Reserved';
         document.title = brand + ' — Print';
@@ -4818,11 +4817,11 @@ function showSuccess(method, amount) {
 
 
 
-<!-- ?v= zaroori hai. Jin phone me purani smart-scanner.js 7 din wali
-     cache me padi hai, unke liye header badalne se kuch nahi hota — wo
-     server se poochhenge hi nahi. URL badalte hi wo entry bekaar ho jaati
-     hai aur nayi file turant download hoti hai.
-     Aage jab bhi is file me kuch badlo, ye number bhi badha dena. -->
+<!-- ?v= is required. Phones that still hold the old smart-scanner.js in their
+     7-day cache never ask the server again, so changing the header does
+     nothing for them. Changing the URL makes that cache entry useless
+     and the new file downloads immediately.
+     Whenever this file changes in future, bump this number too. -->
 <script src="/smart-scanner.js?v=9"></script>
 </body>
 </html>

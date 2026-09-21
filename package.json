@@ -5,8 +5,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/branding.test.js test/branding-routes.test.js test/billing.test.js test/billing-postgres.test.js test/edition.test.js test/deployment.test.js test/database-init.test.js test/i18n.test.js test/desktop.test.js test/runtime-dependencies.test.js test/server-start.test.js test/language-select.test.js",
+    "test": "node --test test/branding.test.js test/branding-routes.test.js test/billing.test.js test/billing-postgres.test.js test/edition.test.js test/deployment.test.js test/database-init.test.js test/i18n.test.js test/desktop.test.js test/runtime-dependencies.test.js test/server-start.test.js test/language-select.test.js test/demo-config.test.js test/owner-workspace.test.js test/no-hinglish.test.js test/manipuri-coverage.test.js",
     "check": "node --check server.js && node test/check-syntax.js",
+    "i18n:build": "node scripts/i18n/build-manipuri.js",
+    "i18n:missing": "node scripts/i18n/ui-strings.js --missing",
+    "i18n:strings": "node scripts/i18n/ui-strings.js",
+    "i18n:scan": "node scripts/i18n/scan-hinglish.js",
     "preview": "node test/preview-server.js"
   },
   "engines": {
@@ -18,6 +22,7 @@
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "jsdom": "^26.1.0",
+    "parse5": "^7.3.0",
     "yaml": "^2.9.1"
   },
   "dependencies": {

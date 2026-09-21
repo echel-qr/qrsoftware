@@ -1,19 +1,4 @@
-/* Manipuri (Meiteilon) in Meitei Mayek — ꯃꯤꯇꯩꯂꯣꯟ
-   GENERATED FILE — do not edit by hand.
-
-   Source : i18n/manipuri.json
-   Build  : npm run i18n:build   (scripts/i18n/build-manipuri.js)
-
-   The key is the website's own English text; the value is the Manipuri text.
-   /i18n.js downloads this file only when a visitor picks Manipuri, so English
-   visitors never wait for it.
-
-   To correct one line without a deploy: Superadmin -> Languages. Those edits
-   live in the database and are applied on top of this file.
-
-   3201 entries. */
-(function (w) {
- var D = {
+{
  "-- Select brand --": "-- ꯕ꯭ꯔꯥꯟꯗ ꯈꯜꯂꯨ --",
  "— %s fail": "— %s ꯃꯥꯏ ꯄꯥꯛꯈꯤꯗꯦ",
  "— ₹%s/page": "— ₹%s/ꯂꯥꯃꯥꯏ",
@@ -3214,8 +3199,5 @@
  "Your time": "ꯅꯍꯥꯛꯀꯤ ꯃꯇꯝ",
  "Your way.": "ꯅꯍꯥꯛꯀꯤ ꯄꯥꯝꯕꯥ ꯃꯑꯣꯡꯗꯥ꯫",
  "youtube.com/@": "youtube.com/@",
- "Zero — all from the phone": "ꯀꯔꯤꯁꯨ ꯃꯊꯧ ꯇꯥꯗꯦ — ꯄꯨꯝꯅꯃꯛ ꯐꯣꯅꯗꯒꯤ",
- };
- if (w.QSPi18n && w.QSPi18n.addDict) w.QSPi18n.addDict(D, 'mni-mtei');
- else (w.QSP_PENDING_DICTS = w.QSP_PENDING_DICTS || []).push(['mni-mtei', D]);
-})(window);
+ "Zero — all from the phone": "ꯀꯔꯤꯁꯨ ꯃꯊꯧ ꯇꯥꯗꯦ — ꯄꯨꯝꯅꯃꯛ ꯐꯣꯅꯗꯒꯤ"
+}

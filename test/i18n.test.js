@@ -27,3 +27,24 @@ test('language switching covers DOM updates, attributes, dialogs and round trips
   assert.deepEqual([...w.document.querySelector('select').options].map(o => o.value), ['en', 'mni-mtei']);
   dom.window.close();
 });
+
+test('a data-i18n-sentence element is translated whole and restored exactly', async () => {
+  const dom = new JSDOM('<!doctype html><body><h1 id="s" data-i18n-sentence>Earn <em class="x">lifetime</em> by becoming an agent</h1><p id="f">Earn <b>more</b></p></body>', { url: 'http://localhost/', runScripts: 'outside-only' });
+  const w = dom.window;
+  w.ECHEL_OFFLINE = true;
+  w.eval(fs.readFileSync(require.resolve('../public/i18n.js'), 'utf8'));
+  w.QSPi18n.addDict({ 'Earn lifetime by becoming an agent': 'ꯑꯦꯖꯦꯟꯠ ꯑꯣꯏꯗꯨꯅꯥ ꯄꯨꯟꯁꯤ ꯆꯨꯞꯅꯥ ꯁꯦꯜ ꯐꯪꯎ', Earn: 'ꯁꯦꯜ ꯐꯪꯎ' }, 'mni-mtei');
+  await tick(); w.QSPi18n.setLang('mni-mtei');
+  const h = w.document.getElementById('s');
+  assert.equal(h.textContent, 'ꯑꯦꯖꯦꯟꯠ ꯑꯣꯏꯗꯨꯅꯥ ꯄꯨꯟꯁꯤ ꯆꯨꯞꯅꯥ ꯁꯦꯜ ꯐꯪꯎ');
+  // Unmarked text keeps the piece-by-piece behaviour.
+  assert.equal(w.document.getElementById('f').innerHTML, 'ꯁꯦꯜ ꯐꯪꯎ <b>more</b>');
+  // A script rewrites the sentence while Manipuri is on: it is looked up again.
+  h.innerHTML = 'Earn <em>lifetime</em> by becoming an agent';
+  await tick();
+  assert.equal(h.textContent, 'ꯑꯦꯖꯦꯟꯠ ꯑꯣꯏꯗꯨꯅꯥ ꯄꯨꯟꯁꯤ ꯆꯨꯞꯅꯥ ꯁꯦꯜ ꯐꯪꯎ');
+  w.QSPi18n.setLang('en');
+  assert.equal(h.innerHTML, 'Earn <em>lifetime</em> by becoming an agent');
+  assert.equal(w.document.getElementById('f').innerHTML, 'Earn <b>more</b>');
+  dom.window.close();
+});

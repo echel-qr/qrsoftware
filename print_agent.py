@@ -1,7 +1,7 @@
 """
 Echel - Local Agent v6.0
-NEW: System Tray (background mein chalta hai, koi CMD window nahi)
-NEW: Auto-Update (naya version aane par khud download + restart)
+NEW: System Tray (runs in the background, no CMD window)
+NEW: Auto-Update (downloads + restarts by itself when a new version arrives)
 """
 
 import requests
@@ -18,11 +18,11 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-# SAFETY FIX: Jab Windows Startup se .exe automatically chalता hai (PC
-# restart ke baad), default working directory C:\Windows\System32 hoti
-# hai — agent ka apna installation folder NAHI. Agar kahin bhi relative
-# path use ho (ya future mein use ho), yeh galat jagah resolve hoga.
-# Yahan explicitly apne exe/script ke folder mein switch karte hain.
+# SAFETY FIX: when the .exe starts automatically from Windows Startup (after a PC
+# restart), the default working directory is C:\Windows\System32 — NOT the
+# agent's own installation folder. If a relative path is used anywhere (or
+# in future), it would resolve to the wrong place.
+# So we explicitly switch to the folder of our own exe/script here.
 try:
     if getattr(sys, 'frozen', False):
         _app_dir = os.path.dirname(sys.executable)
@@ -30,18 +30,18 @@ try:
         _app_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(_app_dir)
 except Exception:
-    pass  # agar yeh fail ho bhi jaaye, baaki sab APPDATA-based paths use karte hain to safe hai
+    pass  # even if this fails, everything else uses APPDATA-based paths, so it is safe
 
 # ============================================================
-# SHOP_ID_TEMPLATE: .py source mode mein yahan seedha Shop ID daala jaata hai
-# (server download-package banate waqt isko replace karta hai). .exe mode mein
-# yeh hamesha unconfigured marker hi rahega — asli Shop ID config file se aata hai.
+# SHOP_ID_TEMPLATE: in .py source mode the Shop ID is written directly here
+# (the server replaces it while building the download package). In .exe mode
+# this always stays the unconfigured marker — the real Shop ID comes from the config file.
 #
-# NOTE: UNCONFIGURED_MARKER ko is naam se isliye rakha hai (alag string) taaki
-# server.js ka text-replace operation sirf SHOP_ID_TEMPLATE ki line ko hi
-# touch kare, comparison check ko corrupt na kare.
-UNCONFIGURED_MARKER = "AAPKA" + "_SHOP_ID"
-SHOP_ID_TEMPLATE   = "AAPKA_SHOP_ID"
+# NOTE: UNCONFIGURED_MARKER is built as a separate string on purpose so that
+# server.js's text-replace operation only touches the SHOP_ID_TEMPLATE line
+# and does not corrupt the comparison check.
+UNCONFIGURED_MARKER = "YOUR" + "_SHOP_ID"
+SHOP_ID_TEMPLATE   = "YOUR_SHOP_ID"
 SERVER_URL         = "https://echel.in"
 
 def resolve_server_url(default_url, application_dir):
@@ -62,78 +62,78 @@ def resolve_server_url(default_url, application_dir):
     return configured.rstrip("/")
 
 SERVER_URL = resolve_server_url(SERVER_URL, _app_dir)
-# ── POLLING KI TEEN SPEED ──
-# Dukaan busy ho to 5s, thodi der khaali ho to 10s, kaafi der se
-# khaali ho to 12s. Job aate hi turant 5s par wapas aa jata hai,
-# isliye print me deri kabhi nahi hoti.
-CHECK_INTERVAL     = 5          # Abhi job aaya tha — sabse tez
-IDLE_INTERVAL_1    = 10         # 2 min se khaali
-IDLE_INTERVAL_2    = 12         # 10 min se khaali
-# Kitni der baad agli speed par jayen (second me)
+# ── THE THREE POLLING SPEEDS ──
+# When the shop is busy, 5s; when it has been idle for a while, 10s; when it has
+# been idle for a long time, 12s. As soon as a job arrives it goes straight back to 5s,
+# so printing is never delayed.
+CHECK_INTERVAL     = 5          # a job just arrived — fastest
+IDLE_INTERVAL_1    = 10         # idle for 2 min
+IDLE_INTERVAL_2    = 12         # idle for 10 min
+# How long before moving to the next speed (in seconds)
 IDLE_STEP_1_SEC    = 120        # 2 min  -> 10s
 IDLE_STEP_2_SEC    = 600        # 10 min -> 12s
-# Purane build se compatibility ke liye naam rakha hai
+# The name is kept for compatibility with older builds
 IDLE_INTERVAL_3    = 12
-# Lambi idle ke baad TCP socket aksar mar chuka hota hai (NAT/ISP
-# timeout, ya Render ka sleep). Us mari hui socket par pehla poll
-# fail hota hai. Isliye khaali baithe rehne par har itni der me
-# session KHUD refresh kar dete hain — job aane se PEHLE.
+# After a long idle period the TCP socket is often already dead (NAT/ISP
+# timeout, or Render going to sleep). The first poll on that dead socket
+# fails. So while idle, the session is refreshed ON ITS OWN at this interval
+# — BEFORE a job arrives.
 IDLE_SOCKET_REFRESH_SEC = 300   # 5 min
-# Offline hone par kitne second ka ulta counter dikhe, phir khud
-# reconnect ho jaye.
+# When offline, how many seconds the countdown shows before it
+# reconnects by itself.
 AUTO_RECONNECT_SECONDS  = 10
-# Lambi outage me notification kitni der me ek baar (reconnect ki
-# koshish phir bhi chalti rehti hai — sirf notification rukti hai).
+# During a long outage, how often a notification is shown (reconnect
+# attempts keep running anyway — only the notification pauses).
 AUTO_RECONNECT_NOTIFY_GAP = 600  # 10 min
-# Dukaan din bhar me sirf kuch der busy rehti hai. Har 5 second poll karne se
-# roz lakhon request jaati hain aur server ka bandwidth khatam ho jaata hai.
-# Isliye khaali waqt me dheere check karo — par job aate hi turant 5s par
-# wapas aa jao, taaki print me deri na ho.
-UPDATE_CHECK_INTERVAL = 3600    # (purana) — ab UPDATE_HOURS use hota hai
+# A shop is busy for only part of the day. Polling every 5 seconds would send
+# hundreds of thousands of requests a day and use up the server bandwidth.
+# So check slowly while idle — but go straight back to 5s as soon as a job
+# arrives, so printing is not delayed.
+UPDATE_CHECK_INTERVAL = 3600    # (legacy) — UPDATE_HOURS is used now
 
-# ── Update check ab fix time par, har ghante nahi ──
-# Har ghante check karne se update kisi bhi waqt aa sakta tha — beech kaam
-# ke, jab customer print karwa raha ho. Ab din me sirf do baar.
-UPDATE_HOURS = (11, 18)        # subah 11 baje, shaam 6 baje (PC ka local time)
-UPDATE_JITTER_MAX_SEC = 25 * 60  # 0-25 min ka random offset (neeche dekho)
+# ── The update check now runs at fixed times, not every hour ──
+# Checking every hour meant an update could arrive at any moment — in the middle of
+# work, while a customer was printing. Now only twice a day.
+UPDATE_HOURS = (11, 18)        # 11 AM and 6 PM (the PC's local time)
+UPDATE_JITTER_MAX_SEC = 25 * 60  # a random 0-25 min offset (see below)
 
 # ── Long polling ──
-# Agent ek baar poochta hai, server LP_SECONDS tak line pakde rakhta hai
-# aur job aate hi usi line par bhej deta hai. Isse request 6x kam ho jaati
-# hain aur print pehle se TEZ nikalta hai (line pehle se khuli hoti hai).
+# The agent asks once; the server holds the line for up to LP_SECONDS
+# and sends the job on that same line as soon as it arrives. This cuts requests
+# by 6x and printing starts FASTER (the line is already open).
 #
-# LP_TIMEOUT server ke hold se ZYADA hona chahiye — warna agent pehle
-# timeout maan lega aur har baar "fail" samajh kar backoff me chala jayega.
-LP_SECONDS = 30                # server itni der line pakde
-# Shop server par mila hi nahi (mit chuka demo) — tab itni der me
-# ek baar dekhte hain. Band karne ki jagah dheema karte hain taaki
-# shop wapas aa jaye to agent khud sambhal le.
+# LP_TIMEOUT must be LONGER than the server's hold — otherwise the agent would
+# time out first, treat every poll as a "failure" and go into backoff.
+LP_SECONDS = 30                # how long the server holds the line
+# The shop was not found on the server (a deleted demo) — then check once
+# every this many seconds. It slows down instead of stopping, so that if
+# the shop comes back the agent recovers by itself.
 SHOP_GONE_INTERVAL = 30 * 60
-LP_TIMEOUT = LP_SECONDS + 15   # agent ka apna timeout — hamesha zyada
+LP_TIMEOUT = LP_SECONDS + 15   # the agent's own timeout — always longer
 VERSION            = 2            # Internal update build number.
-                                  # Ye sirf badhta hai (29 → 30 → 31...). Isko kabhi
-                                  # "2.0" mat banao: purane v27/v28/v29 agents integer
-                                  # compare karte hain, warna woh update lena band kar denge.
+                                  # This only goes up (29 → 30 → 31...). Never turn it
+                                  # into "2.0": old v27/v28/v29 agents compare it as an
+                                  # integer, otherwise they would stop taking updates.
 VERSION_LABEL      = "2.0"        # Display version.
-REMOTE_VERSION_LABEL = None       # Server ka latest label — update check par bhar jaata hai
-REMOTE_VERSION_INT = 0            # Server ka internal build number (integer compare ke liye)
+REMOTE_VERSION_LABEL = None       # The server's latest label — filled in by the update check
+REMOTE_VERSION_INT = 0            # The server's internal build number (for the integer compare)
 SUPPORT_WA         = "917011482679"  # Offline fallback; online support follows website settings.
 
-# Log/temp files hamesha user-writable folder (%APPDATA%) mein rakhte hain —
-# kyunki .exe install hone par Program Files mein likhna permission-denied
-# de sakta hai. Yeh dono mode (.py script aur .exe) ke liye safe hai.
+# Log/temp files always live in a user-writable folder (%APPDATA%) —
+# because writing into Program Files after an .exe install can fail with
+# permission denied. This is safe for both modes (.py script and .exe).
 _APPDATA_DIR = os.path.join(os.environ.get('APPDATA', tempfile.gettempdir()), 'EchelPrint')
 os.makedirs(_APPDATA_DIR, exist_ok=True)
 LOG_FILE           = os.path.join(_APPDATA_DIR, "print_agent_log.txt")
 
 # ══════════════════════════════════════════════════════════════════
-# TLS CA BUNDLE PIN — PyInstaller --onefile ka _MEIxxxxx temp folder
-# Windows Storage Sense / temp cleaners 8-12 ghante chalte agent ke
-# neeche se uda dete hain. Uske baad har HTTPS request "Could not find
-# a suitable TLS CA certificate bundle" se fail hoti hai — agent tray
-# mein "Running" dikhta hai par server tak kuch nahi pahunchta.
-# Fix: startup par cacert.pem ko APPDATA mein copy karke env se wahi
-# point karo — _MEI ude to bhi HTTPS zinda rahega.
+# TLS CA BUNDLE PIN — the _MEIxxxxx temp folder of PyInstaller --onefile
+# Windows Storage Sense / temp cleaners delete it from under an agent that has
+# been running for 8-12 hours. After that every HTTPS request fails with "Could not find
+# a suitable TLS CA certificate bundle" — the agent shows "Running" in the tray
+# but nothing reaches the server.
+# Fix: at startup copy cacert.pem into APPDATA and point the env at it —
+# HTTPS stays alive even if _MEI disappears.
 # ══════════════════════════════════════════════════════════════════
 def _pin_ca_bundle():
     try:
@@ -145,43 +145,43 @@ def _pin_ca_bundle():
                     or os.path.getsize(dst) != os.path.getsize(src)):
                 shutil.copy2(src, dst)
         except Exception:
-            pass  # copy fail ho to purani pinned copy chalegi (agar hai)
+            pass  # if the copy fails, the older pinned copy is used (if there is one)
         if os.path.exists(dst) and os.path.getsize(dst) > 10000:
             os.environ["REQUESTS_CA_BUNDLE"] = dst
             os.environ["SSL_CERT_FILE"] = dst
     except Exception:
-        pass  # certifi hi nahi mila — requests apne default par chalega
+        pass  # certifi not found at all — requests uses its default
 
 _pin_ca_bundle()
 
 # ══════════════════════════════════════════════════════════════════
-# _MEI SURVIVAL KIT — onefile ka temp folder chalte-chalte ud sakta hai
+# _MEI SURVIVAL KIT — the onefile temp folder can vanish while the agent runs
 #
-# 22 Aug 2026 ko yahi hua: agent 09:12 par chala, 09:18 par kisi cheez ne
-# uske _MEI18802 folder ko recursive delete kar diya. Sirf wahi .pyd/.dll
-# bache jo us waqt process me load the (Windows unhe lock rakhta hai).
-# base_library.zip, Crypto\, SumatraPDF.exe, agent_panel.html — sab ud gaye.
-# Do error nikle:
-#   * "Bada dialog fail (... base_library.zip)"          -> naya import hi na ho saka
-#   * "Cannot load native module 'Crypto.Util._cpuid_c'" -> har page-range job crash
+# This is exactly what happened on 22 Aug 2026: the agent started at 09:12, and at 09:18
+# something recursively deleted its _MEI18802 folder. Only the .pyd/.dll files
+# that were loaded in the process at that moment survived (Windows keeps them locked).
+# base_library.zip, Crypto\, SumatraPDF.exe, agent_panel.html — all gone.
+# Two errors appeared:
+#   * "Large dialog failed (... base_library.zip)"          -> no new import was possible
+#   * "Cannot load native module 'Crypto.Util._cpuid_c'" -> every page-range job crashed
 #
-# Ilaaj teen parat me — koi ek fail ho to baaki bacha lete hain:
-#   1. _pin_base_library()    : base_library.zip ki apni copy APPDATA me, aur
-#      sys.path me _MEI wali entry ki JAGAH wahi lagao.
-#   2. _mirror_bundled_files(): SumatraPDF.exe / panel HTML / icon ki copy
-#      APPDATA me — get_bundled_resource_path() wahan bhi dhoondhta hai.
-#   3. _preload_fragile()     : Crypto + PyPDF2 + codecs SHURU me hi import kar
-#      lo. Ek baar load hone par module sys.modules me aur .pyd Windows ki
-#      memory me map ho jaati hai — file delete ho jaye to bhi chalti rehti hai.
+# The cure comes in three layers — if one fails, the others still save the day:
+#   1. _pin_base_library()    : a private copy of base_library.zip in APPDATA, and
+#      it replaces the _MEI entry in sys.path.
+#   2. _mirror_bundled_files(): copies of SumatraPDF.exe / the panel HTML / the icon
+#      in APPDATA — get_bundled_resource_path() looks there too.
+#   3. _preload_fragile()     : import Crypto + PyPDF2 + codecs right at the START.
+#      Once loaded, a module stays in sys.modules and its .pyd stays mapped in
+#      Windows memory — it keeps working even if the file is deleted.
 #
-# _MEI salaamat rehne par ye teeno bilkul harmless hain (bas ek copy zyada).
+# While _MEI is intact, all three are completely harmless (just one extra copy).
 # ══════════════════════════════════════════════════════════════════
 _RUNTIME_DIR = os.path.join(_APPDATA_DIR, "runtime")
-_EARLY_NOTES = []          # log() abhi bana nahi hai — startup par flush hota hai
+_EARLY_NOTES = []          # log() does not exist yet — this is flushed at startup
 
 
 def _early(msg, level="INFO"):
-    """Startup ke wo notes jo log() ban-ne se pehle likhne padte hain."""
+    """Startup notes that have to be written before log() exists."""
     _EARLY_NOTES.append((level, msg))
 
 
@@ -200,13 +200,13 @@ def _same_file(a, b):
 
 def _pin_base_library():
     """
-    base_library.zip me Python ki stdlib ka wo hissa hai jo abhi tak import
-    nahi hua — jaise encodings.cp1252, jo subprocess ka text output padhte
-    waqt PEHLI BAAR lagta hai. _MEI ud jaye to har naya import
-    "FileNotFoundError: ...base_library.zip" deta hai.
+    base_library.zip holds the part of Python's stdlib that has not been
+    imported yet — such as encodings.cp1252, which is needed for the FIRST TIME
+    when reading subprocess text output. If _MEI disappears, every new import
+    fails with "FileNotFoundError: ...base_library.zip".
 
-    Isliye uski ek copy APPDATA me rakh kar sys.path ki entry hi badal dete
-    hain — uske baad Python _MEI wali file ko haath hi nahi lagata.
+    So a copy of it is kept in APPDATA and the sys.path entry itself is
+    changed — after that Python never touches the _MEI file again.
     """
     mei = _mei_dir()
     if not mei:
@@ -220,7 +220,7 @@ def _pin_base_library():
         if not _same_file(src, dst):
             shutil.copy2(src, dst)
         if not os.path.exists(dst):
-            return                       # copy hi nahi bani — kuch mat chhedo
+            return                       # the copy was not created at all — do not touch anything
         target = os.path.normcase(os.path.abspath(src))
         swapped = False
         for i, p in enumerate(list(sys.path)):
@@ -232,20 +232,20 @@ def _pin_base_library():
                 continue
         if not swapped:
             sys.path.insert(0, dst)
-        # zipimport ka purana cache hata do, warna wahi mari hui file khulegi
+        # drop zipimport's old cache, otherwise the same dead file would be opened
         for k in list(sys.path_importer_cache):
             try:
                 if os.path.normcase(os.path.abspath(k)) == target:
                     sys.path_importer_cache.pop(k, None)
             except Exception:
                 continue
-        # ── Sirf sys.path badalna KAAFI NAHI HAI ──
-        # `encodings`, `collections`, `re` — teeno package interpreter ke
-        # startup par hi import ho jaate hain, aur inka __path__ SEEDHA _MEI
-        # wali zip ke andar point karta hai. Inka koi bhi lazy submodule
-        # (jaise encodings.utf_8_sig) sys.path dekhta hi NAHI — sirf apne
-        # package ka __path__ dekhta hai. Isliye unhe bhi nayi copy par
-        # mod dena padta hai.
+        # ── Changing sys.path alone is NOT ENOUGH ──
+        # `encodings`, `collections`, `re` — all three packages are imported at
+        # interpreter startup, and their __path__ points DIRECTLY into the _MEI
+        # zip. Any lazy submodule of theirs
+        # (such as encodings.utf_8_sig) does NOT look at sys.path — it only looks at its
+        # package's __path__. So those have to be redirected to the new copy
+        # as well.
         moved = 0
         for _m in list(sys.modules.values()):
             try:
@@ -264,24 +264,24 @@ def _pin_base_library():
                 continue
         _early("base_library.zip pinned -> %s (%d package repointed)" % (dst, moved))
     except Exception as e:
-        _early("base_library pin fail (%s) - _MEI wali copy hi chalegi" % e, "WARN")
+        _early("base_library pin failed (%s) - the _MEI copy will be used" % e, "WARN")
 
 
-# _MEI se nikaal kar APPDATA me rakhne wali files. Ye Python module nahi hain,
-# isliye inhe "preload" nahi kiya ja sakta — copy hi ek raasta hai.
-_MIRROR_FILES = ("SumatraPDF.exe", "agent_panel.html", "qrseprint.ico",
+# Files taken out of _MEI and kept in APPDATA. These are not Python modules,
+# so they cannot be "preloaded" — copying is the only way.
+_MIRROR_FILES = ("SumatraPDF.exe", "agent_panel.html", "echel.ico",
                  "SumatraPDF-settings.txt")
 
 
 def _mirror_bundled_files():
-    """Zaroori bundle files ki pakki copy APPDATA me."""
+    """A persistent copy of the essential bundle files in APPDATA."""
     mei = _mei_dir()
     if not mei:
         return
     try:
         os.makedirs(_RUNTIME_DIR, exist_ok=True)
     except Exception as e:
-        _early("runtime folder nahi bana (%s)" % e, "WARN")
+        _early("could not create the runtime folder (%s)" % e, "WARN")
         return
     for name in _MIRROR_FILES:
         src = os.path.join(mei, name)
@@ -292,20 +292,20 @@ def _mirror_bundled_files():
             if not _same_file(src, dst):
                 shutil.copy2(src, dst)
         except Exception as e:
-            # Purani copy chal rahi ho (SumatraPDF khula ho) to copy fail
-            # ho sakti hai — us haalat me wahi purani copy kaam de degi.
+            # If the old copy is in use (SumatraPDF is open), the copy may
+            # fail — in that case the old copy does the job.
             _early("mirror %s fail (%s)" % (name, e), "WARN")
 
 
-# Ye module job ke waqt PEHLI BAAR import hote the. Tab tak _MEI ud chuka ho
-# to job crash ho jaata tha. Ab shuruaat me hi memory me le aate hain.
+# These modules used to be imported for the FIRST TIME during a job. If _MEI had
+# vanished by then, the job crashed. Now they are loaded into memory right at startup.
 _CRITICAL_PRELOAD = (
     "Crypto.Util._cpu_features", "Crypto.Util.Padding", "Crypto.Util.strxor",
     "Crypto.Util.number", "Crypto.Cipher.AES", "Crypto.Cipher.ARC4",
     "Crypto.Hash.MD5", "Crypto.Hash.SHA256",
     "PyPDF2",
 )
-# Inka na milna ghaatak nahi — mil jayen to aur mazboot ho jaata hai.
+# Missing these is not fatal — if they are found, the agent becomes more robust.
 _OPTIONAL_PRELOAD = (
     "ctypes", "ctypes.wintypes", "traceback", "tempfile", "winreg",
     "socket", "webbrowser", "certifi", "win32print", "PIL.Image",
@@ -314,10 +314,10 @@ _OPTIONAL_PRELOAD = (
 
 def _preload_fragile():
     """
-    Ek baar module import ho jaye to wo sys.modules me reh jaata hai aur uski
-    .pyd Windows ki memory me map ho jaati hai. Uske baad file delete ho bhi
-    jaye to code chalta rehta hai. Isliye risk wale saare module yahin,
-    shuruaat me, load kar lete hain — jab _MEI poora salaamat hai.
+    Once a module has been imported it stays in sys.modules and its
+    .pyd stays mapped in Windows memory. After that, even if the file is
+    deleted, the code keeps running. So all the risky modules are loaded here,
+    at startup — while _MEI is fully intact.
     """
     missing = []
     for mod in _CRITICAL_PRELOAD:
@@ -330,16 +330,16 @@ def _preload_fragile():
             __import__(mod)
         except Exception:
             pass
-    # ── SAARE CODEC ──
-    # Codec base_library.zip me rehte hain aur PEHLI BAAR tab load hote hain
-    # jab zaroorat padti hai — jaise subprocess ka text output padhna ya
-    # "utf-8-sig" me file likhna. Tab tak _MEI saaf ho chuka ho to
-    # "FileNotFoundError: ...base_library.zip" aata tha (screenshot wala
-    # "Bada dialog fail"). Ab sabhi abhi load kar lete hain — ye ~100 chhoti
-    # .pyc hain, aadhe second se bhi kam lagta hai.
+    # ── ALL CODECS ──
+    # Codecs live in base_library.zip and are loaded for the FIRST TIME only when
+    # needed — such as reading subprocess text output or
+    # writing a file in "utf-8-sig". If _MEI had been cleaned by then,
+    # "FileNotFoundError: ...base_library.zip" appeared (the "Large dialog failed"
+    # in the screenshot). Now all of them are loaded up front — they are ~100 small
+    # .pyc files and take less than half a second.
     codec_names = set()
     try:
-        # 1. Sabse pakka source: zip me jo encodings/*.pyc hain wahi
+        # 1. The most reliable source: the encodings/*.pyc files in the zip
         import zipfile
         _zp = os.path.join(_RUNTIME_DIR, "base_library.zip")
         if not os.path.exists(_zp):
@@ -355,13 +355,13 @@ def _preload_fragile():
     except Exception:
         pass
     try:
-        # 2. Fallback — alias table se (isme utf_8_sig NAHI hota, isliye
-        #    neeche wali list bhi zaroori hai)
+        # 2. Fallback — from the alias table (it does NOT contain utf_8_sig, so
+        #    the list below is needed too)
         import encodings.aliases
         codec_names.update(encodings.aliases.aliases.values())
     except Exception:
         pass
-    # 3. Jinka koi alias nahi hai par kaam me aate hain
+    # 3. The ones that have no alias but are used
     codec_names.update(("utf_8", "utf_8_sig", "utf_16", "utf_16_le", "utf_16_be",
                         "utf_32", "ascii", "latin_1", "mbcs", "oem", "cp1252",
                         "cp437", "cp850", "idna", "unicode_escape",
@@ -371,7 +371,7 @@ def _preload_fragile():
             __import__("encodings." + _c)
         except Exception:
             pass
-    # Console / locale ka apna encoding bhi pakka kar lo
+    # Lock in the console / locale encoding as well
     try:
         import codecs, locale
         for probe in (locale.getpreferredencoding(False),
@@ -387,16 +387,16 @@ def _preload_fragile():
     if missing:
         _early("Preload FAIL -> " + " | ".join(missing), "ERROR")
     else:
-        _early("Preload OK - %d zaroori module + %d codec memory me"
+        _early("Preload OK - %d essential modules + %d codecs in memory"
                % (len(_CRITICAL_PRELOAD), len(codec_names)))
     return not missing
 
 
 def _mei_intact():
-    """_MEI folder ki nishani files abhi bhi hain ya nahi."""
+    """Whether the marker files of the _MEI folder still exist."""
     mei = _mei_dir()
     if not mei:
-        return True                      # onedir / .py mode — sawaal hi nahi
+        return True                      # onedir / .py mode — not applicable
     for probe in ("base_library.zip", "SumatraPDF.exe"):
         try:
             if not os.path.exists(os.path.join(mei, probe)):
@@ -412,11 +412,11 @@ _MEI_LAST_CHECK = 0.0
 
 def _mei_watch():
     """
-    Har 5 minute me ek nazar: _MEI folder salaamat hai ya nahi.
+    A check every 5 minutes: is the _MEI folder intact?
 
-    Khud koi ilaaj nahi karta — ilaaj upar wali teen parat pehle hi kar chuki
-    hain. Ye sirf EK BAAR log me saaf-saaf likh deta hai, taaki agli baar ye
-    dikkat ghanta bhar dhoondhni na pade.
+    It does not repair anything itself — the three layers above have already
+    done that. It only writes a clear note to the log ONCE, so next time
+    nobody has to spend an hour hunting for this problem.
     """
     global _MEI_WARNED, _MEI_LAST_CHECK
     if _MEI_WARNED:
@@ -429,11 +429,11 @@ def _mei_watch():
         if _mei_intact():
             return
         _MEI_WARNED = True
-        log("⚠️  Agent ka temp folder (%s) kisi ne saaf kar diya hai." % _mei_dir(),
+        log("⚠️  The agent's temp folder (%s) has been cleaned by something else." % _mei_dir(),
             "WARN")
-        log("   Printing chalti rahegi — zaroori files ki copy %s me rakhi hai."
+        log("   Printing continues — copies of the essential files are kept in %s."
             % _RUNTIME_DIR, "WARN")
-        log("   Fursat me agent band karke dobara chalu kar lena.", "WARN")
+        log("   When convenient, close the agent and start it again.", "WARN")
     except Exception:
         pass
 
@@ -446,15 +446,15 @@ LOCAL_VERSION_FILE = os.path.join(_APPDATA_DIR, "agent_version.txt")
 SHOP_CONFIG_FILE   = os.path.join(_APPDATA_DIR, "shop_config.txt")
 APPROVAL_CONFIG    = os.path.join(_APPDATA_DIR, "approval_mode.txt")
 AGENT_TOKEN_FILE   = os.path.join(_APPDATA_DIR, "agent_token.txt")
-# Jab owner exe par dobara double-click kare, doosra instance yahan ek
-# chhoti file chhod jaata hai. CHALU agent use dekh kar apna panel khol
-# deta hai. (Iske bina doosra instance chup-chaap band ho jaata tha aur
-# owner ko lagta tha "kuch hua hi nahi".)
+# When the owner double-clicks the exe again, the second instance leaves a
+# small file here. The RUNNING agent sees it and opens its panel.
+# (Without this the second instance quietly exited and the
+# owner thought "nothing happened".)
 PANEL_REQUEST_FILE = os.path.join(_APPDATA_DIR, "show_panel.request")
 
 
 def _machine_name():
-    """PC ka naam — sirf dikhane ke liye ("kis computer par juda hai")."""
+    """The PC name — for display only ("which computer it is bound to")."""
     try:
         import socket
         return (os.environ.get("COMPUTERNAME") or socket.gethostname() or "")[:100]
@@ -531,40 +531,40 @@ def set_approval(on):
         pass
 # ============================================================
 
-# Tray icon ke liye global state — taaki tray menu se live status dikhaya ja sake
+# Global state for the tray icon — so the tray menu can show the live status
 agent_state = {
     "status": "Starting...",
     "printer": "Unknown",
     "tray_icon": None,
     "running": True,
-    # "online" | "connecting" | "offline" — tray aur desktop panel dono
-    # isi se apna status dot dikhate hain.
+    # "online" | "connecting" | "offline" — both the tray and the desktop panel
+    # show their status dot from this.
     "connection": "connecting",
-    # Reconnect to Server button set karta hai; print_loop ise consume karta hai.
+    # Set by the Reconnect to Server button; print_loop consumes it.
     "reconnect_requested": False,
 }
 
-# Log file kabhi rotate nahi hoti thi — mahino chalne wale PC par ye
-# badhti hi rehti thi. Ab 2 MB par ek baar .old me chali jaati hai.
-# Sirf 1 backup rakhte hain: purani log itni purani ho jaati hai ki
-# uska koi kaam nahi bachta, aur disk bharna is se bada problem hai.
+# The log file was never rotated — on a PC running for months it
+# just kept growing. Now at 2 MB it is moved to .old once.
+# Only 1 backup is kept: the older log is so old by then that it
+# is no longer useful, and a full disk is a bigger problem than this.
 LOG_MAX_BYTES = 2 * 1024 * 1024
 
 
 def _rotate_log_if_big():
-    """2 MB se badi ho to log ko .old bana kar nayi shuru karo."""
+    """If the log is larger than 2 MB, rename it to .old and start a new one."""
     try:
         if os.path.getsize(LOG_FILE) < LOG_MAX_BYTES:
             return
     except OSError:
-        return          # file hai hi nahi — kuch karne ki zaroorat nahi
+        return          # the file does not exist — nothing to do
     old = LOG_FILE + ".old"
     try:
         if os.path.exists(old):
             os.remove(old)
         os.replace(LOG_FILE, old)
     except Exception:
-        # Rotation fail ho jaye to bhi logging ruknI nahi chahiye
+        # Even if rotation fails, logging must not stop
         pass
 
 
@@ -574,7 +574,7 @@ def log(msg, level="INFO"):
     try:
         print(line)
     except Exception:
-        pass  # .exe windowed mode mein console hi nahi hota, print() fail ho sakta hai
+        pass  # windowed .exe mode has no console, so print() may fail
     try:
         _rotate_log_if_big()
         with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -582,13 +582,13 @@ def log(msg, level="INFO"):
     except:
         pass
 
-# ─── BACKGROUND THREAD KA CRASH BHI LOG ME AAYE ──────────────────────
-# Python by default background thread ka traceback stderr par bhejta hai.
-# Windowed .exe me stderr hai hi nahi — wo traceback kahin nahi jaata.
-# Isi wajah se "na tray icon, na panel, aur log bilkul saaf" wali halat
-# banti thi: pystray apna tray window ek alag thread me banata hai, wahan
-# koi exception aata to wo thread chup-chaap mar jaata aur kisi ko pata
-# hi nahi chalta ki hua kya.
+# ─── A CRASH IN A BACKGROUND THREAD MUST REACH THE LOG TOO ──────────────────────
+# By default Python sends a background thread's traceback to stderr.
+# A windowed .exe has no stderr at all — that traceback goes nowhere.
+# That is what caused the "no tray icon, no panel, and a perfectly clean log"
+# situation: pystray creates its tray window in a separate thread, and if an
+# exception happened there, that thread died silently and nobody ever
+# found out what had happened.
 def _thread_excepthook(args):
     try:
         import traceback as _tb
@@ -598,7 +598,7 @@ def _thread_excepthook(args):
         log("".join(_tb.format_exception(
             args.exc_type, args.exc_value, args.exc_traceback)), "ERROR")
     except Exception:
-        pass          # logging khud fail ho jaye to bhi process na ruke
+        pass          # even if logging itself fails, the process must not stop
 
 
 try:
@@ -609,23 +609,22 @@ except Exception:
 
 def is_running_as_exe():
     """
-    PyInstaller se bana .exe chal raha hai ya normal Python script?
-    .exe mode mein sab dependencies already bundled hoti hain.
+    Is this running as a PyInstaller-built .exe or as a normal Python script?
+    In .exe mode all dependencies are already bundled.
     """
     return getattr(sys, 'frozen', False)
 
 # ─── SAFE CHILD PROCESS ENVIRONMENT (PyInstaller onefile fix) ─────────
-# PyInstaller ka --onefile bootloader apne aap ko batane ke liye kuch env
-# variables set karta hai (_MEIPASS2 / _PYI_APPLICATION_HOME_DIR). Agar hum
-# subprocess.Popen se naya .exe launch karein to ye variables CHILD ko
-# inherit ho jaate hain. Tab naya .exe sochta hai "main already unpacked
-# hoon" aur apna alag temp folder extract NAHI karta — wahi purana
-# _MEIxxxxxx use karta hai. Purana process exit hote hi uska bootloader
-# us folder ko DELETE kar deta hai, aur naya process beech import mein hi
-# mar jaata hai:
+# The PyInstaller --onefile bootloader sets some env variables to identify
+# itself (_MEIPASS2 / _PYI_APPLICATION_HOME_DIR). If we
+# launch a new .exe with subprocess.Popen, the CHILD inherits these
+# variables. The new .exe then thinks "I am already unpacked"
+# and does NOT extract its own temp folder — it uses the same old
+# _MEIxxxxxx. As soon as the old process exits, its bootloader
+# DELETES that folder, and the new process dies in the middle of an import:
 #     [Errno 2] No such file or directory: ...\Temp\_MEIxxxxx\base_library.zip
-# Isliye har child launch se pehle ye variables hata do.
-# Version label format check: "2.0", "2.10", "3.1" — teen digit tak allowed.
+# So remove these variables before launching any child.
+# Version label format check: "2.0", "2.10", "3.1" — up to three digits allowed.
 _VERSION_LABEL_RE = re.compile(r'^\d{1,3}\.\d{1,3}$')
 
 _PYI_BOOTLOADER_VARS = (
@@ -653,8 +652,8 @@ def _spawn_detached(args, cwd=None):
     if cwd:
         kwargs['cwd'] = cwd
     if os.name == 'nt':
-        # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP — parent ke marne par
-        # child bhi na mare, aur Ctrl+C signals share na hon.
+        # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP — the child must not die when
+        # the parent dies, and Ctrl+C signals must not be shared.
         kwargs['creationflags'] = 0x00000008 | 0x00000200
     return subprocess.Popen(args, **kwargs)
 
@@ -667,9 +666,9 @@ def _powershell_input(prompt, title="Echel"):
     part of Windows itself and always works.
     """
     try:
-        # PowerShell ki single-quoted string me ' ko '' likhna padta hai.
-        # Bina iske kal koi prompt me apostrophe daal de (jaise "shop's ID")
-        # to poori command toot jaati aur box khaali aata.
+        # In a PowerShell single-quoted string ' has to be written as ''.
+        # Without this, if someone ever puts an apostrophe in a prompt (such as "shop's ID"),
+        # the whole command would break and the box would come up empty.
         _p = str(prompt).replace("'", "''")
         _t = str(title).replace("'", "''")
         ps = (
@@ -689,13 +688,13 @@ def _powershell_input(prompt, title="Echel"):
 
 def _ps_shop_login(head, title="Echel"):
     """
-    Ek hi Windows dialog me Shop ID aur PASSWORD poochho.
+    Ask for the Shop ID and the PASSWORD in a single Windows dialog.
 
-    InputBox se ye kaam nahi ho sakta - usme password dots me nahi
-    chhupta. Isliye PowerShell se ek chhota WinForms box banate hain.
-    WinForms har Windows par .NET ke saath pehle se hota hai.
+    InputBox cannot do this - it does not hide the password behind
+    dots. So PowerShell builds a small WinForms box instead.
+    WinForms comes with .NET on every Windows installation.
 
-    Returns (shop_id, password) ya None (cancel / fail).
+    Returns (shop_id, password) or None (cancel / failure).
     """
     ps1 = None
     try:
@@ -755,16 +754,16 @@ if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   [Console]::Out.WriteLine($t2.Text)
 }
 """
-        # Text ko script me daalte waqt quote todna nahi chahiye
+        # Inserting the text into the script must not break the quoting
         script = script.replace("__TITLE__", str(title).replace("'", "''"))
         script = script.replace("__HEAD__", str(head).replace("'", "''"))
 
         fd, ps1 = tempfile.mkstemp(suffix=".ps1")
-        # BOM khud likh rahe hain (b"\xef\xbb\xbf") - "utf-8-sig" CODEC use
-        # karne se bachne ke liye. Wo codec base_library.zip me rehta hai aur
-        # PEHLI BAAR theek yahin load hota tha; _MEI saaf ho chuka ho to yahi
-        # line "FileNotFoundError: ...base_library.zip" deti thi - screenshot
-        # wala "Bada dialog fail" isi se aaya tha.
+        # The BOM is written by hand (b"\xef\xbb\xbf") - to avoid using the "utf-8-sig"
+        # CODEC. That codec lives in base_library.zip and was loaded for the
+        # FIRST TIME exactly here; if _MEI had already been cleaned, this very
+        # line raised "FileNotFoundError: ...base_library.zip" - the "Large dialog
+        # failed" in the screenshot came from this.
         with os.fdopen(fd, "wb") as f:
             f.write(b"\xef\xbb\xbf" + script.encode("utf-8"))
 
@@ -776,9 +775,9 @@ if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
         lines = (out.stdout or "").splitlines()
         if len(lines) < 2:
-            return None                      # Cancel dabaya ya box hi nahi khula
+            return None                      # Cancel was pressed or the box never opened
         sid = lines[0].strip().upper()
-        pwd = lines[1]                       # password ko strip MAT karo
+        pwd = lines[1]                       # do NOT strip the password
         if not sid or not pwd:
             return None
         return (sid, pwd)
@@ -795,12 +794,12 @@ if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
 def convert_demo_to_paid_native():
     """
-    Demo -> Paid, bina desktop panel ke.
+    Demo -> Paid, without the desktop panel.
 
-    Jis PC par WebView2 nahi hai wahan panel khulta hi nahi, aur pehle
-    is wajah se demo shop kabhi paid ban hi nahi sakti thi. Ye wahi do
-    server endpoint use karta hai jo panel karta hai, isliye dono taraf
-    ek hi niyam chalte hain.
+    On a PC without WebView2 the panel does not open at all, and
+    because of that a demo shop could never become paid before. This uses the
+    same two server endpoints the panel uses, so both sides follow
+    the same rules.
     """
     try:
         creds = _ps_shop_login(
@@ -810,7 +809,7 @@ def convert_demo_to_paid_native():
             return
         pid, pwd = creds
 
-        # ── Step 1: verify (yahan kuch badalta NAHI) ──
+        # ── Step 1: verify (nothing changes here) ──
         try:
             r = requests.post(
                 f"{SERVER_URL}/api/agent/verify-paid-shop",
@@ -890,15 +889,15 @@ def convert_demo_to_paid_native():
 
 def _ps_input_big(head, sub, label, hint, title="Echel"):
     """
-    Ek line ka input, par BADA aur saaf.
+    A one-line input, but LARGE and clear.
 
-    VisualBasic ka InputBox (jo _powershell_input use karta hai) chhota
-    hota hai aur uska font/size badla hi nahi ja sakta -- naye shop owner
-    ko sabse pehle wahi dikhta tha, aur bahut purana lagta tha.
-    Ye WinForms wala box wahi tareeka hai jo _ps_shop_login me chal raha
-    hai, isliye koi nayi nirbharta nahi.
+    The VisualBasic InputBox (used by _powershell_input) is small
+    and its font/size cannot be changed -- it was the very first thing a new
+    shop owner saw, and it looked very dated.
+    This WinForms box uses the same approach as _ps_shop_login,
+    so there is no new dependency.
 
-    Returns: type kiya hua text, ya "" (cancel / box hi na bane).
+    Returns: the typed text, or "" (cancel / the box could not be created).
     """
     ps1 = None
     try:
@@ -988,11 +987,11 @@ if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             script = script.replace(k, q(v))
 
         fd, ps1 = tempfile.mkstemp(suffix=".ps1")
-        # BOM khud likh rahe hain (b"\xef\xbb\xbf") - "utf-8-sig" CODEC use
-        # karne se bachne ke liye. Wo codec base_library.zip me rehta hai aur
-        # PEHLI BAAR theek yahin load hota tha; _MEI saaf ho chuka ho to yahi
-        # line "FileNotFoundError: ...base_library.zip" deti thi - screenshot
-        # wala "Bada dialog fail" isi se aaya tha.
+        # The BOM is written by hand (b"\xef\xbb\xbf") - to avoid using the "utf-8-sig"
+        # CODEC. That codec lives in base_library.zip and was loaded for the
+        # FIRST TIME exactly here; if _MEI had already been cleaned, this very
+        # line raised "FileNotFoundError: ...base_library.zip" - the "Large dialog
+        # failed" in the screenshot came from this.
         with os.fdopen(fd, "wb") as fh:
             fh.write(b"\xef\xbb\xbf" + script.encode("utf-8"))
 
@@ -1005,8 +1004,8 @@ if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         lines = (out.stdout or "").splitlines()
         return lines[0].strip() if lines else ""
     except Exception as e:
-        log(f"Bada input box fail ({e}) - purane InputBox par ja rahe hain", "WARN")
-        return None                      # None = "try nahi hua", "" = cancel
+        log(f"Large input box failed ({e}) - falling back to the old InputBox", "WARN")
+        return None                      # None = "not attempted", "" = cancel
     finally:
         try:
             if ps1 and os.path.exists(ps1):
@@ -1016,7 +1015,7 @@ if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
 
 def _ask_shop_id_once():
-    """Shop ID poochho — pehle bada box, na bane to purana InputBox."""
+    """Ask for the Shop ID — the large box first, the old InputBox if it cannot be created."""
     v = _ps_input_big(
         head="Welcome to Echel",
         sub="Enter your Shop ID to connect this computer",
@@ -1026,7 +1025,7 @@ def _ask_shop_id_once():
         title="Echel - Setup")
     if v is not None:
         return v
-    # PowerShell ka WinForms nahi chala - purana chhota box hi sahi
+    # PowerShell's WinForms did not work - the old small box will do
     return _powershell_input(
         "Paste your Shop ID (you got it after registering on the dashboard)")
 
@@ -1038,21 +1037,21 @@ def _shop_id_without_tkinter():
         if not value:
             break
         try:
-            # CLAIM — ek Shop ID sirf EK PC par chal sakti hai.
-            # Pehle sirf /api/shop/<id> se check hota tha, jo public hai aur
-            # PC ka koi hisaab nahi rakhta — isliye koi bhi QR poster se
-            # Shop ID padh kar apne PC me daal deta aur "verified" ho jaata.
+            # CLAIM — one Shop ID can run on only ONE PC.
+            # This used to be checked only through /api/shop/<id>, which is public and
+            # knows nothing about the PC — so anyone could read a
+            # Shop ID from a QR poster, put it into their own PC, and get "verified".
             r = requests.post(
                 f"{SERVER_URL}/api/agent/claim/{value}",
                 headers=auth_headers(), timeout=30,
                 json={"machine": _machine_name()})
 
             if r.status_code == 404:
-                # Do tarah ke 404 hote hain:
-                #   a) HAMARA JSON  -> Shop ID sach me galat hai
-                #   b) Express ka HTML -> server purana hai, endpoint hai hi nahi
-                # Dono ko ek jaisa maan lena galat tha — purane server par
-                # sahi Shop ID par bhi "not found" dikh jaata tha.
+                # There are two kinds of 404:
+                #   a) OUR JSON         -> the Shop ID really is wrong
+                #   b) Express's HTML   -> the server is old and the endpoint does not exist
+                # Treating both the same was wrong — on an old server even a
+                # correct Shop ID showed "not found".
                 is_our_404 = False
                 try:
                     is_our_404 = bool(r.json().get("error"))
@@ -1064,8 +1063,8 @@ def _shop_id_without_tkinter():
                             "Echel", 0x10)
                     continue
 
-                # Purana server — purane tarike se check karke aage badho
-                log("Server par claim endpoint nahi hai (purana server) — basic check", "WARN")
+                # An old server — check the old way and carry on
+                log("The server has no claim endpoint (old server) — basic check", "WARN")
                 try:
                     r2 = requests.get(f"{SERVER_URL}/api/shop/{value}", timeout=20)
                     if r2.status_code == 404:
@@ -1077,7 +1076,7 @@ def _shop_id_without_tkinter():
                 return value
 
             if r.status_code == 409:
-                # Kisi doosre PC par pehle se juda hua hai
+                # It is already bound to another PC
                 try:
                     msg = r.json().get("error", "")
                 except Exception:
@@ -1090,13 +1089,13 @@ def _shop_id_without_tkinter():
                 continue
 
             if r.status_code == 400:
-                # Purana agent / token missing — batao par rukо mat
+                # An old agent / missing token — report it, but do not stop
                 log("Claim rejected (old agent build?)", "WARN")
 
         except Exception as e:
-            # Server so raha hai ya net nahi hai — ID accept kar lo, warna
-            # user phansa reh jayega. Job polling waise bhi token check
-            # karti hai, isliye chori phir bhi nahi ho sakti.
+            # The server is asleep or there is no network — accept the ID, otherwise
+            # the user would be stuck. Job polling checks the token anyway,
+            # so nothing can be stolen.
             log(f"Shop ID claim check skipped: {e}", "WARN")
         return value
     try:
@@ -1108,28 +1107,28 @@ def _shop_id_without_tkinter():
 
 def show_shop_id_prompt():
     """
-    Pehli baar chalne par Shop ID poochho — Windows ke apne dialog se.
+    On the first run, ask for the Shop ID — with Windows' own dialog.
 
-    PEHLE YAHAN TKINTER KA WINDOW THA, aur wahi sabse khatarnak jagah thi:
-    kai .exe build me Tcl ka data (init.tcl) nahi jaata. Tab ye window
-    banti hi nahi thi, resolve_shop_id() ko khaali string milti thi aur
-    agent `sys.exit(1)` kar deta tha — yaani naya install kabhi chalu hi
-    nahi hota, aur log me sirf Tcl ki galti dikhti thi.
+    THIS USED TO BE A TKINTER WINDOW, and that was the most dangerous spot:
+    in several .exe builds the Tcl data (init.tcl) was missing. Then the window
+    was never created, resolve_shop_id() got an empty string and the
+    agent called `sys.exit(1)` — so a new install never started at all,
+    and the log only showed a Tcl error.
 
-    PowerShell ka InputBox Windows ka apna hissa hai — na bundle karna
-    padta hai, na kabhi missing hota hai.
+    The PowerShell InputBox is part of Windows itself — it never has to be
+    bundled and it is never missing.
     """
     return _shop_id_without_tkinter()
 
 def resolve_shop_id():
     """
-    Shop ID kahan se aaye, priority order:
-    1. SHOP_ID_TEMPLATE agar already replace hui hai (.py source download wala flow)
-    2. Saved config file (%APPDATA%/EchelPrint/shop_config.txt) — pehle se setup ho chuka hai
-    3. GUI popup se naya Shop ID poocho (sirf pehli baar, .exe mode mein)
+    Where the Shop ID comes from, in priority order:
+    1. SHOP_ID_TEMPLATE if it has already been replaced (the .py source download flow)
+    2. The saved config file (%APPDATA%/EchelPrint/shop_config.txt) — already set up earlier
+    3. Ask for a new Shop ID through a GUI popup (first run only, in .exe mode)
     """
     if SHOP_ID_TEMPLATE != UNCONFIGURED_MARKER:
-        # .py source mode — Shop ID already baked hai is file mein
+        # .py source mode — the Shop ID is already baked into this file
         return SHOP_ID_TEMPLATE
 
     if os.path.exists(SHOP_CONFIG_FILE):
@@ -1141,10 +1140,10 @@ def resolve_shop_id():
         except Exception:
             pass
 
-    # Pehli baar chal raha hai aur Shop ID kahin nahi mila — GUI se poocho
+    # First run and the Shop ID was not found anywhere — ask through the GUI
     shop_id = show_shop_id_prompt()
     if not shop_id:
-        # User ne window band kar di bina Shop ID daale — agent chal nahi sakta
+        # The user closed the window without entering a Shop ID — the agent cannot run
         sys.exit(1)
 
     try:
@@ -1156,12 +1155,12 @@ def resolve_shop_id():
     return shop_id
 
 # ─── SINGLE INSTANCE LOCK (crash-safe, PID based) ─────────────────────
-# Purana Windows Mutex crash/sleep/force-kill pe orphan reh jaata tha —
-# phir naya agent "already exists" samajh ke chupchaap exit ho jaata,
-# tray me kuch nahi aata. Ab PID lockfile use karte hain: agar lock file
-# me likha process ZINDA hai tabhi exit karo; warna (crash ho chuka hai)
-# lock ko apne naam kar lo. Isse double-print bhi rukta hai aur silent
-# exit wala bug bhi khatam.
+# The old Windows mutex was left orphaned on crash/sleep/force-kill —
+# then a new agent thought "already exists" and quietly exited,
+# and nothing appeared in the tray. Now a PID lockfile is used: exit only if
+# the process written in the lock file is ALIVE; otherwise (it has crashed)
+# take the lock over. This prevents double prints and also ends the silent
+# exit bug.
 _LOCK_FILE = os.path.join(_APPDATA_DIR, "agent.lock")
 
 def _pid_alive(pid):
@@ -1179,12 +1178,12 @@ def _pid_alive(pid):
     except Exception:
         return False
 
-_MUTEX_HANDLE = None          # process khatam hone tak zinda rakhna zaroori hai
+_MUTEX_HANDLE = None          # it must stay alive until the process ends
 _MUTEX_NAME = "Local\\EchelPrintAgent_SingleInstance"
 
 
 def _single_instance_by_pidfile():
-    """Fallback (non-Windows / mutex fail). Race-prone, isliye sirf backup."""
+    """Fallback (non-Windows / mutex failure). Race-prone, so only a backup."""
     try:
         if os.path.exists(_LOCK_FILE):
             try:
@@ -1265,39 +1264,39 @@ def _release_mutex():
     except Exception:
         pass
 
-# ⚠️ _ensure_single_instance() SIRF EK BAAR chalni chahiye — wo mutex
-# banati hai, to doosri call apne hi mutex ko dekh kar "koi aur chal raha
-# hai" samajh leti aur agent chalu hi na hota. Isliye nateeja yahan rakh
-# lete hain.
+# ⚠️ _ensure_single_instance() must run ONLY ONCE — it creates the
+# mutex, so a second call would see its own mutex, conclude "someone else is
+# running" and the agent would never start. So the result is kept
+# here.
 _SINGLE_OK = _ensure_single_instance()
 
-# Windows ne khud chalaya hai (login par) aur koi copy pehle se chal rahi
-# hai — to yahan kuch dikhana nahi hai. Ye har restart par hota tha aur
-# owner ko har baar OK dabana padta tha.
-# (Flag ka naam AUTOSTART_FLAG me bhi hai, par wo neeche define hota hai —
-#  isliye yahan seedha likha hai. Dono ek jaise rakhna.)
+# Windows started this itself (at login) and another copy is already
+# running — so nothing needs to be shown here. This used to happen on every
+# restart and the owner had to press OK every time.
+# (The flag name also lives in AUTOSTART_FLAG, but that is defined further down —
+#  so it is written out directly here. Keep the two identical.)
 if not _SINGLE_OK and "--autostart" in sys.argv:
     sys.exit(0)
 
 if not _SINGLE_OK:
-    # ── PEHLE YAHAN SIRF sys.exit(0) THA ──
-    # Owner exe par double-click karta, kuch nahi hota, aur log me bas ek
-    # line aati thi jo wo dekhta hi nahi. Usse lagta tha "software chalta
-    # hi nahi hai" — jabki agent pehle se background me chal raha hota tha.
+    # ── THIS USED TO BE JUST sys.exit(0) ──
+    # The owner double-clicked the exe, nothing happened, and the log only got one
+    # line that they never look at. They thought "the software does not
+    # work" — while the agent was already running in the background.
     #
-    # Ab do kaam karte hain:
-    #   1. Chalu agent ke liye ek request file chhod dete hain -- wo apna
-    #      panel khol lega (yahi owner double-click se chahta hai).
-    #   2. Owner ko saaf batate hain ki hua kya.
+    # Now two things happen:
+    #   1. A request file is left for the running agent -- it opens its
+    #      panel (which is what the owner wants from the double-click).
+    #   2. The owner is told clearly what happened.
     log("⛔ Agent is already running — asking the running copy to show its panel")
     try:
         with open(PANEL_REQUEST_FILE, "w", encoding="utf-8") as _f:
             _f.write(str(int(time.time())))
     except Exception as _e:
-        log(f"Panel request file nahi bani: {_e}", "WARN")
+        log(f"Could not create the panel request file: {_e}", "WARN")
 
-    # Chalu agent ko file dekhne ka mauka do, phir hi message dikhao —
-    # warna panel khulne se pehle hi popup aa jaata hai.
+    # Give the running agent a chance to see the file before showing the message —
+    # otherwise the popup appears before the panel opens.
     time.sleep(2.5)
     try:
         import ctypes as _ct
@@ -1318,16 +1317,16 @@ if not _SINGLE_OK:
 
 SHOP_ID = resolve_shop_id()
 
-# ─── AUTO STARTUP (PC restart pe tray mein khud start ho) ─────────────
+# ─── AUTO STARTUP (starts in the tray by itself after a PC restart) ─────────────
 STARTUP_VBS_NAME = "EchelPrintAgent.vbs"
 
 
-# Windows login par jo copy chalti hai uske saath ye flag jaata hai.
-# Agent do jagah se autostart hota hai (registry Run key + Startup folder
-# ka VBS) — dono jaan-boojh kar hain, kyunki antivirus aksar Run key uda
-# deta hai. Restart par dono chalti hain aur ek mutex par haar jaati hai.
-# Pehle haarne wali copy owner ko popup dikha deti thi — har restart par.
-# Ab flag dekh kar wo chupchaap band ho jaati hai.
+# The copy started at Windows login gets this flag.
+# The agent autostarts from two places (the registry Run key + the Startup folder
+# VBS) — both on purpose, because antivirus software often removes the Run key.
+# After a restart both start, and one of them loses on the mutex.
+# The losing copy used to show the owner a popup — on every restart.
+# Now it sees the flag and exits quietly.
 AUTOSTART_FLAG = "--autostart"
 
 
@@ -1430,13 +1429,13 @@ def add_to_startup():
             "ERROR")
 
 def show_banner():
-    # CRITICAL FIX: yahan bare print() tha — try ke bahar. --noconsole exe
-    # mein sys.stdout None hota hai, print() AttributeError deta, aur yeh
-    # main() ki PEHLI line hai — matlab exe har launch pe turant FATAL
-    # CRASH ho jaata tha (log mein "'NoneType' object has no attribute
-    # 'write'" dikhta hai). log() already guarded hai, isliye usi se bhejo.
+    # CRITICAL FIX: there was a bare print() here — outside the try. In a --noconsole exe
+    # sys.stdout is None, so print() raised AttributeError, and this is the
+    # FIRST line of main() — meaning the exe hit a FATAL CRASH on every
+    # launch (the log shows "'NoneType' object has no attribute
+    # 'write'"). log() is already guarded, so send it through log().
     log(f"Echel - Local Agent v{VERSION_LABEL} | Tray + Auto-Update + Fit-A4")
-    # Bundle me kya hai kya nahi - guess mat karo, log me likho.
+    # Do not guess what is and is not in the bundle - write it to the log.
     try:
         bundle_selfcheck()
     except Exception as _bse:
@@ -1444,12 +1443,12 @@ def show_banner():
 
 def check_printer():
     """
-    NOTE: Agent hamesha Windows ke "Default Printer" ko use karta hai —
-    yeh wahi printer hai jo dashboard mein "🔍 Auto Detect" option ka matlab hai.
-    Agar shop owner ne dashboard mein specific model bhi select kiya ho (jaise
-    "Canon PIXMA G2010"), woh sirf record/display ke liye hai — actual printing
-    isi system default printer se hoti hai. Isliye PC mein sahi printer ko
-    "Set as Default Printer" karna zaroori hai (Windows Settings > Printers).
+    NOTE: the agent always uses the Windows "Default Printer" —
+    that is the printer the "🔍 Auto Detect" option in the dashboard refers to.
+    Even if the shop owner selected a specific model in the dashboard (such as
+    "Canon PIXMA G2010"), that is only for records/display — actual printing
+    happens on this system default printer. So the correct printer on the PC must be
+    set with "Set as Default Printer" (Windows Settings > Printers).
     """
     try:
         import win32print
@@ -1500,11 +1499,11 @@ def report_printers_to_server():
         log(f"⚠️  Printer list report fail: {e}", "WARN")
 
 # ═══════════════════════════════════════════════
-# IDEMPOTENCY — ek job kabhi do baar print na ho
+# IDEMPOTENCY — a job must never print twice
 # ═══════════════════════════════════════════════
-# Server 'printing' claim karke duplicate rokta hai, par agent ke restart /
-# stuck-job requeue ke baad wahi job dobara aa sakta hai. Ye local record
-# usko bhi rok deta hai. Disk par isliye taaki restart ke baad bhi yaad rahe.
+# The server prevents duplicates by claiming 'printing', but after an agent restart /
+# stuck-job requeue the same job can come back. This local record
+# stops that too. It lives on disk so it is remembered even after a restart.
 _PROCESSED_PATH = os.path.join(_APPDATA_DIR, "processed_jobs.json")
 _processed_jobs = {}
 
@@ -1513,13 +1512,13 @@ def _load_processed():
     try:
         with open(_PROCESSED_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-        cutoff = time.time() - 7 * 24 * 3600          # 7 din se purane bhool jao
+        cutoff = time.time() - 7 * 24 * 3600          # forget anything older than 7 days
         _processed_jobs = {k: v for k, v in data.items() if isinstance(v, (int, float)) and v > cutoff}
     except Exception:
         _processed_jobs = {}
 
 def _save_processed():
-    # Atomic write — beech me power chali jaye to file corrupt na ho
+    # Atomic write — so the file is not corrupted if the power goes out midway
     try:
         tmp = _PROCESSED_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
@@ -1528,24 +1527,24 @@ def _save_processed():
     except Exception as e:
         log(f"Could not save processed-job list: {e}", "WARN")
 
-_inflight_jobs = set()          # abhi is waqt print ho rahe job IDs
+_inflight_jobs = set()          # the job IDs being printed right now
 
 def already_processed(job_id):
     return job_id in _processed_jobs
 
 def mark_processed(job_id):
     _processed_jobs[job_id] = time.time()
-    if len(_processed_jobs) > 500:                    # sabse purane hata do
+    if len(_processed_jobs) > 500:                    # remove the oldest
         for k in sorted(_processed_jobs, key=_processed_jobs.get)[:200]:
             _processed_jobs.pop(k, None)
     _save_processed()
 
 def get_download_url(job_id, fallback_url):
     """
-    Server se is job ka authorized download URL maango.
-    Server sirf URL deta hai — PDF uske through NAHI jaati; agent Cloudinary
-    se seedha download karta hai.
-    Purana server ye endpoint nahi jaanta, to job me aaya file_url use karo.
+    Ask the server for this job's authorized download URL.
+    The server only returns the URL — the PDF does NOT pass through it; the agent
+    downloads it straight from Cloudinary.
+    An old server does not know this endpoint, so use the file_url from the job.
     """
     try:
         resp = requests.get(
@@ -1556,7 +1555,7 @@ def get_download_url(job_id, fallback_url):
             if data.get("downloadUrl"):
                 return data["downloadUrl"], None
         elif resp.status_code in (403, 409, 410):
-            # Job ab printable nahi (dusri shop ka / paid nahi / file delete)
+            # The job is no longer printable (another shop's / not paid / file deleted)
             try:
                 msg = resp.json().get("error", "not available")
             except Exception:
@@ -1569,14 +1568,14 @@ def get_download_url(job_id, fallback_url):
     return fallback_url, None
 
 def report_download(job_id, ok, bytes_count=None, err=None):
-    """Sirf status message — koi file wapas server ko nahi jaati."""
+    """Only a status message — no file goes back to the server."""
     try:
         requests.post(
             f"{SERVER_URL}/api/jobs/{SHOP_ID}/{job_id}/downloaded",
             headers=auth_headers(), timeout=10,
             json={"ok": bool(ok), "bytes": bytes_count, "error": (str(err)[:180] if err else "")})
     except Exception:
-        pass          # best-effort, print kabhi na ruke
+        pass          # best-effort, printing must never stop
 
 def download_file(url, ext):
     """Download the file from Cloudinary"""
@@ -1597,18 +1596,18 @@ def download_file(url, ext):
         log(f"❌ Download failed: {e}", "ERROR")
         return None
 
-# ─── Problem 1: Image to PDF convert — A4 page banake usme image fit karo ─────
+# ─── Problem 1: Image to PDF convert — build an A4 page and fit the image into it ─────
 def convert_image_to_pdf(image_path):
     """
-    JPG/PNG ko A4-size PDF page mein convert karo.
+    Convert a JPG/PNG into an A4-size PDF page.
 
-    Do scenarios handle karte hain:
-    1. Image already A4 ratio mein hai (Canvas Editor se aaya — customer ne
-       khud A4 page pe drag/resize/position set kiya tha) — is case mein
-       hum SEEDHA wahi image PDF mein wrap karte hain, DOBARA zoom-fit nahi
-       karte, warna customer ki careful positioning distort ho jayegi.
-    2. Normal photo/scan hai (chhota ya alag ratio) — A4 page ke center
-       mein zoom karke fit karte hain jaisa pehle se ho raha tha.
+    Two scenarios are handled:
+    1. The image is already in A4 ratio (it came from the Canvas Editor — the customer
+       set the drag/resize/position on the A4 page personally) — in that case
+       we wrap exactly that image into the PDF WITHOUT zoom-fitting it AGAIN,
+       otherwise the customer's careful positioning would be distorted.
+    2. It is a normal photo/scan (small or a different ratio) — it is zoomed to fit
+       the center of the A4 page, as before.
     """
     try:
         from PIL import Image
@@ -1616,7 +1615,7 @@ def convert_image_to_pdf(image_path):
 
         img = Image.open(image_path)
 
-        # RGB mein convert karo (PNG mein RGBA ho sakta hai)
+        # Convert to RGB (a PNG may be RGBA)
         if img.mode in ('RGBA', 'LA', 'P'):
             background = Image.new('RGB', img.size, (255, 255, 255))
             if img.mode == 'P':
@@ -1626,7 +1625,7 @@ def convert_image_to_pdf(image_path):
         elif img.mode != 'RGB':
             img = img.convert('RGB')
 
-        # A4 ka size 300 DPI pe (print quality ke liye)
+        # A4 size at 300 DPI (for print quality)
         dpi = 300
         a4_width_px = int(8.27 * dpi)   # 210mm
         a4_height_px = int(11.69 * dpi)  # 297mm
@@ -1635,8 +1634,8 @@ def convert_image_to_pdf(image_path):
         img_ratio = img.width / img.height
         ratio_diff = abs(img_ratio - a4_ratio)
 
-        # Agar image ka ratio A4 se bahut close hai (Canvas Editor se aaya hai),
-        # to seedha resize karke wrap karo — koi extra zoom/margin nahi
+        # If the image ratio is very close to A4 (it came from the Canvas Editor),
+        # resize and wrap it directly — no extra zoom/margin
         if ratio_diff < 0.01:
             log("ℹ️  Image is already A4 ratio (Canvas Editor output) — using it as is")
             a4_canvas = img.resize((a4_width_px, a4_height_px), Image.LANCZOS)
@@ -1644,9 +1643,9 @@ def convert_image_to_pdf(image_path):
             # Create a full white A4 canvas
             a4_canvas = Image.new('RGB', (a4_width_px, a4_height_px), (255, 255, 255))
 
-            # Image ko A4 canvas ke andar MAXIMUM size mein fit karo (zoom karke)
-            # taaki chhota image bhi bada print ho, chhota corner mein na rahe
-            # 95% margin rakhte hain thoda safe area ke liye
+            # Fit the image into the A4 canvas at MAXIMUM size (zooming in)
+            # so even a small image prints large instead of sitting small in a corner
+            # A 95% margin is kept for a little safe area
             target_w = int(a4_width_px * 0.95)
             target_h = int(a4_height_px * 0.95)
 
@@ -1661,12 +1660,12 @@ def convert_image_to_pdf(image_path):
             resample_method = Image.LANCZOS
             img_resized = img.resize((new_width, new_height), resample_method)
 
-            # Center mein paste karo
+            # Paste it in the center
             paste_x = (a4_width_px - new_width) // 2
             paste_y = (a4_height_px - new_height) // 2
             a4_canvas.paste(img_resized, (paste_x, paste_y))
 
-        # PDF save karo with correct DPI metadata
+        # Save the PDF with the correct DPI metadata
         pdf_path = image_path + '_converted.pdf'
         a4_canvas.save(pdf_path, 'PDF', resolution=dpi)
         log(f"✅ A4 PDF ready: {pdf_path}")
@@ -1679,39 +1678,39 @@ def convert_image_to_pdf(image_path):
         log(f"❌ Image convert error: {e}", "ERROR")
         return None
 
-# ─── Page Range: Specific pages extract karo PDF se ────────
+# ─── Page Range: extract specific pages from the PDF ────────
 def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
     """
-    Agar customer ne specific pages select kiye hain (jaise "5" ya "1,3,5-8")
-    to PyPDF2 se sirf wahi pages ka naya PDF banao.
-    Agar selected_pages_str empty hai to original PDF wapas bhejo (sab pages print karo).
+    If the customer selected specific pages (such as "5" or "1,3,5-8"),
+    build a new PDF with only those pages using PyPDF2.
+    If selected_pages_str is empty, return the original PDF (print all pages).
 
-    IMPORTANT: Agar yeh function kisi bhi reason se fail ho jaye,
-    hum None return karte hain (original PDF nahi) — taaki kabhi
-    accidentally poora document print na ho jab customer ne sirf
-    kuch pages select kiye the. Yeh galat-billing print se zyada
-    safe hai.
+    IMPORTANT: if this function fails for any reason,
+    we return None (not the original PDF) — so the whole document is never
+    printed by accident when the customer selected only
+    some pages. That is safer than a print that does not match
+    the bill.
     """
     if not selected_pages_str or not selected_pages_str.strip():
-        return pdf_path  # All pages selected — kuch extract nahi karna
+        return pdf_path  # All pages selected — nothing to extract
 
-    # pypdf/PyPDF2 import — pypdf (actively maintained fork) ko priority
-    # dete hain kyunki ye real-world "ajeeb" PDFs (scanner apps, govt
-    # portals, non-UTF8 metadata) ko zyada gracefully handle karta hai.
-    # PyPDF2 3.x abhi bhi kaam karta hai isliye fallback rakha hai.
+    # pypdf/PyPDF2 import — pypdf (the actively maintained fork) gets priority
+    # because it handles real-world "odd" PDFs (scanner apps, government
+    # portals, non-UTF8 metadata) more gracefully.
+    # PyPDF2 3.x still works, so it is kept as a fallback.
     # ── PDF library ──
     #
-    # YAHAN 22 Aug 2026 WALA CRASH THA. Pehle yahan `except ImportError` tha.
-    # PyPDF2 khulte waqt pycryptodome ki .pyd load karta hai; wo file na mile
-    # to pycryptodome **OSError** uthata hai, ImportError nahi
+    # THIS IS WHERE THE 22 Aug 2026 CRASH HAPPENED. This used to be `except ImportError`.
+    # PyPDF2 loads pycryptodome's .pyd when it opens; if that file is missing,
+    # pycryptodome raises **OSError**, not ImportError
     # (Crypto/Util/_raw_api.py -> raise OSError("Cannot load native module...")).
-    # ImportError-only handler use pakadta hi nahi tha, aur ye imports neeche
-    # wale bade try/except ke BAHAR hain — isliye exception seedha
-    # process_job() tak pahunch kar "Job crashed" ban jaata tha, aur
-    # print_file() ka SumatraPDF page-range fallback kabhi chala hi nahi.
+    # The ImportError-only handler never caught it, and these imports sit OUTSIDE
+    # the big try/except below — so the exception went straight up to
+    # process_job() and became "Job crashed", and
+    # print_file()'s SumatraPDF page-range fallback never ran.
     #
-    # Ab har exception pakadte hain. Library na mile to None lautate hain,
-    # jispar print_file() SumatraPDF se seedha page range chhaap deta hai.
+    # Now every exception is caught. If the library is missing, None is returned,
+    # and print_file() prints the page range directly through SumatraPDF.
     PdfReader = None
     PdfWriter = None
     _pdf_err = None
@@ -1720,15 +1719,15 @@ def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
             _m = __import__(_modname, fromlist=["PdfReader", "PdfWriter"])
             PdfReader, PdfWriter = _m.PdfReader, _m.PdfWriter
             break
-        except Exception as e:          # ImportError + OSError (gayab .pyd) dono
+        except Exception as e:          # both ImportError + OSError (missing .pyd)
             _pdf_err = e
 
     if PdfReader is None:
-        # Script mode me library SACH ME missing ho sakti hai — wahan install
-        # karna theek hai. Do shart:
-        #   * .exe me pip hota hi nahi, isliye wahan koshish bekaar
-        #   * OSError ka matlab hai library hai par uski .pyd nahi mili —
-        #     usme pip install se kuch nahi hota, sirf 10 second jaate hain
+        # In script mode the library can REALLY be missing — installing it there
+        # is fine. Two conditions:
+        #   * an .exe has no pip at all, so trying there is pointless
+        #   * OSError means the library exists but its .pyd was not found —
+        #     pip install does nothing for that; it only wastes 10 seconds
         if (not is_running_as_exe()) and isinstance(_pdf_err, ImportError):
             log("⚠️  pypdf/PyPDF2 not found! Installing...", "WARN")
             os.system("pip install pypdf pycryptodome --quiet")
@@ -1738,8 +1737,8 @@ def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
                 log(f"❌ pypdf installation also failed: {e}", "ERROR")
                 PdfReader = None
         if PdfReader is None:
-            log(f"⚠️  PDF library load nahi hui ({_pdf_err}) — "
-                f"page range ab SumatraPDF se nikalega", "WARN")
+            log(f"⚠️  The PDF library did not load ({_pdf_err}) — "
+                f"the page range will now be printed through SumatraPDF", "WARN")
             return None
 
     try:
@@ -1748,27 +1747,27 @@ def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
             log("⚠️  Page list is empty — the original PDF will be printed", "WARN")
             return pdf_path
 
-        # ── KOI FAST-PATH NAHI ── hamesha extract karo.
+        # ── NO FAST PATH ── always extract.
         #
-        # Pehle yahan do shortcut the aur DONO galat the:
-        #   1) "page_numbers == [1]"  -> 2-page PDF me page 1 chunne par bhi
-        #      poora document print ho jata tha.
-        #   2) "len(page_numbers) >= total_pages" -> ye bhi kaam nahi karta,
-        #      kyunki total_pages BILLING ka count hai (kitne page ka paisa
-        #      liya), PDF ka asli page count NAHI. Page 1 chuno to
-        #      total_pages=1 aata hai, isliye check hamesha TRUE ho jata tha.
+        # There used to be two shortcuts here and BOTH were wrong:
+        #   1) "page_numbers == [1]"  -> choosing page 1 of a 2-page PDF still
+        #      printed the whole document.
+        #   2) "len(page_numbers) >= total_pages" -> this did not work either,
+        #      because total_pages is the BILLING count (how many pages were
+        #      paid for), NOT the real page count of the PDF. Choose page 1 and
+        #      total_pages=1 comes in, so the check was always TRUE.
         #
-        # Ab pycryptodome .exe me sahi bundle hai (v20+), isliye PDF kholna
-        # safe hai. Saare page chune ho tab bhi extract karna nuksan nahi —
-        # wahi PDF wapas banta hai, bas thoda CPU lagta hai.
+        # pycryptodome is now bundled correctly in the .exe (v20+), so opening the PDF
+        # is safe. Extracting even when all pages are chosen does no harm —
+        # the same PDF is rebuilt; it just costs a little CPU.
 
         log(f"📑 Extracting specific pages: {page_numbers}")
 
         try:
             reader = PdfReader(pdf_path, strict=False)
         except Exception as e1:
-            # Kuch "ajeeb" PDFs (galat-encoded metadata waale) pypdf ke
-            # strict-mode se crash ho jaate hain — dusri library se retry.
+            # Some "odd" PDFs (with wrongly encoded metadata) crash in pypdf's
+            # strict mode — retry with the other library.
             log(f"⚠️  PDF read attempt 1 failed ({e1}) — retrying with another library", "WARN")
             try:
                 from PyPDF2 import PdfReader as _AltReader
@@ -1780,7 +1779,7 @@ def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
                 except Exception:
                     raise e1
 
-        # Encrypted na ho to crypto touch hi na ho — try/except safety
+        # If it is not encrypted, crypto is never touched — try/except for safety
         try:
             if getattr(reader, 'is_encrypted', False):
                 reader.decrypt('')
@@ -1791,7 +1790,7 @@ def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
 
         added_count = 0
         for pnum in page_numbers:
-            idx = pnum - 1  # 1-indexed se 0-indexed
+            idx = pnum - 1  # 1-indexed to 0-indexed
             if 0 <= idx < total_pdf_pages:
                 writer.add_page(reader.pages[idx])
                 added_count += 1
@@ -1806,7 +1805,7 @@ def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
         with open(extracted_path, 'wb') as f:
             writer.write(f)
 
-        # Verify extracted file properly bani hai
+        # Verify that the extracted file was built properly
         verify_size = os.path.getsize(extracted_path)
         if verify_size < 50:
             log(f"❌ Extracted PDF is empty or corrupt ({verify_size} bytes)!", "ERROR")
@@ -1816,13 +1815,13 @@ def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
         return extracted_path
 
     except Exception as e:
-        # Crypto/native-module error = packaging issue, PDF ka dosh nahi.
-        # Aise me poori file print karo (fail+requeue+DOUBLE print se behtar).
+        # A Crypto/native-module error = a packaging issue, not the PDF's fault.
+        # In that case print the whole file (better than fail+requeue+a DOUBLE print).
         emsg = str(e).lower()
         if 'crypto' in emsg or 'cpuid' in emsg or 'native module' in emsg:
-            # Poora document print karna yahan GALAT hai — customer ne shayad
-            # sirf 1 page ka paisa diya ho aur 10 page nikal jayein.
-            # Print rokna hi sahi hai: shop bata dega, customer dobara bhej dega.
+            # Printing the whole document is WRONG here — the customer may have paid
+            # for only 1 page and 10 pages would come out.
+            # Stopping the print is right: the shop will tell them, and the customer sends it again.
             log(f"❌ Crypto module missing ({e}) — cannot extract specific pages", "ERROR")
             log("⚠️  Print stopped so that extra pages are not printed.", "WARN")
             log("👉 Update the agent to v20 or newer — this is fixed there.", "WARN")
@@ -1833,12 +1832,12 @@ def extract_selected_pages(pdf_path, selected_pages_str, total_pages=None):
 
 def get_bundled_resource_path(filename):
     """
-    Bundle kiye gaye file (jaise SumatraPDF.exe) ka path dhoondho.
-    Teen tarah ke build support karta hai:
-      1. PyInstaller --onefile : temp extraction folder -> sys._MEIPASS
-      2. Nuitka --standalone / PyInstaller --onedir : exe ke saath wale folder me
-      3. Normal .py script : script ke folder me
-    Pehle sirf (1) tha, isliye Nuitka ka build SumatraPDF dhoondh hi nahi paata tha.
+    Find the path of a bundled file (such as SumatraPDF.exe).
+    Supports three kinds of build:
+      1. PyInstaller --onefile : the temp extraction folder -> sys._MEIPASS
+      2. Nuitka --standalone / PyInstaller --onedir : the folder next to the exe
+      3. A normal .py script : the script's folder
+    Only (1) existed before, so a Nuitka build could never find SumatraPDF.
     """
     candidates = []
 
@@ -1847,13 +1846,13 @@ def get_bundled_resource_path(filename):
     if meipass:
         candidates.append(os.path.join(meipass, filename))
 
-    # 1b. APPDATA mirror — startup par _mirror_bundled_files() ne yahan copy
-    #     rakhi thi. _MEI folder ud jaye (22 Aug wala case) to print aur panel
-    #     isi copy se chalte rehte hain.
+    # 1b. APPDATA mirror — at startup _mirror_bundled_files() placed a copy
+    #     here. If the _MEI folder vanishes (the 22 Aug case), printing and the panel
+    #     keep running from this copy.
     candidates.append(os.path.join(_RUNTIME_DIR, filename))
 
-    # 2. Compiled exe ke saath wala folder (Nuitka standalone / PyInstaller onedir)
-    #    Nuitka __compiled__ set karta hai, PyInstaller sys.frozen
+    # 2. The folder next to the compiled exe (Nuitka standalone / PyInstaller onedir)
+    #    Nuitka sets __compiled__, PyInstaller sets sys.frozen
     if globals().get('__compiled__') is not None or getattr(sys, 'frozen', False):
         candidates.append(os.path.join(os.path.dirname(sys.executable), filename))
 
@@ -1871,11 +1870,11 @@ def get_bundled_resource_path(filename):
 # ─── Problem 5: B&W / Color Print + Fit-to-A4 ────────────────────────
 def _sumatra_page_range(selected_pages):
     """
-    "1,3,4,5" -> "1,3-5"  (SumatraPDF -print-settings ka format).
+    "1,3,4,5" -> "1,3-5"  (the SumatraPDF -print-settings format).
 
-    Sirf tabhi use hota hai jab PDF library se page extract na ho paye.
-    Galat/khali input par "" lautata hai, taaki galti se poora document
-    print na ho jaye.
+    Used only when the pages cannot be extracted with the PDF library.
+    Returns "" for invalid/empty input, so the whole document is never
+    printed by mistake.
     """
     try:
         nums = sorted({int(x.strip()) for x in str(selected_pages).split(',') if x.strip()})
@@ -1898,26 +1897,26 @@ def _sumatra_page_range(selected_pages):
 
 def print_pdf_sumatra(filepath, copies=1, color_mode="bw", printer_name=None, extra="", scale_mode="fit"):
     """
-    SumatraPDF se print — B&W/Color setting ke saath
-    'fit' flag use karte hain taaki chhota PDF/page bhi A4 paper
-    ke hisaab se properly scale ho jaye, corner mein chhota na rahe.
+    Print through SumatraPDF — with the B&W/Color setting.
+    The 'fit' flag is used so that even a small PDF/page scales properly
+    to A4 paper instead of staying small in a corner.
 
-    printer_name: agar diya gaya hai, usi SPECIFIC printer pe print hoga
-    (system default ko IGNORE karke) — taaki B&W aur Color jobs alag-alag
-    physical printers pe route ho sakein (jaise HP M1005 sirf B&W ke liye,
-    Canon G2010 sirf Color ke liye). Agar None/empty hai, purana default-
-    printer wala behavior chalega (backward compatible).
+    printer_name: if given, printing goes to that SPECIFIC printer
+    (IGNORING the system default) — so B&W and Color jobs can be routed to
+    different physical printers (such as an HP M1005 for B&W only and a
+    Canon G2010 for Color only). If it is None/empty, the old default-
+    printer behaviour applies (backward compatible).
     """
     sumatra_paths = []
 
-    # CRITICAL FIX: .exe build mein SumatraPDF.exe PyInstaller se BUNDLE
-    # kiya gaya tha (--add-binary), lekin yahan kabhi check hi nahi ho raha
-    # tha — sirf system-installed paths check ho rahe the. Isi wajah se
-    # print agent ko bundled SumatraPDF kabhi mil hi nahi raha tha; agar
-    # system pe pehle se SumatraPDF install tha (purane .py-based INSTALL.bat
-    # se) to print chal jaata, warna (jaisa fresh installs ya restart ke
-    # baad clean state mein) print fail ho jaata — "tray mein dikhता hai
-    # lekin print nahi nikalta" exactly yehi symptom hai.
+    # CRITICAL FIX: in the .exe build SumatraPDF.exe was BUNDLED by PyInstaller
+    # (--add-binary), but it was never checked here —
+    # only system-installed paths were checked. That is why the print
+    # agent never found the bundled SumatraPDF; if SumatraPDF was already
+    # installed on the system (by the old .py-based INSTALL.bat)
+    # printing worked, otherwise (as on fresh installs or in a clean state after a
+    # restart) printing failed — "it shows in the tray
+    # but nothing prints" is exactly this symptom.
     bundled = get_bundled_resource_path('SumatraPDF.exe')
     if bundled:
         sumatra_paths.append(bundled)
@@ -1928,32 +1927,32 @@ def print_pdf_sumatra(filepath, copies=1, color_mode="bw", printer_name=None, ex
         os.path.expanduser(r"~\AppData\Local\SumatraPDF\SumatraPDF.exe"),
     ]
 
-    # "fit" — page ko printer paper size ke hisaab se scale karta hai
-    # (chhota document A4 paper mein bada hoke print hoga, corner mein nahi rahega)
-    # ⚠️ COPIES KA SAHI SYNTAX ⚠️
-    # SumatraPDF me copies "Nx" se aate hain (jaise "3x" = 3 copies).
-    # "copies=3" naam ka koi option Sumatra me HAI HI NAHI — wo use unknown
-    # token samajh ke CHUPCHAP ignore kar deta tha. Isi wajah se customer
-    # 2-3 copies chunta tha, paisa bhi 2-3 copy ka katta tha, par print
-    # sirf 1 hi nikalta tha.
+    # "fit" — scales the page to the printer's paper size
+    # (a small document prints enlarged on A4 paper instead of staying in a corner)
+    # ⚠️ THE CORRECT COPIES SYNTAX ⚠️
+    # In SumatraPDF copies are given as "Nx" (e.g. "3x" = 3 copies).
+    # Sumatra has NO option called "copies=3" — it treated that as an unknown
+    # token and SILENTLY ignored it. That is why a customer
+    # chose 2-3 copies and paid for 2-3 copies, but only 1 print
+    # came out.
     # Docs: sumatrapdfreader.org/docs/Command-line-arguments -> -print-settings "3x"
     try:
         _n_copies = int(copies)
     except (TypeError, ValueError):
         _n_copies = 1
-    _n_copies = max(1, min(50, _n_copies))     # server par bhi 50 ka cap hai
+    _n_copies = max(1, min(50, _n_copies))     # the server caps it at 50 as well
     copies_token = f"{_n_copies}x"
 
     if color_mode == "bw":
         print_settings = f"{copies_token},monochrome,{scale_mode}"
-        log(f"🖨️  B&W (Monochrome) + {scale_mode} print karenge | {_n_copies} copy")
+        log(f"🖨️  Printing B&W (Monochrome) + {scale_mode} | {_n_copies} copies")
     else:
-        # EXPLICIT 'color' flag — pehle kuch nahi bhejte the, to printer
-        # driver ka DEFAULT chalta tha. Driver default Grayscale ho (Canon/HP
-        # par common) to color job bhi B&W nikalta tha. Ab job ke hisaab se
-        # force hota hai, driver default jo bhi ho.
+        # EXPLICIT 'color' flag — nothing used to be sent, so the printer
+        # driver's DEFAULT applied. When the driver default is Grayscale (common on Canon/HP),
+        # even a color job came out B&W. Now it is forced per job, whatever the
+        # driver default is.
         print_settings = f"{copies_token},color,{scale_mode}"
-        log(f"🖨️  Color (explicit) + {scale_mode} print karenge | {_n_copies} copy")
+        log(f"🖨️  Printing Color (explicit) + {scale_mode} | {_n_copies} copies")
     if extra:
         print_settings += f",{extra}"
         log(f"🖨️  Extra print settings: {extra}")
@@ -1977,8 +1976,8 @@ def print_pdf_sumatra(filepath, copies=1, color_mode="bw", printer_name=None, ex
         log(f"   ✅ Found: {sumatra}, trying print...")
         try:
             if use_specific_printer:
-                # -print-to specific printer ko target karta hai, default
-                # printer ko bypass karke — yahi is feature ki core hai
+                # -print-to targets a specific printer, bypassing the default
+                # printer — that is the core of this feature
                 cmd = [
                     sumatra,
                     "-print-to", printer_name,
@@ -2002,9 +2001,9 @@ def print_pdf_sumatra(filepath, copies=1, color_mode="bw", printer_name=None, ex
             else:
                 err = result.stderr.decode(errors='ignore') if result.stderr else ''
                 log(f"⚠️  SumatraPDF error (return code {result.returncode}): {err}", "WARN")
-                # Agar specific printer name galat/disconnected ho, default
-                # printer pe fallback try karte hain (taaki print bilkul
-                # ruk na jaaye — kam se kam kahin to nikal jaaye)
+                # If the specific printer name is wrong/disconnected, try falling back
+                # to the default printer (so printing does not stop
+                # completely — at least it comes out somewhere)
                 if use_specific_printer:
                     log(f"⚠️  Printing on '{printer_name}' failed, trying the default printer...", "WARN")
                     try:
@@ -2019,9 +2018,9 @@ def print_pdf_sumatra(filepath, copies=1, color_mode="bw", printer_name=None, ex
             log(f"⚠️  SumatraPDF subprocess error: {runErr}", "WARN")
 
     # Fallback
-    log("SumatraPDF kahin nahi mila (na bundle me, na is PC par) - Windows "
-        "shell se try kar rahe hain. Is tarike me B&W / fit / specific-"
-        "printer setting LAGU NAHI hoti.", "WARN")
+    log("SumatraPDF was not found anywhere (neither in the bundle nor on this PC) - trying the Windows "
+        "shell instead. With this method the B&W / fit / specific-"
+        "printer settings DO NOT APPLY.", "WARN")
     try:
         os.startfile(filepath, "print")
         time.sleep(5)
@@ -2071,9 +2070,9 @@ def print_file(filepath, copies=1, color_mode="bw", selected_pages="", printer_n
     extracted_pdf = None
 
     try:
-        sumatra_page_extra = ""   # sirf extraction-fail wale fallback me bharta hai
+        sumatra_page_extra = ""   # filled only in the extraction-failure fallback
 
-        # Problem 1: Image files ko pehle A4-fit PDF mein convert karo
+        # Problem 1: convert image files into an A4-fit PDF first
         if ext in ['.jpg', '.jpeg', '.png', '.bmp', '.gif']:
             log(f"🔄 Image file detected — converting to A4 PDF...")
             converted_pdf = convert_image_to_pdf(filepath)
@@ -2083,17 +2082,17 @@ def print_file(filepath, copies=1, color_mode="bw", selected_pages="", printer_n
             print_path = converted_pdf
         elif ext == '.pdf':
             print_path = filepath
-            # Page Range: agar specific pages selected hain to extract karo
+            # Page Range: if specific pages are selected, extract them
             if selected_pages:
                 extracted_pdf = extract_selected_pages(filepath, selected_pages, total_pages)
                 if extracted_pdf is None:
-                    # Extraction fail hua (aksar .exe me PyCryptodome ka native
-                    # module missing hone se: "Cannot load native module
-                    # Crypto.Util._cpuid_c"). Pehle yahan print ROK diya jaata
-                    # tha — shop ka kaam ruk jaata tha.
-                    # Ab SumatraPDF ko seedha page range de dete hain. Sumatra
-                    # khud PDF ka page range print karta hai, koi Python PDF
-                    # library nahi chahiye — aur extra page bhi nahi nikalta.
+                    # Extraction failed (in an .exe usually because PyCryptodome's native
+                    # module is missing: "Cannot load native module
+                    # Crypto.Util._cpuid_c"). The print used to be STOPPED here —
+                    # which stopped the shop's work.
+                    # Now the page range is handed straight to SumatraPDF. Sumatra
+                    # prints a PDF page range by itself, no Python PDF
+                    # library needed — and it prints no extra pages either.
                     page_range = _sumatra_page_range(selected_pages)
                     if page_range:
                         log(f"⚠️  Page extraction failed — printing pages {page_range} "
@@ -2112,41 +2111,41 @@ def print_file(filepath, copies=1, color_mode="bw", selected_pages="", printer_n
             print_path = filepath
 
         # ── DUPLEX ──
-        # ── PAPER TOKEN ── Sumatra jo sizes samajhta hai unke liye paper=
-        # flag; baaki (4x6, A1) par flag skip — PDF khud sahi size ki hai,
-        # driver default+fit sambhal lega. Galat/unknown token Sumatra
-        # chupchaap ignore karta hai, par hum sirf known hi bhejte hain.
+        # ── PAPER TOKEN ── the paper= flag for the sizes Sumatra understands;
+        # for the rest (4x6, A1) the flag is skipped — the PDF itself has the right size,
+        # and the driver default + fit handle it. Sumatra silently ignores a wrong/unknown
+        # token, but we only send known ones.
         _PAPER_TOKENS = {"a4": "A4", "a3": "A3", "a5": "A5", "a2": "A2",
                          "letter": "letter", "legal": "legal"}
         _ptok = _PAPER_TOKENS.get((paper_size or "a4").lower(), "")
-        # Sab sizes par 'fit'. PDF ab KHUD sahi paper-size ki banti hai
-        # (customer side), to 'fit' usko us kagaz par poora bhar deta hai
-        # bina stretch (aspect match). Pehle 4x6 par 'noscale' tha jisse
-        # chhoti image chhoti hi rehti thi (size/quality complaint).
+        # 'fit' for all sizes. The PDF itself is now built at the right paper size
+        # (on the customer side), so 'fit' fills that paper completely
+        # without stretching (the aspect matches). 4x6 used to use 'noscale', which kept
+        # a small image small (the size/quality complaint).
         _scale = "fit"
         _paper_extra = f"paper={_ptok}" if _ptok else ""
         def _mix(dup_extra=""):
-            # sumatra_page_extra sirf tab bharta hai jab PDF se page extract
-            # nahi ho paya — tab Sumatra ko khud page range dena padta hai.
+            # sumatra_page_extra is filled only when the pages could not be extracted
+            # from the PDF — then Sumatra has to be given the page range itself.
             return ",".join([t for t in (_paper_extra, dup_extra, sumatra_page_extra) if t])
 
-        # duplex_on / duplex_mode / duplex_pages ab parameters hain —
-        # v9 me yahan job.get() tha par is function me 'job' hota hi nahi
-        # (NameError se HAR print fail ho raha tha)
+        # duplex_on / duplex_mode / duplex_pages are parameters now —
+        # v9 called job.get() here, but this function has no 'job'
+        # (EVERY print failed with a NameError)
         total_pgs = duplex_pages
 
         if duplex_on and duplex_mode == "auto":
-            # Printer khud duplex karta hai — driver ko duplexlong flag
-            log("📄 AUTO duplex — printer dono side khud chhapega")
+            # The printer does duplex itself — the duplexlong flag for the driver
+            log("📄 AUTO duplex — the printer prints both sides by itself")
             return print_pdf_sumatra(print_path, copies, color_mode, printer_name, extra=_mix("duplexlong"), scale_mode=_scale)
 
         if duplex_on and duplex_mode == "manual" and total_pgs > 1:
-            # Do-pass manual duplex: pehle ODD pages (1,3,5...), phir owner
-            # pages palat ke lagaye, phir EVEN pages (2,4,6...).
-            # Server manual-duplex par copies=1 force karta hai.
-            # NOTE: 3+ sheets par even-pass ka order printer ke output
-            # stacking par depend karta hai (face-down laser = seedha sahi;
-            # face-up par owner stack palat le). 1-2 page docs par hamesha sahi.
+            # Two-pass manual duplex: first the ODD pages (1,3,5...), then the owner
+            # turns the pages over and reloads them, then the EVEN pages (2,4,6...).
+            # The server forces copies=1 for manual duplex.
+            # NOTE: with 3+ sheets the order of the even pass depends on the printer's output
+            # stacking (face-down laser = correct as is;
+            # face-up means the owner flips the stack). Always correct for 1-2 page documents.
             log("📄 MANUAL duplex — pass 1: front (odd pages)")
             ok1 = print_pdf_sumatra(print_path, 1, color_mode, printer_name, extra=_mix("odd"), scale_mode=_scale)
             if not ok1:
@@ -2157,20 +2156,20 @@ def print_file(filepath, copies=1, color_mode="bw", selected_pages="", printer_n
                 return print_pdf_sumatra(print_path, 1, color_mode, printer_name, extra=_mix("even"), scale_mode=_scale)
             else:
                 log("📄 Owner skipped the back side — only the front was printed")
-                return True  # front print hua tha, job done
+                return True  # the front was printed, the job is done
 
         if duplex_on and total_pgs <= 1:
             log("📄 Duplex was selected but there is only 1 page — printing normally")
 
-        # PDF print karo with fit-to-page (image bhi ab already A4-fitted PDF hai)
+        # Print the PDF with fit-to-page (an image is now an A4-fitted PDF as well)
         success = print_pdf_sumatra(print_path, copies, color_mode, printer_name, extra=_mix(), scale_mode=_scale)
         return success
 
     except Exception as e:
-        # Pehle yahan sirf try/finally tha — koi bhi anokha exception seedha
-        # process_job() tak jaakar "Job crashed" banta tha. Ab yahin rok kar
-        # False lautate hain: job saaf-saaf "failed" mark hota hai, agent
-        # chalta rehta hai, aur log me asli wajah dikhti hai.
+        # This used to be just try/finally — any unusual exception went straight up
+        # to process_job() and became "Job crashed". Now it is stopped here and
+        # False is returned: the job is cleanly marked "failed", the agent
+        # keeps running, and the log shows the real cause.
         log(f"❌ Print error: {type(e).__name__}: {e}", "ERROR")
         try:
             import traceback
@@ -2199,9 +2198,9 @@ _http = None
 
 def http():
     """
-    Ek hi Session, jisme chhoti network dikkat par apne aap retry hota hai.
-    Connection reuse hota hai, isliye idle ke baad wala pehla request
-    fail hone ka chance bahut kam ho jaata hai.
+    A single Session that retries automatically on small network problems.
+    The connection is reused, so the chance that the first request after an
+    idle period fails becomes very small.
     """
     global _http
     if _http is not None:
@@ -2227,7 +2226,7 @@ def http():
     return _http
 
 def reset_http():
-    """Reconnect par purana session poori tarah phenk do — naye socket banenge."""
+    """On reconnect throw the old session away completely — new sockets get created."""
     global _http
     try:
         if _http is not None:
@@ -2237,7 +2236,7 @@ def reset_http():
     _http = None
 
 class PollError(Exception):
-    """Server tak poll pahunch hi nahi paya (socket/network/server)."""
+    """The poll could not reach the server at all (socket/network/server)."""
     pass
 
 
@@ -2246,9 +2245,9 @@ _poll_last_logged = 0.0
 
 def _log_poll_problem(msg):
     """
-    Poll fail har baar log karein to 10 second me ek line — file
-    bhar jaati hai aur asli baat dab jaati hai. Isliye: pehli fail
-    turant, uske baad har 60s me ek baar.
+    Logging every failed poll means one line every 10 seconds — the file
+    fills up and the real message gets buried. So: the first failure is logged
+    immediately, after that once every 60s.
     """
     global _poll_last_logged
     now = time.time()
@@ -2258,7 +2257,7 @@ def _log_poll_problem(msg):
 
 
 def _reset_poll_log():
-    """Connection wapas aane par counter reset — agli dikkat turant log ho."""
+    """Reset the counter when the connection comes back — so the next problem is logged immediately."""
     global _poll_last_logged
     _poll_last_logged = 0.0
 
@@ -2266,44 +2265,44 @@ def _reset_poll_log():
 def get_pending_jobs():
     """
     Returns:
-        list  -- server ne jawab diya (khaali list = sach me koi job nahi)
-        None  -- poll FAIL hua
+        list  -- the server answered (an empty list = there really is no job)
+        None  -- the poll FAILED
 
-    Ye farak sabse zaroori hai. Pehle dono case me [] lautta tha,
-    isliye print_loop() network failure ko "koi job nahi" samajh
-    leta tha aur saari recovery band ho jaati thi.
+    This difference is the most important thing. Both cases used to return [],
+    so print_loop() took a network failure for "no job"
+    and all recovery stopped.
     """
     global _demo_expired_shown, _shop_missing_count, _shop_gone
     try:
-        # lp = long poll. Naya server itni der line pakdega aur job aate
-        # hi turant bhej dega. PURANA server is param ko nahi jaanta — wo
-        # ise chup-chaap ignore karke turant khaali jawab de dega, aur
-        # agent apne aap purane sleep-wale tarike par chalta rahega.
+        # lp = long poll. A new server holds the line this long and sends the job
+        # as soon as it arrives. An OLD server does not know this param — it
+        # silently ignores it and answers empty immediately, and the
+        # agent simply keeps running the old sleep-based way.
         url = f"{SERVER_URL}/api/jobs/pending/{SHOP_ID}"
         if MACHINE_ID:
             url += f"?m={MACHINE_ID}&v={VERSION}&vl={VERSION_LABEL}&lp={LP_SECONDS}"
         else:
             url += f"?v={VERSION}&vl={VERSION_LABEL}&lp={LP_SECONDS}"
-        # timeout server ke hold se zyada — warna har long poll "fail" lagega
+        # the timeout is longer than the server's hold — otherwise every long poll would look like a failure
         resp = http().get(url, headers=auth_headers(), timeout=LP_TIMEOUT)
         if resp.status_code == 403:
-            # Purana message "use 'Re-link agent'" kehta tha — dashboard me
-            # us naam ka koi button hai hi nahi, isliye shop owner dhoondta
-            # reh jaata tha. Asli jagah ye hai:
+            # The old message said "use 'Re-link agent'" — the dashboard has no
+            # button with that name, so the shop owner kept
+            # searching for it. The real place is:
             #   Dashboard -> Settings -> "Connected Computer" ->
             #   "Disconnect Computer"
-            # Uske baad agent khud dobara link ho jaata hai.
-            log("❌ Server ne is PC ka agent token reject kar diya. "
-                "Shop dashboard kholo -> Settings -> 'Connected Computer' -> "
-                "'Disconnect Computer' dabao, phir ye agent band karke dobara "
-                "chalao. Wo apne aap link ho jayega.", "ERROR")
+            # After that the agent links itself again.
+            log("❌ The server rejected the agent token of this PC. "
+                "Open the shop dashboard -> Settings -> 'Connected Computer' -> "
+                "press 'Disconnect Computer', then close this agent and start it "
+                "again. It will link itself automatically.", "ERROR")
             update_tray_status("Connection denied — select 'Disconnect Computer' in your dashboard")
             return []
         if resp.status_code == 404:
-            # Do tarah ke 404 hote hain (yahi farak claim wale code me bhi hai):
-            #   a) HAMARA JSON  -> shop sach me server par nahi hai
-            #   b) Express ka HTML -> purana server, endpoint hai hi nahi
-            # (b) par rukna galat hoga — wo retry ka maamla hai.
+            # There are two kinds of 404 (the claim code makes the same distinction):
+            #   a) OUR JSON         -> the shop really does not exist on the server
+            #   b) Express's HTML   -> an old server, the endpoint does not exist
+            # Stopping on (b) would be wrong — that is a case for retrying.
             _our_404 = False
             try:
                 _our_404 = bool(resp.json().get("error"))
@@ -2311,28 +2310,28 @@ def get_pending_jobs():
                 _our_404 = False
 
             if not _our_404:
-                _log_poll_problem("Server ne 404 bheja (purana server?) — dobara koshish karenge")
+                _log_poll_problem("The server returned 404 (old server?) — will retry")
                 return None
 
-            # Ek 404 kaafi nahi — network blip ya ek kharab jawab agent ko
-            # 30 minute ke liye sula na de. Lagatar 3 chahiye.
+            # One 404 is not enough — a network blip or one bad answer must not put the
+            # agent to sleep for 30 minutes. It takes 3 in a row.
             _note_shop_missing()
             if _shop_gone:
-                return []           # [] = "koi job nahi", None nahi —
-                                    # warna PollError uth kar tray ko
-                                    # "Offline" kar deta aur backoff churn
-                                    # shuru ho jaata.
-            _log_poll_problem("Server ne 404 bheja — dobara koshish karenge")
+                return []           # [] = "no job", not None —
+                                    # otherwise a PollError would switch the tray
+                                    # to "Offline" and start the backoff
+                                    # churn.
+            _log_poll_problem("The server returned 404 — will retry")
             return None
 
         if resp.status_code != 200:
-            # Server ne jawab to diya par galat status (502/503 =
-            # Render abhi jag raha hai). Ise "koi job nahi" maan
-            # lena galat hai — retry/backoff chalna chahiye.
-            _log_poll_problem(f"Server ne {resp.status_code} bheja — dobara koshish karenge")
+            # The server did answer, but with a bad status (502/503 =
+            # Render is still waking up). Treating that as "no job"
+            # would be wrong — retry/backoff must run.
+            _log_poll_problem(f"The server returned {resp.status_code} — will retry")
             return None
         d = resp.json()
-        _clear_shop_missing()      # jawab aa gaya = shop hai. Nishan hatao.
+        _clear_shop_missing()      # an answer arrived = the shop exists. Clear the marker.
         if d.get("demo_expired"):
             update_tray_status("⏰ Demo has ended — please register!")
             if not _demo_expired_shown:
@@ -2342,31 +2341,31 @@ def get_pending_jobs():
             return []
         return d.get("jobs", [])
     except Exception as e:
-        # YAHI WO JAGAH THI jahan bug baitha tha: pehle yahan
-        # `return []` tha, bina kisi log ke. Dead socket, timeout,
-        # DNS fail — sab chup-chaap "koi job nahi" ban jaate the.
-        _log_poll_problem(f"Server se baat nahi ho paayi: {type(e).__name__} — {e}")
+        # THIS IS WHERE THE BUG LIVED: this used to be
+        # `return []`, without any log. Dead socket, timeout,
+        # DNS failure — all of them silently became "no job".
+        _log_poll_problem(f"Could not talk to the server: {type(e).__name__} — {e}")
         return None
 
 _demo_expired_shown = False
 
-# Shop server par mila hi nahi — kitni baar lagatar, aur kya hum ruk chuke hain
+# The shop was not found on the server — how many times in a row, and whether we have paused
 _shop_missing_count = 0
 _shop_gone = False
 _shop_gone_shown = False
 
 
 def _note_shop_missing():
-    """Lagatar 404 ginta hai. Teesre par agent dheema pad jaata hai."""
+    """Counts consecutive 404s. On the third one the agent slows down."""
     global _shop_missing_count, _shop_gone, _shop_gone_shown
     _shop_missing_count += 1
     if _shop_missing_count < 3 or _shop_gone:
         return
     _shop_gone = True
-    log("🛑 Ye Shop ID ab server par nahi hai. Shayad demo khatam ho gaya "
-        "ya shop delete ho gayi. Agent ne poochna lagbhag band kar diya — "
-        "ab har 30 minute me ek baar dekhega. Naya Shop ID mile to agent "
-        "band karke dobara chalao.", "ERROR")
+    log("🛑 This Shop ID no longer exists on the server. The demo may have ended "
+        "or the shop was deleted. The agent has almost stopped asking — "
+        "it will now check once every 30 minutes. When you get a new Shop ID, close the agent "
+        "and start it again.", "ERROR")
     update_tray_status("Shop ID unavailable — enter a new Shop ID")
     if not _shop_gone_shown:
         _shop_gone_shown = True
@@ -2374,11 +2373,11 @@ def _note_shop_missing():
 
 
 def _clear_shop_missing():
-    """Poll safal — matlab shop hai. Sab wapas normal."""
+    """The poll succeeded — so the shop exists. Everything back to normal."""
     global _shop_missing_count, _shop_gone
     if _shop_missing_count or _shop_gone:
         if _shop_gone:
-            log("✅ Shop ID wapas mil gayi — normal speed par laut rahe hain")
+            log("✅ The Shop ID is back — returning to normal speed")
         _shop_missing_count = 0
         _shop_gone = False
 
@@ -2393,10 +2392,10 @@ def _show_demo_expired_popup():
     try:
         import ctypes
         r = ctypes.windll.user32.MessageBoxW(None,
-            # Avdhi JAAN-BOOJH KAR nahi likhte. Superadmin ise 15 minute
-            # se 24 ghante ke beech kabhi bhi badal sakta hai, aur server
-            # sirf "demo_expired" bhejta hai -- kitni der thi, ye nahi.
-            # Pehle yahan "2-hour" hardcoded tha, jo galat dikhta tha.
+            # The duration is DELIBERATELY not written. The superadmin can change it
+            # anywhere between 15 minutes and 24 hours at any time, and the server
+            # only sends "demo_expired" -- not how long it was.
+            # This used to hardcode "2-hour", which looked wrong.
             "Your demo has ended.\n\n"
             "Register to get your permanent Shop ID:\n"
             f"{SERVER_URL}/register\n\n"
@@ -2409,21 +2408,21 @@ def _show_demo_expired_popup():
 
 # ══════════════════════════════════════════════════════════════════
 # DEMO UPGRADE REMINDER
-# Demo shop ID par agent chal raha ho to subah 9 baje se raat 8 baje
-# tak 4 baar yaad dilata hai — Monthly ya Lifetime plan lo. Popup me
-# dono plan ke button + Dismiss. Plan button dabate hi browser me
-# nayi shop registration khul jati hai.
-# Har slot ek hi baar dikhta hai (state file me likha jata hai), isliye
-# agent restart hone par bhi dobara spam nahi hota.
+# When the agent runs on a demo shop ID, it reminds the owner 4 times between
+# 9 AM and 8 PM — take the Monthly or Lifetime plan. The popup has
+# buttons for both plans + Dismiss. Pressing a plan button opens the
+# new shop registration in the browser.
+# Each slot is shown only once (recorded in the state file), so
+# it does not spam again even after an agent restart.
 # ══════════════════════════════════════════════════════════════════
 DEMO_REMINDER_FILE = os.path.join(_APPDATA_DIR, "demo_reminder.txt")
-DEMO_SLOTS = [(9, 0), (12, 40), (16, 20), (20, 0)]   # 4 baar, 9AM–8PM
+DEMO_SLOTS = [(9, 0), (12, 40), (16, 20), (20, 0)]   # 4 times, 9AM–8PM
 DEMO_CHECK_INTERVAL = 300                             # har 5 min slot check
 
 
 def _demo_status():
-    """Server se poochho: ye shop demo hai ya nahi. Naya halka endpoint
-    use karte hain; purana server ho to /api/shop/<id> par fallback."""
+    """Ask the server whether this shop is a demo. Uses the new lightweight endpoint;
+    falls back to /api/shop/<id> on an old server."""
     try:
         r = requests.get(f"{SERVER_URL}/api/shop/{SHOP_ID}/demo-status", timeout=12)
         if r.status_code == 200:
@@ -2447,7 +2446,7 @@ def _demo_slot_index(now=None):
     for i, (h, m) in enumerate(DEMO_SLOTS):
         if (n.hour, n.minute) >= (h, m):
             cur = i
-    # 8 baje ke baad wala slot agle din tak valid, par raat 11 ke baad nahi
+    # The slot after 8 PM stays valid until the next day, but not after 11 PM
     if cur is not None and n.hour >= 22:
         return None
     return cur
@@ -2485,13 +2484,13 @@ def _open_register(plan):
 
 def _show_demo_upgrade_popup():
     """
-    Demo reminder — Windows ka apna dialog.
+    Demo reminder — Windows' own dialog.
 
-    Pehle ye tkinter ka do-button wala window tha (Monthly / Lifetime).
-    MessageBox me utne button nahi ho sakte, isliye ab ek Yes/No hai:
-    Yes dabate hi registration page browser me khul jaata hai, jahan
-    saare plan waise hi dikhte hain. Ek extra click, par ye kabhi
-    fail nahi hota.
+    This used to be a two-button tkinter window (Monthly / Lifetime).
+    A MessageBox cannot have that many buttons, so it is now a single Yes/No:
+    pressing Yes opens the registration page in the browser, where
+    all the plans are shown as before. One extra click, but it never
+    fails.
     """
     try:
         ans = _native_yesno(
@@ -2506,7 +2505,7 @@ def _show_demo_upgrade_popup():
         if ans is True:
             _open_register("onetime")
     except Exception as e:
-        log(f"Demo popup nahi khul paya: {e}", "WARN")
+        log(f"Could not open the demo popup: {e}", "WARN")
 
 
 def demo_reminder_loop():
@@ -2516,7 +2515,7 @@ def demo_reminder_loop():
     while agent_state["running"]:
         try:
             now = time.time()
-            # Demo status har 30 min me ek baar refresh (server par halka)
+            # Refresh the demo status once every 30 min (light on the server)
             if now - last_status_check > 1800:
                 is_demo, expired = _demo_status()
                 last_status_check = now
@@ -2526,7 +2525,7 @@ def demo_reminder_loop():
                     tag = f"{datetime.now().strftime('%Y-%m-%d')}#{slot}"
                     if not _demo_reminder_done(tag):
                         _demo_reminder_mark(tag)
-                        log(f"\u23f0 Demo upgrade reminder ({slot + 1}/4 aaj)")
+                        log(f"\u23f0 Demo upgrade reminder ({slot + 1}/4 today)")
                         threading.Thread(target=_show_demo_upgrade_popup, daemon=True).start()
         except Exception:
             pass
@@ -2534,25 +2533,25 @@ def demo_reminder_loop():
 
 
 def _report_with_retry(url, payload, job_id, what):
-    """Result report SERVER tak pahunchna hi chahiye — ek attempt fail hone
-    par job server par 'printing' me atka rehta hai aur 10 min baad requeue
-    hokar DUBARA print ho jata hai (duplicate paper!). Isliye 6 koshish,
-    10s gap — kamzor network par bhi ~1 min me pahunch jata hai."""
+    """The result report MUST reach the SERVER — if one attempt fails,
+    the job stays stuck in 'printing' on the server and after 10 min it is requeued
+    and printed AGAIN (duplicate paper!). So 6 attempts,
+    10s apart — it gets through within ~1 min even on a weak network."""
     for attempt in range(1, 7):
         try:
             r = requests.post(url, json=payload, timeout=15)
             if r.status_code == 200:
                 if attempt > 1:
                     log(f"✅ {what} report delivered on attempt {attempt} ({job_id})")
-                # Server ka jawab bhi lauta rahe hain — usi se pata chalta hai
-                # ki customer ki file abhi delete hui ya pehle ho chuki thi.
+                # The server's answer is returned too — it tells whether the
+                # customer's file was deleted just now or earlier.
                 try:
                     return True, (r.json() or {})
                 except Exception:
                     return True, {}
-            log(f"⚠️ {what} report HTTP {r.status_code} (koshish {attempt}/6)", "WARN")
+            log(f"⚠️ {what} report HTTP {r.status_code} (attempt {attempt}/6)", "WARN")
         except Exception as e:
-            log(f"⚠️ {what} report fail (koshish {attempt}/6): {e}", "WARN")
+            log(f"⚠️ {what} report failed (attempt {attempt}/6): {e}", "WARN")
         if attempt < 6:
             time.sleep(10)
     log(f"❌ {what} report failed after 6 attempts — job {job_id} "
@@ -2561,31 +2560,31 @@ def _report_with_retry(url, payload, job_id, what):
 
 def _log_server_file(ok, data):
     """
-    Customer ki file server par se hati ya nahi — ye log me pehle aata hi
-    nahi tha. Sirf "Local file deleted" dikhta tha, aur wo IS PC ka temp hai.
-    Customer ki asli file server par hoti hai.
+    Whether the customer's file was removed from the server — this never used to
+    appear in the log. Only "Local file deleted" showed, and that is THIS PC's temp file.
+    The customer's real file lives on the server.
 
-    Server /api/jobs/complete (aur /failed) par wo file apni taraf se delete
-    karta hai aur DB me file_deleted=true likhta hai. Isliye 200 mila =
-    wo kaam ho chuka. `already:true` matlab pehle hi ho chuka tha.
+    On /api/jobs/complete (and /failed) the server deletes that file itself
+    and writes file_deleted=true in the DB. So a 200 means
+    that work is done. `already:true` means it had already happened.
     """
     try:
         if not ok:
-            log("⚠️  Server tak report nahi pahunchi — customer ki file abhi "
-                "server par ho sakti hai (server 10 min me khud saaf karta hai)", "WARN")
+            log("⚠️  The report did not reach the server — the customer's file may still "
+                "be on the server (the server cleans it up by itself within 10 min)", "WARN")
             return False
         if isinstance(data, dict) and data.get("already"):
-            log("☁️  Server: customer ki file pehle hi delete ho chuki thi")
+            log("☁️  Server: the customer's file had already been deleted")
         else:
-            log("☁️  Server se customer ki file delete ho gayi")
+            log("☁️  The customer's file was deleted from the server")
         return True
     except Exception:
         return bool(ok)
 
 
 def mark_complete(job_id):
-    # Pehle local record, phir server report. Agar report ke beech me
-    # agent crash ho jaye to bhi ye job dobara print nahi hoga.
+    # First the local record, then the server report. Even if the agent crashes
+    # in the middle of the report, this job will not be printed again.
     try:
         mark_processed(job_id)
     except Exception as e:
@@ -2599,45 +2598,45 @@ def mark_complete(job_id):
 def mark_failed(job_id, reason=""):
     ok, data = _report_with_retry(
         f"{SERVER_URL}/api/jobs/failed/{job_id}", {"reason": reason}, job_id, "Failed")
-    # Deny/fail par bhi server apni file saaf karta hai — wahi likho
+    # On deny/fail too the server cleans up its file — log that
     return _log_server_file(ok, data)
 
 
 # ══════════════════════════════════════════════════════════════
-#  LIVE JOB WINDOW  —  ek job, ek window, saara kaam saamne
+#  LIVE JOB WINDOW  —  one job, one window, all the work in view
 #
-#  Purana approval popup ONE-SHOT tha: PowerShell chalao, jawab lo, band.
-#  Uske baad kuch dikhaya hi nahi ja sakta tha — Python `subprocess.run`
-#  par ruka rehta tha aur khuli hui window me kuch bhejne ka raasta nahi tha.
+#  The old approval popup was ONE-SHOT: run PowerShell, get the answer, close.
+#  After that nothing more could be shown — Python waited on
+#  `subprocess.run` and there was no way to send anything to an open window.
 #
-#  Ab ulta hai:
-#    * window Popen se chalti hai (Python rukta NAHI)
-#    * Python ek chhoti JSON state file likhta hai
-#    * window har 320ms wahi file padh kar khud ko refresh karti hai
-#    * button dabane par window ek result file likhti hai, Python padh leta hai
+#  Now it is the other way round:
+#    * the window runs through Popen (Python does NOT wait)
+#    * Python writes a small JSON state file
+#    * every 320ms the window reads that file and refreshes itself
+#    * pressing a button makes the window write a result file, which Python reads
 #
-#  Dikhne ke liye WPF (XAML) use kiya hai, WinForms nahi. WinForms me rounded
-#  card / shadow / chip sab haath se GDI+ me banane padte aur kinare fate hue
-#  dikhte. WPF Windows ka apna hissa hai (koi download nahi) aur ye sab usme
-#  built-in hai.
+#  The look uses WPF (XAML), not WinForms. With WinForms the rounded
+#  cards / shadows / chips would all have to be drawn by hand in GDI+ and the edges
+#  would look jagged. WPF is part of Windows itself (no download) and all of this
+#  is built in.
 #
-#  NIYAM WAHI PURANA: ye window kisi bhi wajah se na chale to printing
-#  RUKNI NAHI CHAHIYE. Har call try/except me hai, aur approval ke liye
-#  purana MessageBox raasta jyon ka tyon zinda hai.
+#  THE OLD RULE STILL APPLIES: if this window fails for any reason, printing
+#  MUST NOT STOP. Every call is inside try/except, and the old MessageBox
+#  path for approval is still fully alive.
 # ══════════════════════════════════════════════════════════════
 
 _JOBWIN_DIR = os.path.join(_APPDATA_DIR, "jobwin")
 _JOBWIN_PS1 = os.path.join(_RUNTIME_DIR, "job_window.ps1")
-_JOBWIN_OK = None          # None = abhi try nahi kiya, False = ye PC nahi chala paya
+_JOBWIN_OK = None          # None = not tried yet, False = this PC could not run it
 
-# Step ka haal
-_ST_WAIT = "wait"          # abhi baari nahi aayi
-_ST_RUN = "run"            # chal raha hai (ghoomta hua gola)
-_ST_DONE = "done"          # ho gaya (hara tick)
-_ST_FAIL = "fail"          # nahi hua (laal cross)
-_ST_SKIP = "skip"          # is job me lagta hi nahi (dash)
+# Step state
+_ST_WAIT = "wait"          # its turn has not come yet
+_ST_RUN = "run"            # running (spinning circle)
+_ST_DONE = "done"          # done (green tick)
+_ST_FAIL = "fail"          # did not happen (red cross)
+_ST_SKIP = "skip"          # does not apply to this job (dash)
 
-# Segoe MDL2 Assets ke icon (Windows 10/11 me pehle se hote hain).
+# Segoe MDL2 Assets icons (built into Windows 10/11).
 _IC_FILE = "E7C3"      # page (folded corner)
 _IC_CARD = "E8C7"      # payment card
 _IC_USER = "E77B"      # contact
@@ -2647,7 +2646,7 @@ _IC_CLOUD = "E753"     # cloud
 _IC_TRASH = "E74D"     # delete
 _IC_TICK = "E73E"      # check
 _IC_CROSS = "E711"     # cancel
-_IC_DASH = "E738"      # remove (skip ke liye)
+_IC_DASH = "E738"      # remove (for skip)
 
 
 _JOBWIN_XAML = r'''<Window
@@ -2789,7 +2788,7 @@ _JOBWIN_XAML = r'''<Window
 </Window>'''
 
 
-# Ek step ki row. 6 baar dohrayi jaati hai (index 0..5).
+# One step row. Repeated 6 times (index 0..5).
 _JOBWIN_ROW = r'''
       <Grid Name="RowG__I__" Margin="0,0,0,0">
         <Grid.ColumnDefinitions>
@@ -2829,14 +2828,14 @@ _JOBWIN_ROW = r'''
       </Grid>'''
 
 
-# PowerShell ka driver. Ye sirf "renderer" hai — koi business logic nahi.
-# Saara faisla Python leta hai aur state file me likh deta hai.
+# The PowerShell driver. It is only a "renderer" — no business logic.
+# Python makes every decision and writes it into the state file.
 _JOBWIN_PS = r'''param([string]$State, [string]$Result, [string]$XamlFile)
 $ErrorActionPreference = 'Stop'
 
-# BOM ke BINA. [Text.Encoding]::UTF8 file ke aage EF BB BF lagata hai, aur
-# Python ka .strip() use hata nahi paata — isse "reject" kabhi match hi nahi
-# hota tha aur har reject "window band ho gayi" ban jaata tha.
+# WITHOUT a BOM. [Text.Encoding]::UTF8 puts EF BB BF at the start of the file, and
+# Python's .strip() cannot remove it — so "reject" never matched
+# and every reject turned into "the window was closed".
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 function Fail($m) {
@@ -3029,8 +3028,8 @@ try {
   Apply ($raw0 | ConvertFrom-Json)
 } catch { }
 
-# Taskbar ko chhod kar, neeche-daayein kone me. WorkArea taskbar hata kar
-# hi milta hai, isliye window uske upar kabhi nahi chadhti.
+# Bottom-right corner, away from the taskbar. WorkArea excludes the taskbar,
+# so the window never sits on top of it.
 try {
   $wa = [System.Windows.SystemParameters]::WorkArea
   $win.Left = $wa.Right - $win.Width - 14
@@ -3038,8 +3037,8 @@ try {
 } catch {
   $win.WindowStartupLocation = 'CenterScreen'
 }
-# Activate() jaan-boojh kar hata diya — jis app me aap type kar rahe ho
-# uska focus ye window nahi chheenegi. Topmost hai, isliye dikhti phir bhi hai.
+# Activate() was removed on purpose — this window will not steal focus from
+# the app you are typing in. It is Topmost, so it is still visible.
 $win.Add_Closed({ try { $timer.Stop() } catch {} })
 $timer.Start()
 $win.ShowDialog() | Out-Null
@@ -3050,10 +3049,10 @@ exit 0
 
 def _jobwin_write_assets():
     """
-    .ps1 aur .xaml ko APPDATA me likh do (ek hi baar, ya badalne par).
+    Write the .ps1 and .xaml into APPDATA (only once, or when they change).
 
-    _MEI ke bajaye APPDATA isliye — wahi jagah hai jo saaf nahi hoti
-    ([[_MEI survival kit]] wali baat).
+    APPDATA instead of _MEI because that is the place that does not get cleaned
+    (the [[_MEI survival kit]] point).
     """
     os.makedirs(_RUNTIME_DIR, exist_ok=True)
     os.makedirs(_JOBWIN_DIR, exist_ok=True)
@@ -3069,24 +3068,24 @@ def _jobwin_write_assets():
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(body)
         except Exception as e:
-            log(f"Job window asset likh nahi paye ({e})", "WARN")
+            log(f"Could not write the job window assets ({e})", "WARN")
             return False
     return True
 
 
 class JobWindow:
     """
-    Ek job ki live window.
+    The live window of a single job.
 
-    Istemaal:
+    Usage:
         w = JobWindow(job); w.open()
         w.step(1, _ST_DONE); w.push()
         ans = w.decide(timeout=600)     # "approve" / "reject" / None
         ...
         w.done_and_close()
 
-    Har method chup-chaap fail hoti hai. Window na chale to printing par
-    koi asar nahi padta — sirf ye window nahi dikhti.
+    Every method fails silently. If the window does not run, printing is
+    not affected at all — only this window is not shown.
     """
 
     def __init__(self, job):
@@ -3100,7 +3099,7 @@ class JobWindow:
         self._decided = None
         self.s = self._initial_state()
 
-    # ── state banao ──
+    # ── build the state ──
     def _initial_state(self):
         j = self.job
         counter = j.get("payment_method") == "counter"
@@ -3122,9 +3121,9 @@ class JobWindow:
              "state": _ST_WAIT, "time": ""},
             {"label": "Now Printing", "icon": _IC_PRINT,
              "chip": "#EDE9FE", "fg": "#7C3AED", "state": _ST_WAIT, "time": ""},
-            # NOTE: order jaan-boojh kar aisa hai — code me local temp PEHLE
-            # delete hoti hai, phir server ko complete bheja jaata hai.
-            # Mockup me ulta tha; yahan wahi likha hai jo SACH me hota hai.
+            # NOTE: the order is deliberate — in the code the local temp file is deleted
+            # FIRST, then complete is sent to the server.
+            # The mockup had it the other way round; this shows what REALLY happens.
             {"label": "Local Temp File Deleting", "icon": _IC_TRASH,
              "chip": "#CFFAFE", "fg": "#0891B2", "state": _ST_WAIT, "time": ""},
             {"label": "File Deleting from Server", "icon": _IC_CLOUD,
@@ -3135,7 +3134,7 @@ class JobWindow:
         if counter:
             head = {"title": "Cash Mode", "accent": "#B45309", "bg": "#FFFBEB",
                     "chip_bg": "#FDE68A", "icon": _IC_CARD,
-                    "badge_top": "WAITING", "badge_sub": "Owner ki haan chahiye"}
+                    "badge_top": "WAITING", "badge_sub": "Needs the owner's approval"}
         else:
             head = {"title": "Online Mode - Paid", "accent": "#16A34A", "bg": "#F0FDF4",
                     "chip_bg": "#BBF7D0", "icon": _IC_CARD,
@@ -3152,12 +3151,12 @@ class JobWindow:
         st.update(head)
         return st
 
-    # ── chhoti madad ──
+    # ── small helpers ──
     def _now(self):
         return datetime.now().strftime("%I:%M:%S %p").lstrip("0")
 
     def step(self, n, state, label=None, stamp=True, icon=None):
-        """Step n (1..6) ka haal badlo. push() abhi bhi karna padta hai."""
+        """Change the state of step n (1..6). push() still has to be called."""
         try:
             s = self.s["steps"][n - 1]
             s["state"] = state
@@ -3190,7 +3189,7 @@ class JobWindow:
         return self
 
     def push(self):
-        """State file ko atomically likho (poori state, har baar)."""
+        """Write the state file atomically (the whole state, every time)."""
         if not self.alive:
             return
         try:
@@ -3203,8 +3202,8 @@ class JobWindow:
                     return
                 except OSError:
                     time.sleep(0.03)
-            # 4 koshish ke baad bhi nahi hua — chhod do. Agli push me poori
-            # state dobara jayegi, isliye kuch khota nahi.
+            # It still failed after 4 attempts — give up. The next push sends the whole
+            # state again, so nothing is lost.
             try:
                 os.unlink(tmp)
             except Exception:
@@ -3212,7 +3211,7 @@ class JobWindow:
         except Exception:
             pass
 
-    # ── window chalu / band ──
+    # ── start / stop the window ──
     def open(self):
         global _JOBWIN_OK
         if _JOBWIN_OK is False:
@@ -3240,20 +3239,20 @@ class JobWindow:
         except Exception as e:
             self.alive = False
             _JOBWIN_OK = False
-            log(f"Live job window nahi khul paya ({e}) - purana popup use hoga", "WARN")
+            log(f"Could not open the live job window ({e}) - the old popup will be used", "WARN")
             return False
 
     def _read_result(self):
         """
-        Button ka jawab padho.
+        Read the button's answer.
 
-        DHYAAN: yahan "utf-8-sig" use kiya hai aur upar se \ufeff bhi hata rahe
-        hain. Wajah — PowerShell ka [Text.Encoding]::UTF8 file ke aage BOM
-        laga deta tha, aur Python ka .strip() BOM ko whitespace nahi maanta.
-        Isliye "reject" kabhi bhi "reject" ke barabar nahi hota tha aur har
-        Reject "window band ho gayi" ban kar job wapas queue me chala jaata tha.
-        Ab .ps1 BOM likhta hi nahi, par purani window chal rahi ho to bhi
-        sambhal jaye — isliye dono taraf se band.
+        NOTE: "utf-8-sig" is used here and \ufeff is stripped on top of that.
+        Reason — PowerShell's [Text.Encoding]::UTF8 put a BOM at the start of
+        the file, and Python's .strip() does not treat a BOM as whitespace.
+        So "reject" was never equal to "reject", and every
+        Reject turned into "the window was closed" and the job went back to the queue.
+        The .ps1 no longer writes a BOM at all, but an old window may still be running,
+        so it is handled on both sides.
         """
         try:
             if os.path.exists(self.result_file):
@@ -3268,8 +3267,8 @@ class JobWindow:
 
     def decide(self, timeout=600):
         """
-        Owner ke button ka intezaar.
-        "approve" / "reject" / None (window band ho gayi ya chali hi nahi).
+        Wait for the owner's button.
+        "approve" / "reject" / None (the window was closed or never ran).
         """
         global _JOBWIN_OK
         if not self.alive:
@@ -3281,8 +3280,8 @@ class JobWindow:
                 if v.startswith("ERROR"):
                     _JOBWIN_OK = False
                     self.alive = False
-                    log(f"Live job window is PC par nahi chala ({v[:60]}) - "
-                        f"purana popup use hoga", "WARN")
+                    log(f"The live job window does not run on this PC ({v[:60]}) - "
+                        f"the old popup will be used", "WARN")
                     return None
                 if v == "CLOSED":
                     self._decided = None
@@ -3290,7 +3289,7 @@ class JobWindow:
                 self._decided = v
                 return v
             if self.proc is not None and self.proc.poll() is not None:
-                # PowerShell bina jawab diye mar gaya
+                # PowerShell died without answering
                 v = self._read_result()
                 if not v or v.startswith("ERROR"):
                     _JOBWIN_OK = False
@@ -3298,11 +3297,11 @@ class JobWindow:
                     return None
                 return v
             time.sleep(0.15)
-        log("Live job window par 10 min tak koi jawab nahi aaya", "WARN")
+        log("No answer came from the live job window within 10 min", "WARN")
         return None
 
     def done_and_close(self, seconds=8):
-        """Aakhri state bhejo aur window ko khud band hone do."""
+        """Send the final state and let the window close itself."""
         try:
             self.s["close_in"] = seconds
             self.push()
@@ -3326,11 +3325,11 @@ class JobWindow:
 
     def fail_rest(self, msg="Job Failed"):
         """
-        Jo step baaki reh gaye unhe band karo aur window ko vida do.
+        Close whatever steps are still open and say goodbye to the window.
 
-        Ye process_job() ke `finally` se chalta hai, isliye job kisi bhi
-        raaste se nikle — download fail, server refuse, ya exception —
-        window kabhi adhoori nahi latki rahegi.
+        This runs from process_job()'s `finally`, so whichever way the job
+        leaves — download failure, server refusal, or an exception —
+        the window is never left hanging half-finished.
         """
         try:
             for s in self.s["steps"]:
@@ -3351,51 +3350,51 @@ class JobWindow:
             pass
 
 
-# Jab koi faisla nahi lena — sirf "Close".
+# When there is no decision to make — only "Close".
 _BTN_CLOSE = {"id": "close", "text": "Close", "bg": "#FFFFFF",
               "bd": "#D6D3D1", "fg": "#1C1917"}
 
-# Abhi jo job chal rahi hai uski window. process_job() ke finally me
-# saaf hoti hai, isliye kisi bhi raaste se nikalne par window band ho
-# jaati hai. Jobs ek-ek karke chalte hain (print_loop me sequential),
-# isliye ek hi kaafi hai.
+# The window of the job that is running right now. It is cleared in
+# process_job()'s finally, so the window closes whichever way the job
+# leaves. Jobs run one at a time (sequentially in print_loop),
+# so one is enough.
 _CURRENT_JOBWIN = None
 
 # ══════════════════════════════════════════════════════════════════
 # COUNTER-PAYMENT APPROVAL POPUP
-# Counter (cash) wale jobs mein customer ne abhi paisa NAHI diya hota —
-# system turant print nikal deta tha. Ab owner ke PC par popup: details
-# dekho, cash lo, Approve karo — tab print. Deny = job cancel + file delete.
-# FAIL-OPEN: popup kisi wajah se na ban paye to print ho jata hai —
-# popup ki technical dikkat business nahi rokni chahiye.
+# For counter (cash) jobs the customer has NOT paid yet —
+# the system used to print immediately. Now there is a popup on the owner's PC:
+# look at the details, collect the cash, press Approve — then it prints. Deny = the job is cancelled + the file deleted.
+# FAIL-OPEN: if the popup cannot be created for some reason, the job prints —
+# a technical problem with the popup must not stop the business.
 # ══════════════════════════════════════════════════════════════════
 def ask_backside():
     """
-    Manual duplex: front side chhap gaya — ab owner se poochho ki page
-    palat kar tray me rakh diya ya nahi.
+    Manual duplex: the front side has printed — now ask the owner whether the
+    pages have been turned over and put back in the tray.
 
-    Windows ka apna dialog. Pehle yahan tkinter ka window tha jo Tcl na
-    hone par nahi khulta tha; tab evens seedhe chhap jaate the aur alag
-    sheet par nikal kar kagaz barbaad hota tha.
+    Windows' own dialog. This used to be a tkinter window that did not open
+    when Tcl was missing; then the even pages printed straight away and came out
+    on separate sheets, wasting paper.
     """
     return _ask_backside_native()
 
 def ask_approval(job):
     """
-    Counter order ka approval — Windows ka apna dialog.
+    Approval for a counter order — Windows' own dialog.
 
-    Ye gate PAISE ka hai: customer counter par cash dega, isliye owner ki
-    haan ke bina print nahi jaana chahiye. Pehle yahan tkinter ka window
-    tha aur Tcl fail hone par log me sirf "Approval popup fail" aata tha.
-    Ab seedha wahi dialog jo har Windows par chalta hai.
+    This gate is about MONEY: the customer will pay cash at the counter, so it
+    must not print without the owner's OK. This used to be a tkinter window,
+    and when Tcl failed the log only said "Approval popup failed".
+    Now it is the dialog that works on every Windows installation.
     """
     return _ask_approval_native(job)
 
 def process_job(job):
     """
-    In-flight guard ke saath wrapper. Asli kaam _process_job_inner karta hai.
-    finally me cleanup — chahe print safal ho, fail ho, ya exception aaye —
-    job ID kabhi "abhi chal raha hai" list me atki nahi rahegi.
+    A wrapper with the in-flight guard. _process_job_inner does the real work.
+    Cleanup in finally — whether the print succeeds, fails or raises —
+    a job ID never stays stuck in the "running right now" list.
     """
     global _CURRENT_JOBWIN
     job_id = job.get("id", "unknown")
@@ -3409,8 +3408,8 @@ def process_job(job):
             pass
     finally:
         _inflight_jobs.discard(job_id)
-        # Job kisi bhi raaste se nikli ho — download fail, server refuse,
-        # ya exception — live window adhoori latki nahi rehni chahiye.
+        # Whichever way the job left — download failure, server refusal,
+        # or an exception — the live window must not be left hanging half-finished.
         _w = _CURRENT_JOBWIN
         _CURRENT_JOBWIN = None
         if _w is not None:
@@ -3423,9 +3422,9 @@ def process_job(job):
 
 def _process_job_inner(job):
     job_id  = job.get("id", "unknown")
-    # DUPLICATE PRINT GUARD — server ne claim to kar liya hai, par agent
-    # restart ya stuck-job requeue ke baad wahi job dobara aa sakta hai.
-    # Customer ka paisa ek print ka hai, do nahi.
+    # DUPLICATE PRINT GUARD — the server has claimed the job, but after an agent
+    # restart or a stuck-job requeue the same job can arrive again.
+    # The customer paid for one print, not two.
     if already_processed(job_id):
         log(f"⏭️  Job {job_id} already printed earlier — skipping (duplicate)")
         try:
@@ -3433,10 +3432,10 @@ def _process_job_inner(job):
         except Exception:
             pass
         return
-    # Server ne isi job ko dobara bhej diya jabki ye abhi print ho raha hai
-    # (bada PDF 45s se zyada le raha ho). Chhod do — do baar nahi nikalna.
+    # The server sent this job again while it is still printing
+    # (a large PDF taking more than 45s). Skip it — it must not come out twice.
     if job_id in _inflight_jobs:
-        log(f"⏭️  Job {job_id} abhi print ho raha hai — dobara nahi lenge")
+        log(f"⏭️  Job {job_id} is still printing — not taking it again")
         return
     _inflight_jobs.add(job_id)
     url     = job.get("file_url")
@@ -3449,24 +3448,24 @@ def _process_job_inner(job):
     amount  = job.get("amount", 0)
     selected_pages = job.get("selected_pages", "")
 
-    # Shop ne agar specific B&W/Color printer set kiya hai (Super Admin/
-    # Dashboard se), to job ke color_mode ke hisaab se sahi printer select
-    # karte hain — system default printer ko IGNORE karke. Agar set nahi
-    # hai (khali string), to None pass hoga aur purana default-printer
-    # wala behavior chalega (backward compatible, kuch nahi tootega).
+    # If the shop has set a specific B&W/Color printer (from Super Admin/
+    # the Dashboard), the right printer is chosen from the job's color_mode
+    # — IGNORING the system default printer. If it is not
+    # set (an empty string), None is passed and the old default-printer
+    # behaviour applies (backward compatible, nothing breaks).
     printer_name_bw = job.get("printer_name_bw", "") or None
     printer_name_color = job.get("printer_name_color", "") or None
     printer_name_4x6 = job.get("printer_name_4x6", "") or None
     printer_name_a3 = job.get("printer_name_a3", "") or None
     printer_name_duplex = job.get("printer_name_duplex", "") or None
     # ── ROUTING PRECEDENCE ──
-    # 1. Paper-special printer (4x6 photo / A3-A2-A1 large) agar shop ne set kiya
-    # 2. Duplex printer — dono side wala job, aur shop ne alag printer diya ho
-    # 3. Warna color/bw routing (jaisa pehle)
+    # 1. The paper-special printer (4x6 photo / A3-A2-A1 large) if the shop has set one
+    # 2. The duplex printer — a two-sided job, when the shop has set a separate printer
+    # 3. Otherwise color/bw routing (as before)
     #
-    # Kagaz ka size printer ki MAJBOORI hai, duplex sirf ek suvidha —
-    # isliye A3/4x6 wala printer duplex se JEETTA hai. A3 ki sheet chhote
-    # printer me jaayegi hi nahi, chahe usme duplex ho.
+    # The paper size is a HARD LIMIT of the printer, duplex is only a convenience —
+    # so the A3/4x6 printer WINS over duplex. An A3 sheet will not even fit into
+    # a smaller printer, even if that one has duplex.
     _paper = (job.get("paper_size", "a4") or "a4").lower()
     if _paper == "4x6" and printer_name_4x6:
         target_printer = printer_name_4x6
@@ -3480,15 +3479,15 @@ def _process_job_inner(job):
     else:
         target_printer = printer_name_bw if color == "bw" else printer_name_color
 
-    # ── COUNTER APPROVAL GATE ── online-paid jobs seedha print (paisa aa
-    # chuka); sirf counter jobs par owner se pucho
+    # ── COUNTER APPROVAL GATE ── online-paid jobs print directly (the money has
+    # already arrived); only counter jobs ask the owner
     log(f"📄 Job {job_id}: {color.upper()} | copies={job.get('copies',1)} | "
         f"BW-printer='{printer_name_bw or 'default'}' | Color-printer='{printer_name_color or 'default'}' | "
         f"target='{target_printer or 'DEFAULT PRINTER'}'")
 
     # ── LIVE JOB WINDOW ──
-    # Ek job, ek window. Na khule to sab kuch bilkul pehle jaisa chalta hai
-    # (purana MessageBox approval + log) — printing kabhi nahi rukti.
+    # One job, one window. If it does not open, everything runs exactly as before
+    # (the old MessageBox approval + log) — printing never stops.
     global _CURRENT_JOBWIN
     win = JobWindow(job)
     if not win.open():
@@ -3516,7 +3515,7 @@ def _process_job_inner(job):
             elif got == "reject":
                 ans = False
             elif not win.alive:
-                # Window is PC par chal hi nahi payi — purana raasta
+                # The window could not run on this PC — the old path
                 win = None
                 _CURRENT_JOBWIN = None
                 ans = ask_approval(job)
@@ -3530,7 +3529,7 @@ def _process_job_inner(job):
                 _CURRENT_JOBWIN = None
             return
         if ans is False:
-            log(f"❌ Owner ne DENY kiya — job {job_id} cancel")
+            log(f"❌ The owner DENIED — job {job_id} cancelled")
             if win:
                 win.head(title="Cash Mode - Denied", accent="#DC2626", bg="#FEF2F2",
                          chip_bg="#FECACA", badge_top="DENIED", badge_sub="Job Rejected")
@@ -3555,7 +3554,7 @@ def _process_job_inner(job):
             win.buttons(a=None, b=_BTN_CLOSE)
             win.push()
     elif win:
-        # Online-paid job (ya approval band hai) — paisa pehle hi aa chuka
+        # An online-paid job (or approval is off) — the money has already arrived
         win.step(2, _ST_DONE).push()
 
     log(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -3567,8 +3566,8 @@ def _process_job_inner(job):
     if target_printer:
         log(f"   🎯 Target Printer ({color.upper()}): {target_printer}")
 
-    # Server se authorized download URL lo. Server sirf URL deta hai —
-    # PDF Cloudinary se SEEDHA is PC par aati hai, Render se hoke nahi.
+    # Get the authorized download URL from the server. The server only returns the URL —
+    # the PDF comes STRAIGHT from Cloudinary to this PC, not through Render.
     signed_url, blocked = get_download_url(job_id, url)
     if blocked:
         log(f"❌ Server refused this job: {blocked}", "ERROR")
@@ -3644,10 +3643,10 @@ def _process_job_inner(job):
 
 def check_dependencies():
     if is_running_as_exe():
-        # Pehle yahan sirf ek hardcoded line chhapti thi: "sab ready (bundled)".
-        # Wo JHOOTH tha — kuch check hota hi nahi tha. 22 Aug ko Crypto ki .pyd
-        # gayab thi aur log phir bhi "ready" likh raha tha, isliye asli wajah
-        # pakadne me bahut waqt laga. Ab sach me import karke dekhte hain.
+        # This used to print just one hardcoded line: "everything ready (bundled)".
+        # That was a LIE — nothing was checked at all. On 22 Aug the Crypto .pyd
+        # was missing and the log still said "ready", so finding the real cause
+        # took a long time. Now the imports are actually checked.
         log("🔍 Checking dependencies... (.exe mode)")
         ok, bad = [], []
         for label, mod in (("Pillow", "PIL.Image"),
@@ -3663,8 +3662,8 @@ def check_dependencies():
         if ok:
             log("✅ " + ", ".join(ok) + " — ready (bundled)")
         if bad:
-            log("❌ Bundle me dikkat: " + ", ".join(bad), "ERROR")
-            log("   Agent band karke dobara chalu karo — bundle wapas khul jayega.",
+            log("❌ Problem in the bundle: " + ", ".join(bad), "ERROR")
+            log("   Close the agent and start it again — the bundle will be unpacked again.",
                 "ERROR")
         return
 
@@ -3715,8 +3714,8 @@ def check_dependencies():
             log("⚠️  pystray could not be installed — tray mode will not work, using console mode", "WARN")
 
 # ─── DESKTOP CONTROL PANEL (optional UI layer) ──────────────────────
-# Panel na khule to bhi agent poori tarah kaam karta hai — printing, tray,
-# auto-update sab pehle jaisa. Isliye import failure yahan swallow karte hain.
+# Even if the panel does not open, the agent works completely — printing, tray,
+# auto-update, everything as before. So an import failure is swallowed here.
 PANEL = None
 try:
     import agent_panel as PANEL
@@ -3726,27 +3725,27 @@ except Exception as _panel_err:
 
 def switch_shop_id_live(new_shop_id):
     """
-    Shop ID ko CHALTE-CHALTE badlo — process restart ke bina.
+    Change the Shop ID WHILE RUNNING — without restarting the process.
 
-    Restart kyun nahi: purana restart flow hi wo _MEI crash deta tha
-    (Phase 0). Conversion ke waqt customer ko wo crash dikhana sabse
-    kharab experience hoga. SHOP_ID module-level variable hai, isliye
-    globals() se update karte hain aur config file atomically likhte hain.
+    Why no restart: the old restart flow is exactly what produced the _MEI crash
+    (Phase 0). Showing that crash to a customer during the conversion would be the
+    worst possible experience. SHOP_ID is a module-level variable, so
+    it is updated through globals() and the config file is written atomically.
     """
     global SHOP_ID
     old = SHOP_ID
 
-    # IMPORTANT: server par conversion ho chuki hai — agent token already
-    # paid shop par move ho gaya hai. Ab agar hum yahan ruk gaye to PC purane
-    # demo ID par atka rahega aur printing band ho jaayegi.
-    # Isliye: MEMORY me switch pehle karo (printing turant chal jaaye),
-    # file write baad me — file fail ho to sirf "restart ke baad yaad nahi
-    # rahega" wali problem hoti hai, printing nahi rukti.
+    # IMPORTANT: the conversion has already happened on the server — the agent token has
+    # already moved to the paid shop. If we stopped here now, the PC would stay stuck
+    # on the old demo ID and printing would stop.
+    # So: switch in MEMORY first (printing continues immediately), write the
+    # file afterwards — if the file fails, the only problem is "it will not be
+    # remembered after a restart"; printing does not stop.
     SHOP_ID = new_shop_id
 
     saved = False
     try:
-        # Atomic write — beech me power gayi to config corrupt na ho
+        # Atomic write — so the config is not corrupted if the power goes out midway
         tmp = SHOP_CONFIG_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(new_shop_id)
@@ -3757,7 +3756,7 @@ def switch_shop_id_live(new_shop_id):
     except Exception as e:
         log(f"Shop ID switched in memory but could not be saved to disk: {e}", "ERROR")
         log(f"   After a restart this PC may ask for the Shop ID again — enter: {new_shop_id}", "WARN")
-    # Purane demo ke processed-job records ab bekaar hain
+    # The processed-job records of the old demo are useless now
     try:
         _processed_jobs.clear()
         _save_processed()
@@ -3765,7 +3764,7 @@ def switch_shop_id_live(new_shop_id):
         pass
 
     agent_state["connection"] = "connecting"
-    agent_state["reconnect_requested"] = True      # turant naye shop se poll karo
+    agent_state["reconnect_requested"] = True      # poll immediately with the new shop
     log(f"✅ Shop switched: {old} → {new_shop_id}" + ("" if saved else " (not saved to disk)"))
     try:
         report_printers_to_server()
@@ -3777,9 +3776,9 @@ def switch_shop_id_live(new_shop_id):
 
 def is_demo_shop():
     """
-    Demo hai ya paid — SERVER batata hai, Shop ID ke text se guess nahi karte
-    (spec: backend is the source of truth). Server na mile to False —
-    galti se paid shop ko demo dikhane se behtar hai kuch na dikhana.
+    Demo or paid — the SERVER says so; it is not guessed from the Shop ID text
+    (spec: backend is the source of truth). If the server cannot be reached, False —
+    showing nothing is better than showing a demo prompt to a paid shop by mistake.
     """
     try:
         if PANEL is not None:
@@ -3791,12 +3790,12 @@ def is_demo_shop():
 
 def open_upgrade_panel(icon=None, item=None):
     """
-    Tray ka '⚡ Change Demo ID to Paid Shop'.
+    The tray's '⚡ Change Demo ID to Paid Shop'.
 
-    Panel ki window bani ho to wahi (sundar) flow. Na bani ho — jaise un
-    PC par jahan WebView2 nahi hai — to Windows ke apne dialog se wahi
-    kaam. Pehle yahan sirf "Please open Settings..." likha aata tha,
-    jabki Settings bhi khulti hi nahi thi; demo shop wahin atak jaati thi.
+    If the panel window can be created, that (nicer) flow is used. If not — as on
+    PCs without WebView2 — the same job is done with Windows' own dialogs.
+    This used to show only "Please open Settings...",
+    while Settings did not even open; the demo shop was stuck right there.
     """
     panel_up = False
     try:
@@ -3810,15 +3809,15 @@ def open_upgrade_panel(icon=None, item=None):
             PANEL.open_panel(page="upgrade")
             return
         except Exception as e:
-            log(f"Upgrade page nahi khula ({e}) — Windows dialog par ja rahe hain",
+            log(f"The upgrade page did not open ({e}) — falling back to the Windows dialog",
                 "WARN")
 
-    # Alag thread me — tray ka menu callback block nahi hona chahiye
+    # In a separate thread — the tray menu callback must not block
     threading.Thread(target=convert_demo_to_paid_native, daemon=True).start()
 
 
 def open_panel(icon=None, item=None):
-    """Tray ka '⚙ Settings' — desktop panel kholo."""
+    """The tray's '⚙ Settings' — open the desktop panel."""
     if PANEL is None:
         _msgbox("The desktop panel is not available in this build.\n\n"
                 "Your Print Agent is running normally and printing is unaffected.",
@@ -3829,7 +3828,7 @@ def open_panel(icon=None, item=None):
     except Exception as e:
         log(f"Panel open failed: {e} — agent continues normally", "ERROR")
 
-# ─── AUTO-UPDATE: Server se check karo naya version hai ya nahi ──────
+# ─── AUTO-UPDATE: check with the server whether there is a new version ──────
 def get_remote_version():
     """Fetch the latest agent version number from the server"""
     try:
@@ -3837,8 +3836,8 @@ def get_remote_version():
         resp.raise_for_status()
         data = resp.json()
         v = data.get("version")
-        # Naya server display label bhi bhejta hai ("2.1"). Purana server nahi
-        # bhejta — tab None rehne do aur apna hi label dikhate raho.
+        # A new server also sends a display label ("2.1"). An old server does not —
+        # then leave it None and keep showing our own label.
         global REMOTE_VERSION_LABEL, REMOTE_VERSION_INT
         try:
             REMOTE_VERSION_INT = int(v) if v is not None else 0
@@ -3846,15 +3845,15 @@ def get_remote_version():
             REMOTE_VERSION_INT = 0
         lbl = data.get("versionLabel") or data.get("displayVersion")
         REMOTE_VERSION_LABEL = lbl if (isinstance(lbl, str) and _VERSION_LABEL_RE.match(lbl.strip())) else None
-        # Server string bhej de ("7") to int(6) se compare TypeError deta —
-        # update silently kabhi trigger nahi hota. Int coerce karo.
+        # If the server sends a string ("7"), comparing it with int(6) raises TypeError —
+        # and the update silently never triggers. Coerce to int.
         return int(v) if v is not None else None
     except Exception as e:
         log(f"⚠️  Version check failed: {e}", "WARN")
         return None
 
 def remote_label_or(fallback_int):
-    """Server ka label dikhao; na mile to internal number hi dikha do."""
+    """Show the server's label; if there is none, show the internal number."""
     return REMOTE_VERSION_LABEL or f"{fallback_int}"
 
 def download_latest_agent():
@@ -3869,20 +3868,20 @@ def download_latest_agent():
 
 def apply_update_and_restart(new_code=None):
     """
-    Source (.py) mode mein: naya code current SHOP_ID/SERVER_URL ke saath
-    fill karke print_agent.py replace karte hain, phir restart.
+    In source (.py) mode: fill the new code with the current SHOP_ID/SERVER_URL,
+    replace print_agent.py, then restart.
 
-    .exe mode mein: .py source replace karna kaam nahi karega (exe already
-    compiled hai), isliye iske jagah naya installer .exe download karke
-    chalate hain — woh khud purane ko replace karke restart karega.
+    In .exe mode: replacing the .py source would not work (the exe is already
+    compiled), so instead the new installer .exe is downloaded and
+    run — it replaces the old one itself and restarts.
     """
     if is_running_as_exe():
         apply_exe_update_and_restart()
         return
 
     try:
-        # Naya code mein placeholder ko current Shop ID/Server URL se fill karo
-        new_code = new_code.replace('AAPKA_SHOP_ID', SHOP_ID)
+        # Fill the placeholder in the new code with the current Shop ID/Server URL
+        new_code = new_code.replace('YOUR_SHOP_ID', SHOP_ID)
         new_code = new_code.replace(
             'SERVER_URL         = "https://echel.in"',
             f'SERVER_URL         = "{SERVER_URL}"'
@@ -3891,7 +3890,7 @@ def apply_update_and_restart(new_code=None):
         current_file = os.path.abspath(__file__)
         backup_file = current_file + ".backup"
 
-        # Purani file ka backup rakho (kuch gadbad ho jaye to wapas use kar sake)
+        # Keep a backup of the old file (so it can be used again if something goes wrong)
         shutil.copy2(current_file, backup_file)
 
         with open(current_file, 'w', encoding='utf-8') as f:
@@ -3899,28 +3898,28 @@ def apply_update_and_restart(new_code=None):
 
         log("✅ New code installed! Restarting the agent...")
 
-        # Khud ko restart karo — naye Python process mein same script chalao.
-        # pythonw.exe force karte hain taaki restart ke baad bhi koi console
-        # window na khule (chahe yeh process pythonw ya python se shuru hua ho)
+        # Restart ourselves — run the same script in a new Python process.
+        # pythonw.exe is forced so that no console window opens after the restart
+        # either (whether this process was started with pythonw or python)
         python_exe = sys.executable
         pythonw_exe = python_exe.replace('python.exe', 'pythonw.exe')
         if not os.path.exists(pythonw_exe):
-            pythonw_exe = python_exe  # fallback agar pythonw nahi mila
+            pythonw_exe = python_exe  # fallback if pythonw was not found
 
         _spawn_detached([pythonw_exe, current_file], cwd=os.path.dirname(current_file))
-        time.sleep(2.0)   # naye process ko start hone ka time do
+        time.sleep(2.0)   # give the new process time to start
 
-        # Tray icon band karke is purane process ko exit karo
+        # Close the tray icon and exit this old process
         if agent_state["tray_icon"]:
             agent_state["tray_icon"].stop()
         os._exit(0)
     except Exception as e:
-        log(f"❌ Update apply karne mein error: {e}", "ERROR")
+        log(f"❌ Error while applying the update: {e}", "ERROR")
 
 def download_installer(progress_cb=None):
     """
-    Naya installer download karo. progress_cb(percent_or_None, mb_done)
-    har chunk par call hota hai. Return: installer path ya (None, error_msg).
+    Download the new installer. progress_cb(percent_or_None, mb_done)
+    is called for every chunk. Returns: the installer path or (None, error_msg).
     """
     resp = requests.get(f"{SERVER_URL}/api/agent/download-latest-exe", timeout=120, stream=True)
     if resp.status_code == 404:
@@ -3928,9 +3927,9 @@ def download_installer(progress_cb=None):
     resp.raise_for_status()
 
     total = int(resp.headers.get('content-length') or 0)
-    # FIX [Errno 13]: fixed filename par purana locked/antivirus-held installer
-    # har agla download fail karwata tha (auto + manual dono). Ab unique naam
-    # per download + purane installers best-effort saaf.
+    # FIX [Errno 13]: with a fixed filename, an old installer that was locked/held by antivirus
+    # made every following download fail (both auto + manual). Now every download gets a
+    # unique name + old installers are cleaned up best-effort.
     try:
         for old_f in os.listdir(tempfile.gettempdir()):
             if old_f.startswith("EchelPrint-Update-") and old_f.endswith(".exe"):
@@ -3948,12 +3947,12 @@ def download_installer(progress_cb=None):
                 if progress_cb:
                     pct = int(done * 100 / total) if total else None
                     progress_cb(pct, done / 1048576)
-    if done < 100_000:  # <100KB = installer nahi, koi error page hai
+    if done < 100_000:  # <100KB = not an installer, some error page
         return None, "The downloaded file does not look like an installer (too small) — check the installer URL"
     return installer_path, None
 
 def _is_windows_exe(path):
-    """Downloaded file sach me Windows ka program hai? (MZ header)"""
+    """Is the downloaded file really a Windows program? (MZ header)"""
     try:
         with open(path, "rb") as f:
             return f.read(2) == b"MZ"
@@ -3963,43 +3962,43 @@ def _is_windows_exe(path):
 
 def run_installer_and_exit(new_exe_path):
     """
-    Naye build ko PURANE exe ki jagah par bitha kar wahin se chalu karo.
+    Put the new build in place of the OLD exe and start it from there.
 
-    ⚠️ Yahan pehle Inno Setup ke switch (/VERYSILENT ...) bheje jaate the.
-    Par server jo file bhejta hai wo installer hai hi nahi — wo khud agent
-    ka PyInstaller exe hai. Wo in switches ko chupchaap ignore kar deta
-    tha, TEMP se chal padta tha, aur autostart bhi TEMP ke raste par likh
-    deta tha. Temp saaf hote hi wo raasta toot jaata tha — isiliye update
-    "download to hota tha, install nahi hota tha".
+    ⚠️ This used to pass Inno Setup switches (/VERYSILENT ...).
+    But the file the server sends is not an installer at all — it is the agent's
+    own PyInstaller exe. It silently ignored those switches,
+    ran from TEMP, and even wrote the autostart pointing at the TEMP
+    path. As soon as temp was cleaned, that path broke — which is why the update
+    "downloaded but never installed".
 
-    Ab kaam ek chhoti .bat karti hai:
-      * copy ki koshish karti rehti hai — jab tak purana exe chal raha
-        hai, file locked rehti hai aur copy fail hoti hai. Wo band hote hi
-        copy chal jaati hai. Isliye alag se "process ka intezaar" karne ki
-        zaroorat hi nahi.
-      * replace hone ke baad naye exe ko USI JAGAH se chalu karti hai.
-      * har haal me apna log likhti hai, taaki fail ho to pata chale.
+    Now a small .bat does the work:
+      * it keeps trying to copy — while the old exe is running
+        the file stays locked and the copy fails. As soon as it exits,
+        the copy goes through. So there is no need to
+        "wait for the process" separately.
+      * after the replacement it starts the new exe FROM THE SAME PLACE.
+      * it always writes its own log, so a failure can be traced.
     """
     if not is_running_as_exe():
-        log("Self-update sirf .exe build me hota hai — script mode me chhod diya", "WARN")
+        log("Self-update only works in the .exe build — skipped in script mode", "WARN")
         return
     if not _is_windows_exe(new_exe_path):
-        log("❌ Download kiya hua file Windows program jaisa nahi hai — update roka", "ERROR")
+        log("❌ The downloaded file does not look like a Windows program — update stopped", "ERROR")
         return
 
-    target = os.path.abspath(sys.executable)      # abhi jahan se chal rahe hain
+    target = os.path.abspath(sys.executable)      # where we are running from right now
     bat = os.path.join(tempfile.gettempdir(), f"qsp-update-{int(time.time())}.bat")
     upd_log = os.path.join(_APPDATA_DIR, "update_log.txt")
 
-    # ⚠️ RAASTE .bat ke ANDAR MAT LIKHO — cmd.exe file ko ANSI codepage me
-    # padhta hai. Jis shop ke PC par username Hindi/Bangla/Tamil me hai,
-    # uska %TEMP% aur %APPDATA% bhi usi lipi me hota hai, aur wo raasta
-    # file me likhte hi kachra ban jaata hai. Isliye teeno raaste argument
-    # ban kar jaate hain (%~1 %~2 %~3) — argument Windows ko Unicode me
-    # milta hai, aur .bat ka apna matn saaf ASCII rehta hai.
+    # ⚠️ DO NOT WRITE PATHS INSIDE the .bat — cmd.exe reads the file in the ANSI
+    # codepage. On a shop PC whose username is in Hindi/Bengali/Tamil script,
+    # %TEMP% and %APPDATA% are in that script too, and the path turns into
+    # garbage as soon as it is written into the file. So all three paths are
+    # passed as arguments (%~1 %~2 %~3) — Windows passes arguments in Unicode,
+    # and the .bat's own text stays clean ASCII.
     #
-    # `ping` se rukte hain, `timeout` se nahi — bina console wale process me
-    # timeout "input redirection is not supported" de kar turant nikal jaata hai.
+    # We wait with `ping`, not `timeout` — in a process without a console,
+    # timeout fails with "input redirection is not supported" and exits immediately.
     script = "\r\n".join([
         "@echo off",
         "set N=0",
@@ -4009,7 +4008,7 @@ def run_installer_and_exit(new_exe_path):
         "ping -n 3 127.0.0.1 >nul",
         "set /a N+=1",
         "if %N% LSS 40 goto try",
-        'echo [%date% %time%] UPDATE FAIL - "%~2" replace nahi hua>>"%~3"',
+        'echo [%date% %time%] UPDATE FAIL - "%~2" was not replaced>>"%~3"',
         "goto clean",
         ":ok",
         'echo [%date% %time%] UPDATE OK - "%~2">>"%~3"',
@@ -4022,14 +4021,14 @@ def run_installer_and_exit(new_exe_path):
         with open(bat, "w", encoding="ascii", newline="") as f:
             f.write(script)
     except Exception as e:
-        log(f"❌ Update helper nahi ban paayi: {e}", "ERROR")
+        log(f"❌ Could not create the update helper: {e}", "ERROR")
         return
 
-    log(f"🔄 Update lagaya ja raha hai — {target}")
+    log(f"🔄 Applying the update — {target}")
     try:
         _spawn_detached(["cmd", "/c", bat, new_exe_path, target, upd_log])
     except Exception as e:
-        log(f"❌ Update helper chali nahi: {e}", "ERROR")
+        log(f"❌ The update helper did not run: {e}", "ERROR")
         return
 
     time.sleep(1)
@@ -4048,12 +4047,12 @@ def apply_exe_update_and_restart():
         log(f"✅ Installer downloaded: {installer_path}")
         run_installer_and_exit(installer_path)
     except Exception as e:
-        log(f"❌ .exe update apply karne mein error: {e}", "ERROR")
+        log(f"❌ Error while applying the .exe update: {e}", "ERROR")
 
-# ─── MANUAL UPDATE CHECK (tray menu se) ──────────────────────────────
-# Auto-loop errors chupchaap kha jata hai — yeh window sab kuch DIKHATI
-# hai: server ka version, download %, aur exact error. Har shop par bina
-# logs khole update-problem diagnose ho jati hai.
+# ─── MANUAL UPDATE CHECK (from the tray menu) ──────────────────────────────
+# The auto loop swallows errors silently — this window SHOWS everything:
+# the server version, the download %, and the exact error. Update problems
+# can be diagnosed at any shop without opening the logs.
 def manual_update_check(icon=None, item=None):
     threading.Thread(target=_manual_update_ui, daemon=True).start()
 
@@ -4067,67 +4066,67 @@ def _msgbox(text, title="Echel", flags=0x40):
 
 
 # ══════════════════════════════════════════════════════════════
-#  WINDOWS KE APNE DIALOG
+#  WINDOWS' OWN DIALOGS
 #
-#  Agent ka HAR popup ab yahin se banta hai - user32 ka MessageBoxW aur
-#  PowerShell ka WinForms box. Koi tkinter nahi.
+#  EVERY popup of the agent is now built here - user32's MessageBoxW and
+#  a PowerShell WinForms box. No tkinter.
 #
-#  Kyun: pehle popup tkinter se bante the. Exe me tkinter ka MODULE to
-#  chala jaata tha par uska Tcl DATA (init.tcl waghairah) nahi. Tab
-#  `import tkinter` SAFAL hota tha aur galti sirf tk.Tk() par dikhti thi:
+#  Why: popups used to be built with tkinter. The tkinter MODULE made it into
+#  the exe, but its Tcl DATA (init.tcl etc.) did not. Then
+#  `import tkinter` SUCCEEDED and the error only appeared at tk.Tk():
 #      "Can't find a usable init.tcl"
-#  Shop ke log me yahi aaya tha, aur sabse bura ye tha ki Shop ID wala
-#  pehla popup bhi nahi khulta - matlab naya install chalu hi nahi hota.
+#  That is exactly what a shop's log showed, and worst of all, the very first
+#  Shop ID popup did not open either - so a new install never started at all.
 #
-#  MessageBoxW Windows ka apna hissa hai. Na bundle karna padta hai,
-#  na kabhi missing hota hai.
+#  MessageBoxW is part of Windows itself. It never has to be bundled
+#  and it is never missing.
 # ══════════════════════════════════════════════════════════════
 
 
 
 
 # ══════════════════════════════════════════════════════════════
-#  BADA DIALOG  (PowerShell + WinForms)
+#  LARGE DIALOG  (PowerShell + WinForms)
 #
-#  MessageBoxW chhota hai aur uska font badla nahi ja sakta. Dukaan par
-#  approval popup din me dozens baar dikhta hai aur counter se padhna
-#  padta hai — isliye uske liye apna, bada dialog banate hain.
+#  MessageBoxW is small and its font cannot be changed. In a shop the
+#  approval popup appears dozens of times a day and has to be read from the
+#  counter — so it gets its own, larger dialog.
 #
-#  Ye SIRF dikhne ka upgrade hai. PowerShell na chale to _native_yesno()
-#  chup-chaap purane MessageBoxW par gir jaata hai, isliye bharosa utna
-#  hi rehta hai jitna pehle tha.
+#  This is ONLY a visual upgrade. If PowerShell does not run, _native_yesno()
+#  silently falls back to the old MessageBoxW, so reliability stays exactly
+#  what it was.
 # ══════════════════════════════════════════════════════════════
-_PS_DIALOG_OK = None          # None = abhi try nahi kiya, False = kaam nahi karta
-_PS_DIALOG_FAILS = 0          # lagatar kitni baar fail hua (3 par hamesha ke liye band)
+_PS_DIALOG_OK = None          # None = not tried yet, False = does not work
+_PS_DIALOG_FAILS = 0          # how many times in a row it failed (disabled for good at 3)
 
 
 def _ps_dialog(title, big, sub, rows, yes_label=None, no_label=None,
                accent="#16a34a", timeout=600):
     """
-    Bada dialog dikhao.
+    Show the large dialog.
 
-    title      : window ka naam
-    big        : sabse upar bada text (jaise "Rs 150") — khaali bhi ho sakta hai
-    sub        : bade text ke neeche ek line
-    rows       : [(label, value), ...] — monospace me, column seedhe
-    yes_label  : Yes button ka text. None = sirf ek OK button
-    no_label   : No button ka text
+    title      : the window name
+    big        : large text at the very top (such as "Rs 150") — may be empty
+    sub        : one line below the large text
+    rows       : [(label, value), ...] — monospaced, columns aligned
+    yes_label  : text of the Yes button. None = a single OK button only
+    no_label   : text of the No button
 
-    Returns True (yes/ok) / False (no) / None (dialog bana hi nahi)
+    Returns True (yes/ok) / False (no) / None (the dialog was not created)
     """
     global _PS_DIALOG_OK, _PS_DIALOG_FAILS
     if _PS_DIALOG_OK is False:
-        return None                       # pehle fail ho chuka — time mat kharab karo
+        return None                       # it has failed before — do not waste time
 
     ps1 = None
     try:
         import tempfile
 
-        def q(v):                          # PowerShell ki single-quote string
+        def q(v):                          # a PowerShell single-quoted string
             return str(v).replace("'", "''")
 
-        # Rows ko monospace ke liye pad karo — tab PowerShell me nahi banate,
-        # Python me hi seedhe kar dete hain.
+        # Pad the rows for monospace — tabs are not built in PowerShell;
+        # they are aligned in Python directly.
         pad = max([len(str(a)) for a, _ in rows] or [0])
         body = "\n".join("%s  %s" % (str(a).ljust(pad), b) for a, b in rows)
 
@@ -4204,10 +4203,10 @@ else { [Console]::Out.WriteLine('YES') }
                       "$ls.Size = New-Object System.Drawing.Size(480,22)\n"
                       "$f.Controls.Add($ls)\n"
                       "$y = $y + 24\n" % q(sub))
-        # PowerShell ki DOUBLE-quoted string me ` $ aur " teeno ka apna
-        # matlab hota hai. File ka naam kuch bhi ho sakta hai (jaise
-        # "bill $500.pdf") — bina escape kiye PowerShell $500 ko variable
-        # samajh kar khaali kar deta aur dialog adhoora dikhta.
+        # In a PowerShell DOUBLE-quoted string ` $ and " all have their own
+        # meaning. A file name can be anything (such as
+        # "bill $500.pdf") — without escaping, PowerShell treats $500 as a variable,
+        # blanks it, and the dialog shows up incomplete.
         def psq(v):
             return (str(v).replace("`", "``").replace("$", "`$")
                     .replace('"', '`"').replace("\n", "`r`n"))
@@ -4232,11 +4231,11 @@ else { [Console]::Out.WriteLine('YES') }
                   .replace("__NO__", q(no_label or "")))
 
         fd, ps1 = tempfile.mkstemp(suffix=".ps1")
-        # BOM khud likh rahe hain (b"\xef\xbb\xbf") - "utf-8-sig" CODEC use
-        # karne se bachne ke liye. Wo codec base_library.zip me rehta hai aur
-        # PEHLI BAAR theek yahin load hota tha; _MEI saaf ho chuka ho to yahi
-        # line "FileNotFoundError: ...base_library.zip" deti thi - screenshot
-        # wala "Bada dialog fail" isi se aaya tha.
+        # The BOM is written by hand (b"\xef\xbb\xbf") - to avoid using the "utf-8-sig"
+        # CODEC. That codec lives in base_library.zip and was loaded for the
+        # FIRST TIME exactly here; if _MEI had already been cleaned, this very
+        # line raised "FileNotFoundError: ...base_library.zip" - the "Large dialog
+        # failed" in the screenshot came from this.
         with os.fdopen(fd, "wb") as fh:
             fh.write(b"\xef\xbb\xbf" + script.encode("utf-8"))
 
@@ -4253,24 +4252,24 @@ else { [Console]::Out.WriteLine('YES') }
         if ans.endswith("NO"):
             _PS_DIALOG_OK = True
             return False
-        # Kuch bhi nahi aaya — matlab dialog bana hi nahi
+        # Nothing came back — meaning the dialog was never created
         if _PS_DIALOG_OK is None:
             _PS_DIALOG_OK = False
-            log("Bada dialog nahi ban paya - ab MessageBox use hoga "
+            log("The large dialog could not be created - MessageBox will be used now "
                 f"({(out.stderr or '')[:120]})", "WARN")
         return None
     except Exception as e:
-        # Pehle EK fail par hi bada dialog HAMESHA ke liye band ho jaata tha.
-        # 22 Aug ko _MEI saaf hone se ek FileNotFoundError aaya aur poore din
-        # chhota MessageBox hi dikhta raha. Ab teen baar fail hone par hi band
-        # karte hain — taaki ek gadbad saara din kharab na kare.
+        # A SINGLE failure used to disable the large dialog FOREVER.
+        # On 22 Aug a FileNotFoundError came from the _MEI cleanup, and the whole day
+        # only the small MessageBox was shown. Now it is disabled only after three failures
+        # — so one glitch does not spoil the whole day.
         if _PS_DIALOG_OK is None:
             _PS_DIALOG_FAILS += 1
-            log(f"Bada dialog fail ({e}) - is baar MessageBox use hoga "
+            log(f"Large dialog failed ({e}) - MessageBox will be used this time "
                 f"[{_PS_DIALOG_FAILS}/3]", "WARN")
             if _PS_DIALOG_FAILS >= 3:
                 _PS_DIALOG_OK = False
-                log("Bada dialog teen baar fail - ab hamesha MessageBox hi chalega",
+                log("The large dialog failed three times - MessageBox will always be used from now on",
                     "WARN")
         return None
     finally:
@@ -4281,7 +4280,7 @@ else { [Console]::Out.WriteLine('YES') }
             pass
 
 
-# MessageBoxW ke flags (winuser.h)
+# MessageBoxW flags (winuser.h)
 _MB_YESNO         = 0x00000004
 _MB_ICONQUESTION  = 0x00000020
 _MB_SETFOREGROUND = 0x00010000
@@ -4291,10 +4290,10 @@ _IDYES, _IDNO = 6, 7
 
 def _native_yesno(text, title="Echel"):
     """
-    Yes/No poochho bina kisi Tcl ke - seedha user32.dll ka MessageBoxW.
-    Ye Windows ka apna hissa hai: na bundle karna padta hai, na install.
+    Ask Yes/No without any Tcl - straight through user32.dll's MessageBoxW.
+    It is part of Windows itself: nothing to bundle, nothing to install.
 
-    Returns True (Yes) / False (No) / None (dialog hi nahi bana).
+    Returns True (Yes) / False (No) / None (the dialog was not created).
     """
     try:
         import ctypes
@@ -4307,19 +4306,19 @@ def _native_yesno(text, title="Echel"):
             return False
         return None
     except Exception as e:
-        log(f"Native MessageBox bhi fail hua: {e}", "ERROR")
+        log(f"The native MessageBox failed as well: {e}", "ERROR")
         return None
 
 
 def _ask_approval_native(job):
     """
-    Counter order ka approval box.
+    The approval box for a counter order.
 
-    Formatting par dhyan diya gaya hai kyunki ye popup dukaan par din me
-    dozens baar dikhta hai. MessageBox proportional font use karta hai,
-    isliye space se column banane ki koshish bekar hai — har cheez apni
-    line par, label ke baad colon. Sabse upar AMOUNT, kyunki counter par
-    wahi ek number chahiye hota hai.
+    Care was taken with the formatting because this popup appears dozens of
+    times a day in the shop. MessageBox uses a proportional font,
+    so building columns with spaces is pointless — everything goes on its own
+    line, with a colon after the label. The AMOUNT is at the very top, because
+    that one number is what matters at the counter.
     """
     color  = job.get("color_mode", "bw")
     copies = job.get("copies", 1)
@@ -4328,9 +4327,9 @@ def _ask_approval_native(job):
     amount = job.get("amount", 0)
     fname  = job.get("file_name", "file")
 
-    # Server ka created_at (ISO/UTC) -> PC ka local time.
-    # Ye pehle sirf tkinter wale popup me dikhta tha; native me chhoot
-    # gaya tha. Counter par "kaunsa order" pehchanne me kaam aata hai.
+    # The server's created_at (ISO/UTC) -> the PC's local time.
+    # This used to appear only in the tkinter popup; it was missed in the native
+    # one. It helps identify "which order" at the counter.
     tstr = ""
     try:
         from datetime import datetime
@@ -4363,8 +4362,8 @@ def _ask_approval_native(job):
         "No   =  Decline - cancel the order and delete the file",
     ]
 
-    # Pehle BADA dialog. Na bane to wahi purana MessageBox — bharosa
-    # utna hi, bas dikhne me behtar.
+    # The LARGE dialog first. If it cannot be created, the same old MessageBox — just as
+    # reliable, only it looks better.
     rows = [("Print", f"{mode_txt}  -  {pg_txt}  x  {cop_txt}")]
     if sel:
         rows.append(("Pages", str(sel)))
@@ -4384,10 +4383,10 @@ def _ask_approval_native(job):
         ans = _native_yesno("\n".join(lines), "Echel - Counter Order")
 
     if ans is None:
-        # Dialog kisi bhi tarah nahi khula. Print ROKNA bhi galat hai
-        # (dukaan hi band ho jayegi), isliye jaari - par LOUD, chupchaap nahi.
-        log("Approval dialog kisi bhi tarike se nahi khul paya - job print "
-            "ja raha hai BINA approval ke. Agent ek baar restart karke dekho.",
+        # The dialog could not be opened in any way. STOPPING the print would also be wrong
+        # (the shop would be shut down), so continue - but LOUDLY, not silently.
+        log("The approval dialog could not be opened in any way - the job is being printed "
+            "WITHOUT approval. Try restarting the agent once.",
             "ERROR")
         try:
             update_tray_status("Approval dialog unavailable - printing without approval")
@@ -4398,7 +4397,7 @@ def _ask_approval_native(job):
 
 
 def _ask_backside_native():
-    """Back-side prompt — pehle bada dialog, fallback MessageBox."""
+    """Back-side prompt — the large dialog first, MessageBox as the fallback."""
     ans = _ps_dialog(
         "Echel - Back Side",
         big="Front side printed",
@@ -4421,25 +4420,25 @@ def _ask_backside_native():
         "No   =  Keep only the front side",
         "Echel - Back Side")
     if ans is None:
-        log("Back-side dialog nahi khul paya - evens seedha print", "WARN")
+        log("The back-side dialog could not be opened - printing the even pages directly", "WARN")
         return True
     return ans
 
 
 def bundle_selfcheck():
     """
-    Startup par ek baar: kya-kya sach me bundle hua hai, log me saaf likho.
+    Once at startup: write clearly in the log what was really bundled.
 
-    Pehle ye guess-work tha. Exe ban jaati thi, print bhi chal jaata tha
-    (kyunki us PC par SumatraPDF alag se install tha) aur kisi ko pata hi
-    nahi chalta ki bundle khaali hai - jab tak kisi naye PC par sab fail
-    na ho jaye.
+    This used to be guesswork. The exe got built, printing even worked
+    (because SumatraPDF was installed separately on that PC) and nobody
+    noticed that the bundle was empty - until everything failed on some new
+    PC.
 
-    Tcl/Tk ka check yahan se hata diya gaya hai — ab koi popup Tk use
-    karta hi nahi, sab Windows ke apne dialog par hain.
+    The Tcl/Tk check was removed from here — no popup uses Tk
+    any more; they all use Windows' own dialogs.
     """
-    # Startup ke wo notes jo log() ban-ne se PEHLE likhe gaye the
-    # (base_library pin, mirror, preload) — ab log me daal do.
+    # The startup notes that were written BEFORE log() existed
+    # (base_library pin, mirror, preload) — put them into the log now.
     try:
         while _EARLY_NOTES:
             lvl, msg = _EARLY_NOTES.pop(0)
@@ -4449,7 +4448,7 @@ def bundle_selfcheck():
 
     frozen = bool(getattr(sys, 'frozen', False) or globals().get('__compiled__'))
     if not frozen:
-        log("Bundle check skip - ye sirf .exe build ke liye hai (abhi script mode)")
+        log("Bundle check skipped - it only applies to the .exe build (script mode right now)")
         return
 
     # -- SumatraPDF --
@@ -4468,22 +4467,22 @@ def bundle_selfcheck():
             except Exception:
                 pass
         if found_system:
-            log(f"BUNDLE  SumatraPDF : BUNDLE ME NAHI - is PC par alag se install "
-                f"mila ({found_system}). NAYE PC PAR PRINT FAIL HOGA. Build folder "
-                f"me SumatraPDF.exe rakh kar dobara build karo.", "WARN")
+            log(f"BUNDLE  SumatraPDF : NOT IN THE BUNDLE - found installed separately on this PC "
+                f"({found_system}). PRINTING WILL FAIL ON A NEW PC. Put SumatraPDF.exe in the build "
+                f"folder and build again.", "WARN")
         else:
-            log("BUNDLE  SumatraPDF : MISSING - na bundle me, na is PC par. "
-                "Print kaam nahi karega!", "ERROR")
+            log("BUNDLE  SumatraPDF : MISSING - neither in the bundle nor on this PC. "
+                "Printing will not work!", "ERROR")
 
     # -- Popup --
-    log("BUNDLE  Popup     : Windows ke apne dialog (Tcl/Tk ki zaroorat nahi)")
+    log("BUNDLE  Popup     : Windows' own dialogs (no Tcl/Tk needed)")
 
     # -- Desktop panel --
     if get_bundled_resource_path('agent_panel.html'):
         log("BUNDLE  Panel HTML : BUNDLED OK")
     else:
-        log("BUNDLE  Panel HTML : BUNDLE ME NAHI - desktop panel nahi khulega "
-            "(printing normal chalegi)", "WARN")
+        log("BUNDLE  Panel HTML : NOT IN THE BUNDLE - the desktop panel will not open "
+            "(printing works normally)", "WARN")
 
     # -- Survival kit --
     try:
@@ -4492,7 +4491,7 @@ def bundle_selfcheck():
         log("BUNDLE  Safe copy : %d/%d files -> %s"
             % (len(have), len(_MIRROR_FILES), _RUNTIME_DIR))
         if not _mei_intact():
-            log("BUNDLE  Temp folder : SAAF HO CHUKA HAI - safe copy par chal rahe hain",
+            log("BUNDLE  Temp folder : ALREADY CLEANED - running on the safe copy",
                 "WARN")
     except Exception:
         pass
@@ -4544,23 +4543,23 @@ def _manual_update_headless():
 
 def _manual_update_ui():
     """
-    Tray ka "Check for Update".
+    The tray's "Check for Update".
 
-    Pehle yahan tkinter ka progress window tha aur Tcl fail hone par
-    shop owner ko "Can't find a usable init.tcl" jaisi line dikh jaati
-    thi. Ab seedha bina-window wala update chalta hai — har step par
-    Windows ka apna message box aata hai.
+    This used to be a tkinter progress window, and when Tcl failed the
+    shop owner saw a line like "Can't find a usable init.tcl".
+    Now the window-less update runs directly — every step shows
+    Windows' own message box.
     """
     _manual_update_headless()
 
 def _seconds_until_next_update_check():
-    """Agle update check tak kitne second — 11:00 aur 18:00 par, jitter ke saath.
+    """Seconds until the next update check — at 11:00 and 18:00, with jitter.
 
-    JITTER KYUN: agar sab agents theek 11:00:00 par check karein to 72
-    request ek saath server par gir jayengi. Har agent apna alag offset
-    leta hai jo uske SHOP_ID se banta hai — isliye har PC par alag hota
-    hai, par restart karne par badalta nahi (warna offset har baar badal
-    kar schedule hi bekaar ho jaata).
+    WHY JITTER: if every agent checked at exactly 11:00:00, 72
+    requests would hit the server at once. Each agent takes its own offset
+    derived from its SHOP_ID — so it differs per PC,
+    but does not change on restart (otherwise the offset would change every time
+    and the schedule would be useless).
     """
     import datetime, hashlib
     seed = hashlib.md5((SHOP_ID or "agent").encode()).digest()
@@ -4568,7 +4567,7 @@ def _seconds_until_next_update_check():
 
     now = datetime.datetime.now()
     best = None
-    for day in (0, 1):                      # aaj, phir kal
+    for day in (0, 1):                      # today, then tomorrow
         for hh in UPDATE_HOURS:
             t = (now + datetime.timedelta(days=day)).replace(
                 hour=hh, minute=0, second=0, microsecond=0)
@@ -4579,10 +4578,10 @@ def _seconds_until_next_update_check():
 
 
 def update_checker_loop():
-    """Background thread — din me 2 baar (UPDATE_HOURS) update check karta hai."""
-    # Pehla check thoda delay se — taaki agent properly start ho jaye pehle.
-    # Ye startup wala check zaroori hai: warna naya install kiya hua agent
-    # agle 11 baje tak update hi nahi dhoondhega.
+    """Background thread — checks for updates twice a day (UPDATE_HOURS)."""
+    # The first check comes with a short delay — so the agent starts up properly first.
+    # This startup check is essential: otherwise a freshly installed agent would
+    # not look for an update until the next 11 o'clock.
     time.sleep(30)
     while agent_state["running"]:
         try:
@@ -4593,10 +4592,10 @@ def update_checker_loop():
                 update_tray_status(f"Updating to v{_rl}...")
 
                 if is_running_as_exe():
-                    # .exe mode — seedha naya installer download/run karo
+                    # .exe mode — download/run the new installer directly
                     apply_update_and_restart()
                 else:
-                    # Source (.py) mode — purana flow: naya .py code download karke replace karo
+                    # Source (.py) mode — the old flow: download the new .py code and replace it
                     new_code = download_latest_agent()
                     if new_code:
                         apply_update_and_restart(new_code)
@@ -4605,9 +4604,9 @@ def update_checker_loop():
         except Exception as e:
             log(f"⚠️  Update checker error: {e}", "WARN")
 
-        # Agle fix time tak so jao. Lambi neend ko tukdon me todte hain
-        # taaki agent band karne par thread turant ruk jaye — warna
-        # "Exit" dabane ke baad bhi ghanton latka rehta.
+        # Sleep until the next fixed time. The long sleep is split into chunks
+        # so the thread stops immediately when the agent is closed — otherwise it would
+        # hang around for hours even after "Exit" was pressed.
         _left = _seconds_until_next_update_check()
         while _left > 0 and agent_state["running"]:
             _nap = min(60, _left)
@@ -4624,20 +4623,20 @@ def update_tray_status(status_text):
         except Exception:
             pass
 
-# Print loop ko turant jagane ke liye. Pehle har 1 second par flag check
-# hota tha, matlab Reconnect dabane ke baad bhi 1 second tak ruk sakta tha.
-# Event se ye 0 millisecond ho jaata hai.
+# To wake the print loop immediately. The flag used to be checked every 1 second,
+# so even after pressing Reconnect it could wait up to 1 second.
+# With an Event this becomes 0 milliseconds.
 _wake_event = threading.Event()
 
 def wake_print_loop():
-    """Print loop ko abhi jaga do — sleep beech me hi tod do."""
+    """Wake the print loop now — cut the sleep short."""
     _wake_event.set()
 
 def _interruptible_sleep(seconds):
     """
-    Sona, par Reconnect ya Exit par TURANT uthna.
-    Event.wait() us hi pal wapas aa jaata hai jab koi wake_print_loop()
-    kare — koi polling, koi deri nahi.
+    Sleep, but wake up IMMEDIATELY on Reconnect or Exit.
+    Event.wait() returns the very moment someone calls wake_print_loop()
+    — no polling, no delay.
     """
     if seconds <= 0:
         return
@@ -4646,24 +4645,24 @@ def _interruptible_sleep(seconds):
 
 def reconnect_to_server(icon=None, item=None, announce=True):
     """
-    'Reconnect to Server' — tray se ya desktop panel se.
-    Software band karke dobara kholne ki zaroorat nahi: yeh printer dobara
-    detect karta hai, server se turant check karta hai aur status reset
-    kar deta hai.
+    'Reconnect to Server' — from the tray or the desktop panel.
+    No need to close and reopen the software: this re-detects the
+    printer, checks the server immediately and resets the
+    status.
     """
     log("🔌 Reconnect to Server pressed")
-    # Manual click hua to chalta hua counter bekaar hai — rok do.
-    # (Auto wala khud yahan aata hai, use rokne ki zaroorat nahi.)
+    # After a manual click, a running countdown is pointless — stop it.
+    # (The automatic one comes here by itself; it does not need to be stopped.)
     if announce:
         cancel_auto_reconnect()
-    reset_http()          # purane mare hue socket phenk do
+    reset_http()          # throw away the old dead sockets
     agent_state["connection"] = "connecting"
     update_tray_status("Reconnecting...")
     agent_state["reconnect_requested"] = True
-    wake_print_loop()     # print loop abhi jaage — sleep khatam hone ka intezaar nahi
+    wake_print_loop()     # wake the print loop now — do not wait for the sleep to end
 
-    # Printer dobara detect karo — kai baar printer offline hone ke baad
-    # default printer badal jaata hai ya handle stale ho jaata hai.
+    # Re-detect the printer — after a printer has been offline, the
+    # default printer often changes or the handle goes stale.
     try:
         ok, printer_name = check_printer()
         if ok and printer_name:
@@ -4674,38 +4673,38 @@ def reconnect_to_server(icon=None, item=None, announce=True):
     except Exception as e:
         log(f"Printer re-detect skipped: {e}", "WARN")
 
-    # Server ko current printer list dobara bhejo (best-effort)
+    # Send the current printer list to the server again (best-effort)
     try:
         report_printers_to_server()
     except Exception as e:
         log(f"Printer report skipped: {e}", "WARN")
 
-    # TURANT check — user ko poll ka intezaar na karna pade. Halka
-    # read-only endpoint hai, koi job claim nahi hoti.
+    # Check IMMEDIATELY — the user should not have to wait for the poll. It is a light
+    # read-only endpoint; no job gets claimed.
     connected = ping_server()
     if connected:
         agent_state["connection"] = "online"
         update_tray_status("Running — waiting for jobs")
-        log("✅ Reconnected — server se jud gaya")
-        # Success hamesha batao — chahe manual ho ya auto. Isi ka
-        # to intezaar tha.
+        log("✅ Reconnected — connected to the server")
+        # Always report success — manual or automatic. That is what
+        # everyone was waiting for.
         tray_notify("Connected", "Connected to the server. Pending print jobs will resume.")
         reset_auto_reconnect_notice()
     else:
         agent_state["connection"] = "offline"
         update_tray_status("Offline — click Reconnect to Server")
-        log("❌ Reconnect fail — server tak nahi pahunche", "WARN")
-        # Sirf manual click par batao. Auto koshish har baar
-        # notification bheje to lambi outage me spam ban jaayega.
+        log("❌ Reconnect failed — could not reach the server", "WARN")
+        # Report it only on a manual click. If every automatic attempt sent a
+        # notification, a long outage would turn into spam.
         if announce:
             tray_notify("Not connected", "Check your internet connection, then select Reconnect.")
     return connected
 
 def ping_server(timeout=8):
     """
-    Server pahunch me hai ya nahi — bas itna. Read-only endpoint, isliye
-    koi print job claim nahi hoti (get_pending_jobs yahan use MAT karo,
-    warna job claim ho jayegi par print nahi hogi).
+    Is the server reachable — that is all. A read-only endpoint, so
+    no print job gets claimed (do NOT use get_pending_jobs here,
+    otherwise a job would be claimed but never printed).
     """
     try:
         r = http().get(f"{SERVER_URL}/api/agent/version", timeout=timeout)
@@ -4715,7 +4714,7 @@ def ping_server(timeout=8):
         return False
 
 def tray_notify(title, msg):
-    """Windows ka chhota notification — best effort."""
+    """A small Windows notification — best effort."""
     try:
         icon = agent_state.get("tray_icon")
         if icon and hasattr(icon, "notify"):
@@ -4724,20 +4723,20 @@ def tray_notify(title, msg):
         pass
 
 # ══════════════════════════════════════════════════════════════
-#  OFFLINE -> NOTIFICATION + 10 SECOND ULTA COUNTER + AUTO RECONNECT
+#  OFFLINE -> NOTIFICATION + 10-SECOND COUNTDOWN + AUTO RECONNECT
 #
-#  Pehle offline hone par sirf tray ka text badalta tha. Shop wale ka
-#  dhyan tray par tabhi jaata hai jab print na nikle — tab tak customer
-#  khada rehta hai. Ab Windows ka notification turant dikhta hai aur
-#  10 second baad agent KHUD reconnect kar leta hai.
+#  Going offline used to change only the tray text. The shop owner looks
+#  at the tray only when a print does not come out — meanwhile the customer
+#  is left standing. Now a Windows notification appears immediately and after
+#  10 seconds the agent reconnects BY ITSELF.
 #
-#  EK BAAT SAAF: Windows ke tray notification (Shell_NotifyIcon balloon,
-#  jo pystray use karta hai) me BUTTON nahi ho sakta — wo sirf text
-#  dikhata hai. Isliye ulta counter TRAY TOOLTIP me chalta hai, jahan
-#  har second update hota hai:
-#      "Offline — 7s me auto reconnect"
-#  User chahe to tray par right-click -> Reconnect to Server dabakar
-#  turant kara sakta hai; tab counter apne aap ruk jaata hai.
+#  TO BE CLEAR: a Windows tray notification (the Shell_NotifyIcon balloon
+#  that pystray uses) cannot have a BUTTON — it only shows
+#  text. So the countdown runs in the TRAY TOOLTIP, where it
+#  updates every second:
+#      "Offline — auto reconnect in 7s"
+#  The user can also right-click the tray -> Reconnect to Server to do it
+#  immediately; the countdown then stops by itself.
 # ══════════════════════════════════════════════════════════════
 _auto_rc_lock = threading.Lock()
 _auto_rc_running = False
@@ -4746,41 +4745,41 @@ _auto_rc_last_notify = 0.0
 
 
 def auto_reconnect_active():
-    """Countdown chal raha hai? (print_loop tray text overwrite na kare)"""
+    """Is a countdown running? (so print_loop does not overwrite the tray text)"""
     return _auto_rc_running
 
 
 def cancel_auto_reconnect():
-    """User ne khud Reconnect daba diya — counter ab bekaar hai."""
+    """The user pressed Reconnect personally — the countdown is pointless now."""
     _auto_rc_cancel.set()
 
 
 def reset_auto_reconnect_notice():
-    """Connection wapas aane par — agli baar notification turant aaye."""
+    """When the connection comes back — so the next notification appears immediately."""
     global _auto_rc_last_notify
     _auto_rc_last_notify = 0.0
 
 
 def start_auto_reconnect_countdown():
     """
-    Offline hote hi ek notification bhejo, tray me 10 se 1 tak ulta
-    counter chalao, phir khud reconnect kar do.
+    As soon as the agent goes offline, send one notification, run a countdown
+    from 10 to 1 in the tray, then reconnect by itself.
 
-    Alag thread me chalta hai taaki print loop ruke nahi.
+    Runs in a separate thread so the print loop does not stop.
     """
     global _auto_rc_running
     with _auto_rc_lock:
         if _auto_rc_running:
-            return                      # ek waqt me ek hi counter
+            return                      # only one countdown at a time
         _auto_rc_running = True
     _auto_rc_cancel.clear()
 
     def _run():
         global _auto_rc_running, _auto_rc_last_notify
         try:
-            # Raat bhar internet band ho to har baar notification bhejna
-            # torture hai. Isliye notification AUTO_RECONNECT_NOTIFY_GAP me
-            # ek baar — par reconnect ki koshish tab bhi hoti rehti hai.
+            # If the internet is down all night, a notification every time would be
+            # torture. So the notification appears once per AUTO_RECONNECT_NOTIFY_GAP
+            # — but reconnect attempts still keep happening.
             now = time.time()
             if now - _auto_rc_last_notify >= AUTO_RECONNECT_NOTIFY_GAP:
                 _auto_rc_last_notify = now
@@ -4794,21 +4793,21 @@ def start_auto_reconnect_countdown():
                 if not agent_state.get("running"):
                     return
                 if agent_state.get("connection") == "online":
-                    log("✅ Counter ke beech hi connection wapas aa gaya")
+                    log("✅ The connection came back during the countdown")
                     return
                 update_tray_status(f"Offline — reconnecting in {left}s")
-                # wait() us hi pal wapas aa jaata hai jab user Reconnect
-                # dabaye — poore 1 second ka intezaar nahi karna padta.
+                # wait() returns the very moment the user presses Reconnect
+                # — no need to wait a full second.
                 if _auto_rc_cancel.wait(timeout=1.0):
-                    log("🔌 User ne khud Reconnect dabaya — counter band")
+                    log("🔌 The user pressed Reconnect — countdown stopped")
                     return
 
             if not agent_state.get("running"):
                 return
-            log(f"⏱️  {AUTO_RECONNECT_SECONDS}s pura — auto reconnect chala rahe hain")
+            log(f"⏱️  {AUTO_RECONNECT_SECONDS}s elapsed — running the auto reconnect")
             update_tray_status("Reconnecting automatically...")
-            # announce=False: fail hone par notification mat bhejo, warna
-            # lambi outage me har koshish par ek notification aayegi.
+            # announce=False: do not send a notification on failure, otherwise
+            # every attempt during a long outage would produce a notification.
             reconnect_to_server(announce=False)
         except Exception as e:
             log(f"Auto reconnect counter error: {e}", "WARN")
@@ -4841,7 +4840,7 @@ def toggle_approval(icon=None, item=None):
         pass
 
 def open_logs(icon=None, item=None):
-    """Log file ko Notepad mein kholo"""
+    """Open the log file in Notepad"""
     try:
         log_path = os.path.abspath(LOG_FILE)
         if os.path.exists(log_path):
@@ -4849,17 +4848,17 @@ def open_logs(icon=None, item=None):
         else:
             log("The log file has not been created yet")
     except Exception as e:
-        log(f"Logs open karne mein error: {e}", "ERROR")
+        log(f"Error while opening the logs: {e}", "ERROR")
 
 def contact_admin(icon=None, item=None):
     """
-    Tray se 'Contact Admin' — WhatsApp browser me khulta hai, Shop ID
-    pehle se message me bhara hua. Bilkul shop-login ke Support button
-    jaisa. Owner ko sirf apni problem type karke send karni hai.
+    'Contact Admin' from the tray — WhatsApp opens in the browser with the Shop ID
+    already filled into the message. Exactly like the Support button of the
+    shop login. The owner only has to type their problem and send it.
     """
     try:
         import webbrowser, urllib.parse
-        # admin.html ke sendWhatsApp() jaisa hi format
+        # the same format as admin.html's sendWhatsApp()
         text = (
             "Hello, Echel Support \U0001F64F\n\n"
             f"Shop ID: {SHOP_ID}\n\n"
@@ -4886,8 +4885,8 @@ def contact_admin(icon=None, item=None):
 
 def change_shop_id(icon=None, item=None):
     """
-    Tray se 'Change Shop ID' click karne par config file delete karo
-    aur agent ko restart karo — restart hote hi naya Shop ID popup khulega.
+    When 'Change Shop ID' is clicked in the tray, delete the config file
+    and restart the agent — the new Shop ID popup opens right after the restart.
     """
     log("🔄 Shop ID change requested — restarting the agent...")
     try:
@@ -4897,8 +4896,8 @@ def change_shop_id(icon=None, item=None):
         log(f"Config delete error: {e}", "ERROR")
 
     try:
-        # Mutex release karo warna naya instance "already running" samajh
-        # ke exit ho jayega aur Shop ID popup kabhi nahi khulega
+        # Release the mutex, otherwise the new instance would think "already running",
+        # exit, and the Shop ID popup would never open
         _release_mutex()
         if is_running_as_exe():
             _spawn_detached([sys.executable])
@@ -4909,9 +4908,9 @@ def change_shop_id(icon=None, item=None):
                 pythonw_exe = python_exe
             _spawn_detached([pythonw_exe, os.path.abspath(__file__)],
                             cwd=os.path.dirname(os.path.abspath(__file__)))
-        # Naye process ko apna temp folder extract karne ka time do. Iske
-        # bina purana bootloader apna _MEIxxxxxx folder delete kar sakta hai
-        # jabki naya process abhi imports hi kar raha hota hai.
+        # Give the new process time to extract its own temp folder. Without
+        # this the old bootloader could delete its _MEIxxxxxx folder
+        # while the new process is still importing.
         time.sleep(2.0)
     except Exception as e:
         log(f"Restart error: {e}", "ERROR")
@@ -4921,7 +4920,7 @@ def change_shop_id(icon=None, item=None):
     os._exit(0)
 
 def _uninstall_clear_autostart():
-    """Registry Run key aur Startup folder — dono jagah se naam hata do."""
+    """Remove the name from both places — the registry Run key and the Startup folder."""
     gone = []
     try:
         import winreg
@@ -4932,17 +4931,17 @@ def _uninstall_clear_autostart():
             winreg.DeleteValue(key, "EchelPrintAgent")
             gone.append("registry Run key")
         except FileNotFoundError:
-            pass                          # pehle se nahi thi — theek hai
+            pass                          # it was not there — fine
         finally:
             winreg.CloseKey(key)
     except Exception as e:
-        log(f"Uninstall: registry entry nahi hat payi: {e}", "WARN")
+        log(f"Uninstall: could not remove the registry entry: {e}", "WARN")
 
     folder = _startup_folder()
     if folder:
-        # EchelPrintAgent.vbs abhi ka hai. EchelPrint.bat bahut purane
-        # INSTALL.bat ka chhoda hua ho sakta hai — wo bhi hata do, warna
-        # PC restart par Python wali purani copy chalne ki koshish karegi.
+        # EchelPrintAgent.vbs is the current one. EchelPrint.bat may have been left behind by
+        # a very old INSTALL.bat — remove that too, otherwise the old Python
+        # copy would try to start after a PC restart.
         for name in (STARTUP_VBS_NAME, "EchelPrint.bat"):
             path = os.path.join(folder, name)
             try:
@@ -4950,36 +4949,36 @@ def _uninstall_clear_autostart():
                     os.remove(path)
                     gone.append(name)
             except Exception as e:
-                log(f"Uninstall: {name} nahi hat payi: {e}", "WARN")
+                log(f"Uninstall: could not remove {name}: {e}", "WARN")
     return gone
 
 
 def _uninstall_cleanup_bat():
     """
-    Agent band hone ke baad exe aur data folder mitane wali chhoti .bat.
+    A small .bat that deletes the exe and the data folder after the agent closes.
 
-    Blocks — `if ... (` — jaan-boojh kar nahi likhe: cmd poore block ko
-    ek saath padhta hai, isliye %N% ki purani value hi lagti rehti hai
-    aur ginti kabhi aage nahi badhti. Isliye sirf goto/label.
+    Blocks — `if ... (` — are deliberately not used: cmd reads the whole block
+    at once, so the old value of %N% keeps applying
+    and the count never advances. Hence only goto/labels.
 
-    Lautati hai: (bat ka raasta, exe ka raasta). bat "" ho to kuch nahi
-    hua; exe "" ho to sirf data folder mitana hai.
+    Returns: (bat path, exe path). If bat is "", nothing
+    happened; if exe is "", only the data folder has to be deleted.
     """
     target = ""
     if is_running_as_exe():
         cand = os.path.abspath(sys.executable)
-        # Zaroori pehra: script mode me sys.executable python.exe hota
-        # hai. is_running_as_exe() waise hi rok deta hai, par yahan
-        # dobara jaanch lena sasta hai — Python kabhi delete nahi hona
-        # chahiye.
+        # An essential guard: in script mode sys.executable is python.exe.
+        # is_running_as_exe() already prevents this, but checking again here
+        # is cheap — Python must never be
+        # deleted.
         if os.path.basename(cand).lower() not in ("python.exe", "pythonw.exe"):
             target = cand
 
     bat = os.path.join(tempfile.gettempdir(), f"qsp-uninstall-{int(time.time())}.bat")
-    # Raaste .bat ke andar mat likho — %~1 (exe) aur %~2 (data folder) ban
-    # kar argument me jaate hain. Wajah wahi jo update wali .bat par likhi
-    # hai: cmd file ko ANSI codepage me padhta hai, aur Hindi/Bangla naam
-    # wale user ka raasta wahin kachra ban jaata hai.
+    # Do not write paths inside the .bat — they are passed as arguments %~1 (exe) and
+    # %~2 (data folder). The reason is the same as for the update .bat:
+    # cmd reads the file in the ANSI codepage, and the path of a user with a
+    # Hindi/Bengali name turns into garbage right there.
     script = "\r\n".join([
         "@echo off",
         "set N=0",
@@ -4999,12 +4998,12 @@ def _uninstall_cleanup_bat():
             f.write(script)
         return bat, target
     except Exception as e:
-        log(f"Uninstall helper nahi ban paayi: {e}", "ERROR")
+        log(f"Could not create the uninstall helper: {e}", "ERROR")
         return "", target
 
 
 def _uninstall_flow():
-    """Tray se Uninstall — confirm, Shop ID, phir safai. Alag thread me."""
+    """Uninstall from the tray — confirm, Shop ID, then cleanup. In a separate thread."""
     ok = _native_yesno(
         "Uninstall Echel from this computer?\n\n"
         "The agent will stop, auto-start will be removed, and the program "
@@ -5012,7 +5011,7 @@ def _uninstall_flow():
         "QR printing will stop working on this computer.",
         "Echel - Uninstall")
     if ok is not True:
-        log("Uninstall cancel — confirm par Yes nahi mila")
+        log("Uninstall cancelled — no Yes at the confirmation")
         return
 
     want = (SHOP_ID or "").strip().upper()
@@ -5024,11 +5023,11 @@ def _uninstall_flow():
             hint="Find this Shop ID in the tray menu or the agent panel.\n"
                  "Nothing will be removed if the ID does not match.",
             title="Echel - Uninstall")
-        if typed is None:                 # bada box bana hi nahi
+        if typed is None:                 # the large box was never created
             typed = _powershell_input("Type your Shop ID to confirm uninstall")
         typed = (typed or "").strip().upper()
         if not typed:
-            log("Uninstall cancel — Shop ID khali chhodi gayi")
+            log("Uninstall cancelled — the Shop ID was left empty")
             return
         if typed == want:
             break
@@ -5038,18 +5037,18 @@ def _uninstall_flow():
         else:
             _msgbox("Shop ID did not match - nothing was removed.",
                     "Echel - Uninstall", 0x10)
-            log("Uninstall roka gaya — Shop ID match nahi hui", "WARN")
+            log("Uninstall stopped — the Shop ID did not match", "WARN")
             return
 
-    log("🗑 Uninstall shuru — Shop ID confirm ho gayi")
-    agent_state["running"] = False        # naya print job na uthe
+    log("🗑 Uninstall started — Shop ID confirmed")
+    agent_state["running"] = False        # so no new print job gets picked up
     try:
         wake_print_loop()
     except Exception:
         pass
 
     gone = _uninstall_clear_autostart()
-    log("Uninstall: auto-start hataya — " + (", ".join(gone) if gone else "kuch mila hi nahi"))
+    log("Uninstall: auto-start removed — " + (", ".join(gone) if gone else "nothing was found"))
     bat, exe_path = _uninstall_cleanup_bat()
 
     _msgbox(
@@ -5066,18 +5065,17 @@ def _uninstall_flow():
     except Exception:
         pass
     try:
-        _release_mutex()                  # warna .bat exe delete nahi kar payegi
+        _release_mutex()                  # otherwise the .bat cannot delete the exe
     except Exception:
         pass
     if bat:
         try:
-            # cwd TEMP me rakho — agar cmd ka cwd usi folder ke andar hua
-            # jise mitana hai, to `rmdir /s` "process cannot access" de kar
-            # fail ho jaata hai.
+            # Keep cwd in TEMP — if cmd's cwd is inside the folder that is being
+            # deleted, `rmdir /s` fails with "process cannot access".
             _spawn_detached(["cmd", "/c", bat, exe_path, _APPDATA_DIR],
                             cwd=tempfile.gettempdir())
         except Exception as e:
-            log(f"Uninstall helper chali nahi: {e}", "ERROR")
+            log(f"The uninstall helper did not run: {e}", "ERROR")
     if agent_state["tray_icon"]:
         agent_state["tray_icon"].stop()
     time.sleep(0.5)
@@ -5086,9 +5084,9 @@ def _uninstall_flow():
 
 def uninstall_agent(icon=None, item=None):
     """
-    Tray ka '🗑 Uninstall'. Kaam alag thread me — pystray ka handler tray
-    ke apne loop me chalta hai, aur wahan modal dialog kholne par tray
-    menu jam jaata hai.
+    The tray's '🗑 Uninstall'. The work runs in a separate thread — pystray's handler runs
+    in the tray's own loop, and opening a modal dialog there freezes the tray
+    menu.
     """
     threading.Thread(target=_uninstall_flow, daemon=True).start()
 
@@ -5097,9 +5095,9 @@ def quit_agent(icon=None, item=None):
     """Shut the agent down gracefully when 'Exit' is clicked in the tray"""
     log("👋 Exit pressed from the tray — shutting the agent down...")
     agent_state["running"] = False
-    wake_print_loop()     # sleep me atka loop turant khatam ho
-    # Panel window band karo — warna main thread ka webview loop chalta
-    # reh jaata hai aur process poori tarah band nahi hota.
+    wake_print_loop()     # a loop stuck in sleep ends immediately
+    # Close the panel window — otherwise the main thread's webview loop keeps
+    # running and the process never exits completely.
     try:
         if PANEL is not None:
             PANEL.shutdown()
@@ -5111,28 +5109,28 @@ def quit_agent(icon=None, item=None):
 
 def _tray_action(fn):
     """
-    Tray menu me function SEEDHA mat do — hamesha isse lapet kar do.
+    Never pass a function to the tray menu DIRECTLY — always wrap it with this.
 
-    KYUN (ye ek asli bug tha, theory nahi):
-    pystray sirf 0, 1 ya 2 parameter wala callable accept karta hai. 3 ya
-    usse zyada dekhte hi wo MenuItem banate waqt phenk deta hai:
+    WHY (this was a real bug, not theory):
+    pystray only accepts a callable with 0, 1 or 2 parameters. As soon as it sees
+    3 or more it throws while building the MenuItem:
 
         File "pystray/_base.py", in _assert_action
         ValueError: <function reconnect_to_server at 0x...>
 
-    Aur ye exception poora `pystray.Menu(...)` banna rok deta hai — yaani
-    TRAY ICON BANTA HI NAHI. v2.3 me bilkul yahi hua: auto-reconnect
-    feature ne reconnect_to_server() me teesra parameter (announce=True)
-    jod diya, aur us din se na tray icon aaya na panel khula. Printing
-    chalti rehti thi kyunki wo apne alag thread me hai — isliye wajah
-    pakadna aur mushkil ho gaya tha.
+    And that exception stops the whole `pystray.Menu(...)` from being built — meaning
+    THE TRAY ICON IS NEVER CREATED. That is exactly what happened in v2.3: the
+    auto-reconnect feature added a third parameter (announce=True) to
+    reconnect_to_server(), and from that day on neither the tray icon appeared nor
+    the panel opened. Printing kept running because it lives in its own thread
+    — which made the cause even harder to find.
 
-    Ye wrapper hamesha THEEK 2 parameter dikhata hai, chahe asli function
-    me kitne bhi ho. Aage koi naya parameter add kare to bhi tray safe.
+    This wrapper always exposes EXACTLY 2 parameters, however many the real function
+    has. Even if someone adds a new parameter later, the tray stays safe.
     """
     def _runner(icon=None, item=None):
         return fn(icon, item)
-    # Log/debug me asli naam dikhe, '_runner' nahi
+    # Show the real name in logs/debugging, not '_runner'
     try:
         _runner.__name__ = fn.__name__
     except Exception:
@@ -5140,20 +5138,20 @@ def _tray_action(fn):
     return _runner
 
 
-# Tray icon ko taiyaar hone ke liye itne second do. Slow PC par pystray
-# ko window banane me thoda time lagta hai; 12s me aaram se ho jaata hai.
+# Give the tray icon this many seconds to get ready. On a slow PC pystray
+# takes a moment to create its window; 12s is comfortably enough.
 TRAY_WAIT_SEC = 12
 
 
 def _tray_is_up(icon, timeout=TRAY_WAIT_SEC):
     """
-    Tray icon SACH ME ban gaya?
+    Was the tray icon REALLY created?
 
-    icon.run_detached() turant laut aata hai — uska laut jaana iska sabut
-    NAHI hai ki icon ban gaya. pystray Windows par apna (chhupa hua)
-    window ek alag thread me banata hai aur usi ka handle _hwnd me rakhta
-    hai. Us thread me kuch fail ho to _hwnd kabhi set hi nahi hota.
-    Isliye handle ka intezaar karte hain, function ke return ka nahi.
+    icon.run_detached() returns immediately — its return is NOT
+    proof that the icon was created. On Windows pystray creates its own (hidden)
+    window in a separate thread and keeps that window's handle in _hwnd.
+    If something fails in that thread, _hwnd is never set.
+    So we wait for the handle, not for the function to return.
     """
     end = time.time() + timeout
     while time.time() < end:
@@ -5168,9 +5166,9 @@ def _tray_is_up(icon, timeout=TRAY_WAIT_SEC):
 
 def panel_request_watcher():
     """
-    Owner ne exe par dobara double-click kiya? Wo doosra instance ek
-    request file chhod kar band ho jaata hai — hum wahi dekh kar apna
-    panel khol dete hain.
+    Did the owner double-click the exe again? That second instance leaves a
+    request file and exits — we see it and open our
+    panel.
     """
     while agent_state.get("running", True):
         try:
@@ -5179,12 +5177,12 @@ def panel_request_watcher():
                     os.remove(PANEL_REQUEST_FILE)
                 except Exception:
                     pass
-                log("🪟 Panel request mili (exe dobara chalaya gaya) — panel khol rahe hain")
+                log("🪟 Panel request received (the exe was started again) — opening the panel")
                 if PANEL is not None:
                     try:
                         PANEL.open_panel()
                     except Exception as e:
-                        log(f"Panel nahi khul paya: {e}", "WARN")
+                        log(f"Could not open the panel: {e}", "WARN")
         except Exception:
             pass
         time.sleep(1)
@@ -5192,8 +5190,8 @@ def panel_request_watcher():
 
 def run_tray_icon():
     """
-    System Tray icon start karo. Yeh function tray ke event-loop mein
-    block ho jaata hai — isliye print-checking loop ko alag thread mein chalate hain.
+    Start the System Tray icon. This function blocks inside the tray's event loop
+    — so the print-checking loop runs in a separate thread.
     """
     try:
         import pystray
@@ -5220,19 +5218,19 @@ def run_tray_icon():
             Item(printer_label, None, enabled=False),
             Item(version_label, None, enabled=False),
             pystray.Menu.SEPARATOR,
-            # DEMO-ONLY: conversion ke turant baad ye apne aap gayab ho
-            # jaata hai — pystray har baar menu render karte waqt visible()
-            # dobara call karta hai. Reinstall ki zaroorat nahi.
-            # ── HAR ACTION _tray_action() SE HO KAR JAATA HAI ──
-            # Ek bhi action seedha diya aur usme 2 se zyada parameter hue,
-            # to pystray poora menu banane se mana kar deta hai aur TRAY
-            # ICON GAYAB ho jaata hai (v2.3 me reconnect_to_server ke saath
-            # yahi hua tha). Naya menu item add karo to wrapper mat bhoolna.
+            # DEMO-ONLY: this disappears by itself right after the conversion
+            # — pystray calls visible() again every time it renders the menu.
+            # No reinstall needed.
+            # ── EVERY ACTION GOES THROUGH _tray_action() ──
+            # If even one action is passed directly and it has more than 2 parameters,
+            # pystray refuses to build the whole menu and the TRAY
+            # ICON DISAPPEARS (that is what happened in v2.3 with reconnect_to_server).
+            # When adding a new menu item, do not forget the wrapper.
             Item("⚡ Change Demo ID to Paid Shop", _tray_action(open_upgrade_panel),
                  visible=lambda item: is_demo_shop()),
             Item("⚙ Settings", _tray_action(open_panel), default=True),
-            # Do taale iske andar hain (confirm + Shop ID), isliye Settings
-            # ke bagal me hone par bhi galti se kuch nahi udta.
+            # It has two locks inside (confirm + Shop ID), so even sitting next to
+            # Settings nothing gets deleted by mistake.
             Item("🗑 Uninstall Echel", _tray_action(uninstall_agent)),
             Item("🔌 Reconnect to Server", _tray_action(reconnect_to_server)),
             Item(lambda item: f"🔔 Counter Approval: {'ON' if approval_enabled() else 'OFF'}",
@@ -5245,23 +5243,23 @@ def run_tray_icon():
         )
 
         icon_image = create_tray_icon_image()
-        icon = pystray.Icon("qr_se_print", icon_image, "Echel — Starting...", menu)
+        icon = pystray.Icon("echel_agent", icon_image, "Echel — Starting...", menu)
         agent_state["tray_icon"] = icon
 
         # ══════════════════════════════════════════════════════
-        # THREAD BAANT
+        # THREAD SPLIT
         #
-        # Windows par pywebview KEVAL main thread par window bana sakta
-        # hai. Background thread se ye error aata hai:
+        # On Windows pywebview can create a window ONLY on the main thread.
+        # From a background thread it fails with:
         #     "pywebview must be run on a main thread"
-        # Udhar pystray ka icon.run() bhi main thread chahta hai.
+        # Meanwhile pystray's icon.run() also wants the main thread.
         #
-        # Isliye:
+        # So:
         #   MAIN thread       -> panel (pywebview)
         #   Background thread -> tray  (icon.run_detached())
         #
-        # Panel available na ho to sab kuch pehle jaisa: tray main
-        # thread par, printing bilkul waise hi chalti rahegi.
+        # If the panel is not available, everything is as before: the tray on the main
+        # thread, and printing keeps running exactly the same.
         # ══════════════════════════════════════════════════════
         use_panel = False
         if PANEL is not None:
@@ -5272,129 +5270,129 @@ def run_tray_icon():
                 use_panel = False
 
         if not use_panel:
-            log("Panel is PC par available nahi — tray main thread par chala rahe hain")
-            icon.run()               # purana behaviour — tray only
+            log("The panel is not available on this PC — running the tray on the main thread")
+            icon.run()               # the old behaviour — tray only
             return
 
         try:
             icon.run_detached()      # tray background thread me
         except Exception as e:
-            # Kuch systems par run_detached support nahi hota — tab panel
-            # chhod do, printing zaroori hai.
+            # Some systems do not support run_detached — then drop
+            # the panel; printing is what matters.
             log(f"Tray detached mode unavailable ({e}) — tray-only mode", "WARN")
             icon.run()
             return
 
-        # ── AB CONFIRM KARO KI TRAY SACH ME AAYA ──
-        # Ye check isliye hai: run_detached() turant laut aata hai, par
-        # icon banta hai ek doosre thread me. Wahan kuch fail ho jaye to
-        # PEHLE ye hota tha — na tray icon, na koi error, aur uske turant
-        # baad panel main thread le leta tha. Owner ko dikhta kuch nahi
-        # tha aur log bilkul saaf rehta tha, isliye wajah pakadna
-        # namumkin ho jaata tha. Ab agar tray nahi aaya to use main
-        # thread par chalate hain — tray PAKKA milega (panel us halat me
-        # nahi khulega, par printing par koi asar nahi).
+        # ── NOW CONFIRM THAT THE TRAY REALLY APPEARED ──
+        # This check exists because run_detached() returns immediately, but the
+        # icon is created in another thread. If something failed there,
+        # this is what USED to happen — no tray icon, no error, and right
+        # afterwards the panel took over the main thread. The owner saw nothing
+        # and the log stayed perfectly clean, so finding the cause
+        # was impossible. Now if the tray did not appear, it is run on the main
+        # thread — the tray is GUARANTEED (in that state the panel will
+        # not open, but printing is not affected).
         if not _tray_is_up(icon):
-            log(f"Tray icon {TRAY_WAIT_SEC}s me nahi aaya — ab ise main thread "
-                f"par chala rahe hain. Panel is baar nahi khulega; printing "
-                f"aur auto-update normal chalte rahenge.", "WARN")
+            log(f"The tray icon did not appear within {TRAY_WAIT_SEC}s — now running it on the main "
+                f"thread. The panel will not open this time; printing "
+                f"and auto-update keep working normally.", "WARN")
             try:
                 icon.run()
             except Exception as e:
                 import traceback as _tb
-                log(f"Tray main thread par bhi start nahi hua: {e}", "ERROR")
+                log(f"The tray did not start even on the main thread: {e}", "ERROR")
                 log(_tb.format_exc(), "ERROR")
             return
 
-        log("✅ Tray icon ready — ab panel main thread par khul raha hai")
+        log("✅ Tray icon ready — the panel is now opening on the main thread")
 
-        # Main thread ab panel ko de do. Shop ID verify ho chuka hai,
-        # isliye panel seedha khulega (spec).
+        # Hand the main thread to the panel now. The Shop ID has already been verified,
+        # so the panel opens directly (spec).
         ok = PANEL.start_ui_loop(show_now=True)
         if not ok:
             log("Panel could not start — continuing in tray-only mode", "WARN")
 
-        # Yahan tabhi pahunchte hain jab panel ka loop khatam ho gaya ho,
-        # ya shuru hi na hua ho. Dono me tray aur print thread abhi chal
-        # rahe hain — agar yahan se return kar diya to process mar jayega
-        # aur PRINTING BAND ho jayegi. Isliye zinda raho.
-        # Sirf Exit (quit_agent) hi process band karta hai — wo running=False
-        # karke os._exit(0) call karta hai.
+        # We only get here when the panel loop has ended, or never
+        # started. In both cases the tray and the print thread are still
+        # running — returning from here would kill the process
+        # and STOP PRINTING. So stay alive.
+        # Only Exit (quit_agent) ends the process — it sets running=False
+        # and calls os._exit(0).
         while agent_state.get("running", True):
             time.sleep(1)
     except ImportError as e:
-        # Pehle yahan sirf ek generic line jaati thi. Asli module ka naam
-        # kabhi log me nahi aata tha, isliye "tray gayab" wali shikayat par
-        # kuch pata hi nahi chalta tha ki kaun si cheez missing hai.
+        # This used to log only one generic line. The real module name
+        # never reached the log, so for a "tray disappeared" complaint there
+        # was no way to tell which piece was missing.
         import traceback as _tb
-        log(f"⚠️  Tray ke liye zaroori module nahi mila: {e}", "WARN")
+        log(f"⚠️  A module required for the tray was not found: {e}", "WARN")
         log(_tb.format_exc(), "WARN")
-        log("    Console mode me chal rahe hain — printing normal chalegi.", "WARN")
+        log("    Running in console mode — printing works normally.", "WARN")
     except Exception as e:
         import traceback as _tb
         log(f"❌ Tray icon could not start: {e}", "ERROR")
         log(_tb.format_exc(), "ERROR")
 
-# ─── MAIN PRINT LOOP (background thread mein chalta hai jab tray active ho) ──
+# ─── MAIN PRINT LOOP (runs in a background thread while the tray is active) ──
 def print_loop():
     log("=" * 50)
-    log(f"Job check: {CHECK_INTERVAL}s busy | {IDLE_INTERVAL_1}s ({IDLE_STEP_1_SEC//60} min khaali) "
-        f"| {IDLE_INTERVAL_2}s ({IDLE_STEP_2_SEC//60} min khaali) — job aate hi wapas {CHECK_INTERVAL}s par")
+    log(f"Job check: {CHECK_INTERVAL}s busy | {IDLE_INTERVAL_1}s ({IDLE_STEP_1_SEC//60} min idle) "
+        f"| {IDLE_INTERVAL_2}s ({IDLE_STEP_2_SEC//60} min idle) — back to {CHECK_INTERVAL}s as soon as a job arrives")
     log("=" * 50)
     update_tray_status("Running — waiting for jobs")
 
     errors = 0
     check_count = 0
-    idle_since = time.time()      # aakhri job kab aaya tha
+    idle_since = time.time()      # when the last job arrived
     cur_interval = CHECK_INTERVAL
     elapsed_min = 0.0
     last_socket_refresh = time.time()
     last_err_log = 0.0
-    _poll_took = 0.0        # aakhri poll me server ne kitni der li
-    _lp_active = False      # kya server long poll support karta hai
+    _poll_took = 0.0        # how long the server took on the last poll
+    _lp_active = False      # whether the server supports long polling
 
     while agent_state["running"]:
         try:
-            # Manual "Reconnect to Server" — turant fast mode par wapas aao
+            # Manual "Reconnect to Server" — go back to fast mode immediately
             if agent_state.get("reconnect_requested"):
                 agent_state["reconnect_requested"] = False
                 errors = 0
                 idle_since = time.time()
                 cur_interval = CHECK_INTERVAL
-                # Manual Reconnect ka matlab hi yahi hai ki kuch atka hai —
-                # isliye purana session phenk kar naya socket banao.
+                # A manual Reconnect means something is stuck —
+                # so throw away the old session and create a new socket.
                 reset_http()
                 last_socket_refresh = time.time()
                 _reset_poll_log()
-                log("🔌 Reconnect requested — naya connection banakar check kar rahe hain...")
+                log("🔌 Reconnect requested — creating a new connection and checking...")
 
-            # Lambi idle ke baad socket mar chuka hota hai. Job aane ka
-            # intezaar mat karo — khaali baithe hi session refresh kar do,
-            # taaki asli job aaye to pehla hi poll kaam kar jaye.
+            # After a long idle period the socket is already dead. Do not wait for a
+            # job to arrive — refresh the session while idle,
+            # so that when a real job arrives the very first poll works.
             if (time.time() - idle_since) > IDLE_STEP_1_SEC and \
                (time.time() - last_socket_refresh) >= IDLE_SOCKET_REFRESH_SEC:
                 reset_http()
                 last_socket_refresh = time.time()
-                log("🔁 Idle socket refresh — naya connection taiyaar")
+                log("🔁 Idle socket refresh — a new connection is ready")
 
-            _mei_watch()          # khud ko throttle karta hai (har 5 min)
+            _mei_watch()          # throttles itself (every 5 min)
 
             _t_poll = time.time()
             jobs = get_pending_jobs()
             _poll_took = time.time() - _t_poll
             check_count += 1
 
-            # None = poll FAIL. Ise [] (koi job nahi) se alag rakhna
-            # zaroori hai. except me bhejte hain taaki wahan baithi
-            # recovery — reset_http(), backoff, tray "Offline" — chale.
+            # None = the poll FAILED. Keeping it separate from [] (no job) is
+            # essential. It is raised into the except so the
+            # recovery that lives there — reset_http(), backoff, tray "Offline" — runs.
             if jobs is None:
-                raise PollError("server se jawab nahi mila")
+                raise PollError("no response from the server")
 
-            # Server ne jawab de diya = connection theek hai. Chahe jobs
-            # mile ya nahi, error state yahin clear kar do.
-            # (Purana bug: status sirf 'if jobs' ke andar reset hota tha,
-            #  isliye ek network blip ke baad tray hamesha ke liye
-            #  "Error — retrying" par atak jaata tha.)
+            # The server answered = the connection is fine. Whether jobs
+            # arrived or not, clear the error state right here.
+            # (The old bug: the status was reset only inside 'if jobs',
+            #  so after one network blip the tray stayed stuck forever at
+            #  "Error — retrying".)
             if errors:
                 log("✅ Connection restored — back to normal")
                 _reset_poll_log()
@@ -5409,15 +5407,15 @@ def print_loop():
                 for job in jobs:
                     process_job(job)
                 update_tray_status("Running — waiting for jobs")
-                # Job aaya = dukaan busy hai. Turant tez check par wapas.
+                # A job arrived = the shop is busy. Back to fast checking immediately.
                 idle_since = time.time()
                 if cur_interval != CHECK_INTERVAL:
                     cur_interval = CHECK_INTERVAL
                     log(f"⚡ Fast mode — har {CHECK_INTERVAL}s check")
             else:
-                # v2.0: sirf do speed — 5s (abhi job aaya tha) aur 10s (khaali).
-                # Pehle 45s tak chala jaata tha, jisse job aane ke baad
-                # print me 45 second tak ki deri ho sakti thi.
+                # v2.0: only two speeds — 5s (a job just arrived) and 10s (idle).
+                # It used to go up to 45s, which could delay a print by
+                # up to 45 seconds after a job arrived.
                 idle_sec = time.time() - idle_since
                 if idle_sec <= IDLE_STEP_1_SEC:
                     new_interval = CHECK_INTERVAL      # 5s
@@ -5429,34 +5427,34 @@ def print_loop():
                     cur_interval = new_interval
                     log(f"💤 Idle — ab har {cur_interval}s check")
 
-                # ── LONG POLL: sona nahi hai ──
-                # Server ne line 30 sec pakdi rakhi thi, matlab utni der wo
-                # KHUD intezaar kar chuka hai. Ab upar se aur sleep karna
-                # matlab bekaar me deri. Turant nayi line jod do.
+                # ── LONG POLL: do not sleep ──
+                # The server held the line for 30 sec, which means it has already
+                # waited that long ITSELF. Sleeping on top of that would only
+                # add delay. Open a new line immediately.
                 #
-                # Kaise pata ki long poll chala? Agar server ne jaldi jawab
-                # diya (LP se kaafi kam), to wo purana server hai jo lp nahi
-                # jaanta — tab purana sleep hi sahi hai.
+                # How do we know the long poll worked? If the server answered quickly
+                # (well under LP), it is an old server that does not know lp
+                # — then the old sleep is right.
                 if _poll_took >= (LP_SECONDS * 0.7):
                     _lp_active = True
-                    continue          # seedha agla poll — koi sleep nahi
+                    continue          # straight to the next poll — no sleep
                 else:
                     _lp_active = False
                 elapsed_min += cur_interval / 60.0
                 if check_count % 60 == 0:
                     log(f"👀 Waiting... ({int(elapsed_min)} min)")
-                # Poll safal = sab theek. Tray par jo bhi purana text bacha
-                # ho (Error / Offline / Reconnecting), use hata do.
-                # BUG THA: pehle sirf "Error"/"Offline" par reset hota tha,
-                # isliye "Reconnecting..." hamesha ke liye atak jaata tha.
+                # The poll succeeded = all good. Remove whatever old text is left on
+                # the tray (Error / Offline / Reconnecting).
+                # THE BUG WAS: it used to reset only on "Error"/"Offline",
+                # so "Reconnecting..." stayed stuck forever.
                 if not _shop_gone and \
                    agent_state.get("status", "") != "Running — waiting for jobs":
                     update_tray_status("Running — waiting for jobs")
 
-            # Sleep chhote tukdon mein — taaki Reconnect click karte hi
-            # agent 60s tak so na jaaye.
-            # Shop server par hai hi nahi — 12 second ki jagah 30 minute.
-            # Yahi wo badlaav hai jo bekaar wali request rokta hai.
+            # Sleep in short chunks — so that when Reconnect is clicked the
+            # agent does not sleep for 60s.
+            # The shop does not exist on the server — 30 minutes instead of 12 seconds.
+            # This is the change that stops the useless requests.
             if _shop_gone:
                 cur_interval = SHOP_GONE_INTERVAL
             _interruptible_sleep(cur_interval)
@@ -5465,31 +5463,31 @@ def print_loop():
             break
         except Exception as e:
             errors += 1
-            # Har fail par line likhne se log file bhar jaati hai:
-            # 12s polling me ~300 line/ghanta, aur asli baat dab jaati
-            # hai. Pehli 3 turant likho, uske baad har 60s me ek.
+            # Writing a line on every failure fills the log file:
+            # with 12s polling that is ~300 lines/hour, and the real message gets
+            # buried. Write the first 3 immediately, after that one every 60s.
             if errors <= 3 or (time.time() - last_err_log) >= 60:
                 last_err_log = time.time()
                 log(f"❌ Error: {e}", "ERROR")
             if errors == 2:
-                # Do baar fail = socket sach me mar chuka hai. Naya session
-                # banao taaki user ko khud Reconnect na dabana pade.
-                # (Pehle 3 par tha — 12s polling me wo ~36s ka intezaar
-                #  ban jaata tha. 2 par recovery kaafi tez ho jaati hai.)
-                log("🔄 Connection reset kar rahe hain (auto)")
+                # Two failures = the socket really is dead. Create a new session
+                # so the user does not have to press Reconnect personally.
+                # (It used to be 3 — with 12s polling that meant a ~36s
+                #  wait. At 2 the recovery is much faster.)
+                log("🔄 Resetting the connection (auto)")
                 reset_http()
                 last_socket_refresh = time.time()
             if errors >= 3:
                 was_offline = agent_state.get("connection") == "offline"
                 agent_state["connection"] = "offline"
-                # Counter chal raha ho to tray ka text mat chheedo —
-                # warna ulta counter har second overwrite ho jayega.
+                # While the countdown is running, do not touch the tray text —
+                # otherwise the countdown would be overwritten every second.
                 if not auto_reconnect_active():
                     update_tray_status("Offline — click Reconnect to Server")
-                # Counter sirf tab shuru karo jab ABHI offline hue hain,
-                # ya lambi outage me notification ka gap poora ho gaya ho.
-                # Har error par shuru karte to 10s ka loop ban jaata aur
-                # backoff ka koi matlab nahi rehta.
+                # Start the countdown only when we have JUST gone offline,
+                # or when the notification gap of a long outage has passed.
+                # Starting it on every error would create a 10s loop and
+                # the backoff would become meaningless.
                 if (not was_offline) or \
                    (time.time() - _auto_rc_last_notify) >= AUTO_RECONNECT_NOTIFY_GAP:
                     start_auto_reconnect_countdown()
@@ -5497,8 +5495,8 @@ def print_loop():
                 agent_state["connection"] = "connecting"
                 update_tray_status("Reconnecting...")
             # Capped exponential backoff: 5s, 10s, 20s, 40s ... max 60s.
-            # Pehle 10 errors ke baad seedha 60s ho jaata tha aur counter
-            # reset ho jaata tha, jisse offline detection bhi reset ho jaati.
+            # It used to jump straight to 60s after 10 errors and the counter
+            # was reset, which reset the offline detection as well.
             backoff = min(CHECK_INTERVAL * (2 ** min(errors - 1, 5)), 60)
             _interruptible_sleep(backoff)
 
@@ -5510,23 +5508,23 @@ def main():
     log(f"🚀 Agent start | Shop: {SHOP_ID} | Version: v{VERSION_LABEL} (build {VERSION})")
     log(f"🌐 Server: {SERVER_URL}")
 
-    # PC restart pe agent khud tray mein start ho — HKCU Run registry
+    # On a PC restart the agent starts in the tray by itself — HKCU Run registry
     add_to_startup()
 
-    # CRITICAL FIX: Pehle yahan printer na milne par input("Enter dabao...")
-    # call hota tha — yeh .exe ke WINDOWED mode mein (jahan koi console/STDIN
-    # hi nahi hota, kyunki yeh background tray app hai) crash ya silent hang
-    # kar deta tha. Yeh exact situation PC restart ke turant baad hoti hai:
-    # Windows Startup se agent turant launch hota hai, lekin printer driver/
-    # USB/network printer abhi initialize nahi hua hota — check_printer()
-    # fail ho jaata, aur poora process crash ho jaata bina kisi visible
-    # error ke. Isi wajah se "it sometimes disappears from the tray" wala
-    # symptom aata tha.
+    # CRITICAL FIX: this used to call input("Press Enter...") when no printer was
+    # found — in the .exe's WINDOWED mode (which has no console/STDIN
+    # at all, because this is a background tray app) that crashed or hung silently.
+    # This exact situation happens right after a PC restart:
+    # the agent launches immediately from Windows Startup, but the printer driver/
+    # USB/network printer is not initialized yet — check_printer()
+    # failed, and the whole process crashed without any visible
+    # error. That is where the "it sometimes disappears from the tray"
+    # symptom came from.
     #
-    # FIX: ab hum RETRY karte hain (printer thodi der mein ready ho sakta
-    # hai), aur agar baar-baar fail bhi ho, to PROCESS CRASH NAHI karte —
-    # tray icon phir bhi chalta rehta hai, aur background mein printer
-    # detection retry hota rehta hai (print_loop ke through).
+    # FIX: we now RETRY (the printer may be ready a moment later),
+    # and even if it keeps failing, the PROCESS DOES NOT CRASH —
+    # the tray icon keeps running, and printer detection keeps retrying
+    # in the background (through print_loop).
     printer_ok, printer_name = check_printer()
     retry_count = 0
     while not printer_ok and retry_count < 6:
@@ -5544,8 +5542,8 @@ def main():
 
     agent_state["printer"] = printer_name
 
-    # Printer list server ko report karo (startup pe) — Dashboard mein
-    # dropdown se B&W/Color printer select karne ke liye zaroori hai
+    # Report the printer list to the server (at startup) — required for choosing
+    # the B&W/Color printer from the dashboard dropdown
     try:
         report_printers_to_server()
     except Exception:
@@ -5561,38 +5559,38 @@ def main():
     printer_report_thread = threading.Thread(target=printer_report_loop, daemon=True)
     printer_report_thread.start()
 
-    # Demo shop par upgrade reminder (subah 9 se raat 8, 4 baar)
+    # Upgrade reminder on a demo shop (9 AM to 8 PM, 4 times)
     demo_thread = threading.Thread(target=demo_reminder_loop, daemon=True)
     demo_thread.start()
 
-    # Auto-update checker background thread mein chalao
+    # Run the auto-update checker in a background thread
     update_thread = threading.Thread(target=update_checker_loop, daemon=True)
     update_thread.start()
-    log(f"🔄 Auto-update checker active — din me 2 baar ({UPDATE_HOURS[0]}:00 aur {UPDATE_HOURS[1]}:00 ke aas-paas)")
+    log(f"🔄 Auto-update checker active — twice a day (around {UPDATE_HOURS[0]}:00 and {UPDATE_HOURS[1]}:00)")
 
-    # Print loop bhi background thread mein chalao — taaki tray icon
-    # foreground mein chal sake (yeh OS requirement hai tray icons ke liye)
+    # Run the print loop in a background thread too — so the tray icon
+    # can run in the foreground (an OS requirement for tray icons)
     print_thread = threading.Thread(target=print_loop, daemon=True)
     print_thread.start()
 
-    # Owner exe par dobara double-click kare to panel khul jaye
+    # If the owner double-clicks the exe again, the panel opens
     threading.Thread(target=panel_request_watcher, daemon=True).start()
 
-    # Purani request file (pichhli baar ki) pehle hi saaf kar do, warna
-    # start hote hi bina wajah panel khul jayega.
+    # Clear any old request file (from last time) first, otherwise
+    # the panel would open for no reason right at startup.
     try:
         if os.path.exists(PANEL_REQUEST_FILE):
             os.remove(PANEL_REQUEST_FILE)
     except Exception:
         pass
 
-    # Tray icon start karo (yeh block karega jab tak Exit na dabaya jaye)
+    # Start the tray icon (this blocks until Exit is pressed)
     try:
         run_tray_icon()
     except Exception as trayErr:
         log(f"⚠️  Tray icon error: {trayErr}", "WARN")
 
-    # Agar tray fail ho jaye (pystray missing), normal console mode mein chalte raho
+    # If the tray fails (pystray missing), keep running in normal console mode
     if agent_state["tray_icon"] is None:
         log("ℹ️  Running in console mode (press Ctrl+C to stop)")
         log("=" * 50)
@@ -5604,11 +5602,11 @@ def main():
             agent_state["running"] = False
 
 if __name__ == "__main__":
-    # CRITICAL FIX: poora main() ab try/except mein wrapped hai. Pehle agar
-    # kahin bhi koi unexpected exception aati (kisi bhi function se), poora
-    # process SILENTLY CRASH ho jaata — tray se gayab ho jaata bina kisi
-    # trace ke. Ab har crash LOG_FILE mein likha jaata hai, taaki Tray menu
-    # ke "📋 View Logs" se customer/owner asal wajah dekh sake.
+    # CRITICAL FIX: the whole main() is now wrapped in try/except. Previously, if
+    # any unexpected exception occurred anywhere (in any function), the whole
+    # process CRASHED SILENTLY — vanishing from the tray without any
+    # trace. Now every crash is written to LOG_FILE, so the tray menu's
+    # "📋 View Logs" shows the customer/owner the real cause.
     try:
         main()
     except Exception as fatalErr:
@@ -5617,4 +5615,4 @@ if __name__ == "__main__":
             import traceback
             log(traceback.format_exc(), "ERROR")
         except Exception:
-            pass  # agar logging bhi fail ho jaaye, kam se kam process clean exit kare
+            pass  # even if logging fails, at least exit the process cleanly

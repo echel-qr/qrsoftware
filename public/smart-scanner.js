@@ -1,43 +1,43 @@
 /* ═══════════════════════════════════════════════════════════════════
-   QR Se Print — SMART SCANNER
+   Echel — SMART SCANNER
    ═══════════════════════════════════════════════════════════════════
 
-   Document ka photo kheencho, scanner jaisa saaf page nikal aata hai.
+   Take a photo of a document and get a clean, scanner-like page.
 
-   YE FILE ALAG KYUN HAI:
-   customer.html 187 KB ki hai aur usme sab kuch chal raha hai. Scanner ka
-   poora code usme ghusane se purana kuch toot sakta tha. Isliye saara kaam
-   yahan hai — customer.html me sirf teen chhoti cheezein judti hain:
+   WHY THIS FILE IS SEPARATE:
+   customer.html is 187 KB and everything runs inside it. Pushing the whole
+   scanner into it could have broken something old. So all the work lives
+   here — customer.html only gains three small things:
      1. <script src="/smart-scanner.js"></script>
-     2. service card ki list me ek entry
-     3. applyAdvancedGate() me ek flag
+     2. one entry in the service card list
+     3. one flag in applyAdvancedGate()
 
-   BAHAR SE KYA CHAHIYE (customer.html me pehle se maujood):
-     addPage(canvases, skipUIRender)   — page banata hai
-     showChoiceScreen()                — "sab theek hai / edit karna hai"
-     toast(msg)                        — chhota message
-     A4_DISPLAY_W / A4_DISPLAY_H       — editor ka canvas size
+   WHAT IT NEEDS FROM OUTSIDE (already present in customer.html):
+     addPage(canvases, skipUIRender)   — creates a page
+     showChoiceScreen()                — "everything is fine / I want to edit"
+     toast(msg)                        — short message
+     A4_DISPLAY_W / A4_DISPLAY_H       — editor canvas size
 
-   OpenCV.js JAAN-BOOJH KAR NAHI LIYA:
-   uska wasm ~9 MB ka hai. Customer dukaan par mobile data par khada hota
-   hai — scan shuru karne se pehle 9 MB utarna feature ko toota hua bana
-   deta. Neeche saara CV saade JS + canvas me hai, kuch KB ka.
+   OpenCV.js WAS DELIBERATELY NOT USED:
+   its wasm is ~9 MB. The customer stands in the shop on mobile data —
+   downloading 9 MB before a scan can start would make the feature feel
+   broken. All the CV below is plain JS + canvas, a few KB in size.
 
-   PROCESSING SAB PHONE PAR HOTI HAI. Original camera photo server par
-   kabhi nahi jaati — sirf banaya hua saaf page jaata hai, wahi purane
-   upload raaste se.
+   ALL PROCESSING HAPPENS ON THE PHONE. The original camera photo never goes
+   to the server — only the finished clean page does, through the same old
+   upload path.
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
   // ── Settings ──────────────────────────────────────────────────────
-  var DETECT_W      = 480;    // detection isi chaudai par hoti hai (tez)
-  var LIVE_W        = 200;    // camera par live hint ke liye aur bhi chhota
-  var OUT_LONG_EDGE = 2339;   // A4 @ ~200 DPI — print ke liye kaafi
-  var CARD_LONG_EDGE = 1400;  // chhote card ko A4 jitna bada banane ka matlab nahi
+  var DETECT_W      = 480;    // detection runs at this width (fast)
+  var LIVE_W        = 200;    // even smaller for the live camera hint
+  var OUT_LONG_EDGE = 2339;   // A4 @ ~200 DPI — enough for printing
+  var CARD_LONG_EDGE = 1400;  // no point making a small card as large as A4
   var LIVE_EVERY_MS = 420;
 
-  // Standard document shapes — ratio = lamba / chhota
+  // Standard document shapes — ratio = long side / short side
   var SHAPES = [
     { name: 'A4 / A5',  r: 297 / 210 },   // 1.414
     { name: 'Letter',   r: 279 / 216 },   // 1.294
@@ -45,28 +45,28 @@
     { name: '4x6',      r: 6 / 4 },       // 1.500
     { name: 'ID card',  r: 85.6 / 54 }    // 1.585
   ];
-  var SNAP_TOLERANCE = 0.06;   // 6% ke andar ho to standard shape maan lo
+  var SNAP_TOLERANCE = 0.06;   // within 6%, treat it as the standard shape
 
-  // Quality ki hadd — inse neeche "dobara kheencho" bolte hain
+  // Quality limits — below these we ask to "take the photo again"
   var MIN_SHARPNESS = 55;      // Laplacian variance
-  var MAX_GLARE     = 0.055;   // 5.5% se zyada jala hua area
-  var MIN_BRIGHT    = 42;      // itna andhera matlab kuch dikhega hi nahi
-  // Frame ka kam se kam itna hissa document hona chahiye.
-  // 14% rakha tha to ID card / visiting card reject ho jaate the — unhe
-  // haath me pakad kar photo lo to wo frame ka ~12% hi bharte hain.
-  // Chhota rakhne se shor (noise) ka blob nahi ghusta, kyunki bhujaa-santulan
-  // aur kone ka kona-check usay waise bhi nikaal dete hain.
+  var MAX_GLARE     = 0.055;   // more than 5.5% of the area burnt out
+  var MIN_BRIGHT    = 42;      // this dark means nothing will be visible
+  // At least this much of the frame must be the document.
+  // At 14%, ID cards / visiting cards were rejected — photographed while held
+  // in the hand they fill only ~12% of the frame.
+  // A smaller value does not let noise blobs in, because the side-balance
+  // and corner-angle checks remove them anyway.
   var MIN_QUAD_AREA = 0.075;
   var MIN_CONFIDENCE = 0.45;
 
   // ── State ─────────────────────────────────────────────────────────
   var stream = null, video = null, liveTimer = null;
   var capturedPages = [];      // { canvas, shape }
-  var source = 'cam';          // 'cam' = camera, 'file' = device ki file
+  var source = 'cam';          // 'cam' = camera, 'file' = a file on the device
   var busy = false;
 
   // ═════════════════════════════════════════════════════════════════
-  //  CHHOTE HELPERS
+  //  SMALL HELPERS
   // ═════════════════════════════════════════════════════════════════
   function el(id) { return document.getElementById(id); }
 
@@ -76,8 +76,8 @@
     return c;
   }
 
-  // UI ko saans lene do — bade loop ke beech me call karte hain, warna
-  // phone par screen jam ho jaati hai aur "Processing..." bhi nahi dikhta.
+  // Let the UI breathe — called in the middle of big loops, otherwise
+  // the phone screen freezes and even "Processing..." never shows.
   function breathe() {
     return new Promise(function (r) { setTimeout(r, 0); });
   }
@@ -86,13 +86,13 @@
 
   // ═════════════════════════════════════════════════════════════════
   //  GRAY + INTEGRAL IMAGE
-  //  Integral image se box-blur aur local threshold dono O(1) per pixel
-  //  ho jaate hain — isi ek trick par poora enhancement tika hai.
+  //  With an integral image both the box blur and the local threshold become
+  //  O(1) per pixel — the whole enhancement rests on this one trick.
   // ═════════════════════════════════════════════════════════════════
   function toGray(data, w, h) {
     var g = new Float32Array(w * h);
     for (var i = 0, p = 0; i < g.length; i++, p += 4) {
-      // Luma — aankh green ko sabse zyada dekhti hai
+      // Luma — the eye sees green the most
       g[i] = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
     }
     return g;
@@ -110,7 +110,7 @@
     return ii;
   }
 
-  // (x0,y0)-(x1,y1) box ka average, dono taraf shaamil
+  // average of the (x0,y0)-(x1,y1) box, both ends inclusive
   function boxMean(ii, w, x0, y0, x1, y1) {
     var W = w + 1;
     var a = ii[y0 * W + x0], b = ii[y0 * W + (x1 + 1)];
@@ -120,11 +120,11 @@
   }
 
   // ═════════════════════════════════════════════════════════════════
-  //  QUALITY CHECK — spec ke section 22/23/24
+  //  QUALITY CHECK — spec sections 22/23/24
   // ═════════════════════════════════════════════════════════════════
   function sharpness(g, w, h) {
-    // Laplacian ka variance — dhundhli photo me kinare hote hi nahi,
-    // isliye ye number gir jaata hai.
+    // Variance of the Laplacian — a blurry photo has no edges,
+    // so this number drops.
     var sum = 0, sum2 = 0, n = 0;
     for (var y = 1; y < h - 1; y++) {
       for (var x = 1; x < w - 1; x++) {
@@ -137,9 +137,9 @@
     return sum2 / n - mean * mean;
   }
 
-  // Chamak SIRF document ke andar maayne rakhti hai. Table par padi
-  // roshni se customer ka kaam nahi bigadta — pehle poore frame par
-  // naapte the, isliye asli glare bhi chhota number ban kar nikal jaati thi.
+  // Glare matters ONLY inside the document. Light falling on the table does
+  // not spoil the customer's work — it used to be measured over the whole frame,
+  // so real glare was diluted into a small number and slipped through.
   function glareFraction(g, w, h, quad) {
     var x0 = 0, y0 = 0, x1 = w - 1, y1 = h - 1;
     if (quad) {
@@ -168,13 +168,13 @@
   // ═════════════════════════════════════════════════════════════════
   //  DOCUMENT DETECTION
   //
-  //  Tarika: document aksar background se alag chamak ka hota hai.
-  //    gray -> Otsu threshold -> sabse bada connected blob -> convex hull
-  //    -> us hull me sabse bade area wala chaturbhuj (quad)
+  //  Method: a document usually has a different brightness from the background.
+  //    gray -> Otsu threshold -> largest connected blob -> convex hull
+  //    -> the quadrilateral (quad) with the largest area within that hull
   //
-  //  "Safed kagaz safed table par" jaise case me ye kamzor pad jaata hai —
-  //  tab confidence gir jaati hai aur hum customer se dobara photo maangte
-  //  hain (spec section 7). Galat kata hua document dene se ye behtar hai.
+  //  It gets weak in cases like "white paper on a white table" —
+  //  then the confidence drops and we ask the customer for another photo
+  //  (spec section 7). That is better than handing over a wrongly cut document.
   // ═════════════════════════════════════════════════════════════════
   function otsu(g) {
     var hist = new Float64Array(256), i;
@@ -195,8 +195,8 @@
     return thr;
   }
 
-  // Sabse bada connected component — iterative flood fill (recursion se
-  // phone par stack phat jaata hai)
+  // Largest connected component — iterative flood fill (recursion
+  // blows the stack on phones)
   function largestBlob(bin, w, h) {
     var label = new Int32Array(w * h);
     var best = null, cur = 0;
@@ -228,7 +228,7 @@
   }
 
   function hullPoints(label, id, w, h) {
-    // Sirf blob ka boundary chahiye — har row ka pehla/aakhri pixel kaafi hai
+    // Only the blob boundary is needed — the first/last pixel of each row is enough
     var pts = [];
     for (var y = 0; y < h; y++) {
       var first = -1, last = -1;
@@ -276,9 +276,9 @@
     return Math.abs(a) / 2;
   }
 
-  // Chaar point ka area — bina array banaye (shoelace).
-  // polyArea() har baar ek naya array banata tha; ye loop lakhon baar
-  // chalta hai, isliye wahan allocation sabse mehnga pad raha tha.
+  // Area of four points — without building an array (shoelace).
+  // polyArea() built a new array every time; this loop runs hundreds of
+  // thousands of times, so that allocation was the most expensive part.
   function quadArea(a, b, c, d) {
     return Math.abs(
       a[0] * b[1] - b[0] * a[1] +
@@ -288,13 +288,13 @@
     ) / 2;
   }
 
-  // Hull me se 4 point chuno jinka area sabse bada ho.
+  // Pick the 4 hull points with the largest area.
   //
-  // TEZ RAKHNA ZAROORI HAI: camera par live hint har ~400ms yahi chalata
-  // hai. 40 point par ye loop 91,000 baar ghoomta tha aur ek detect ~3
-  // second le raha tha — phone par ye bilkul nahi chalta. 24 point par
-  // 10,600 baar (8.6 guna kam), aur area bina array banaye nikaalte hain.
-  // Document ke kone itne point me aaram se aa jaate hain.
+  // KEEPING IT FAST IS ESSENTIAL: the live camera hint runs this every ~400ms.
+  // With 40 points this loop ran 91,000 times and a single detect took ~3
+  // seconds — that is unusable on a phone. With 24 points it runs
+  // 10,600 times (8.6x fewer), and the area is computed without building an array.
+  // A document's corners fit comfortably within that many points.
   function biggestQuad(hull) {
     if (hull.length < 4) return null;
     var h = hull, MAXP = 24;
@@ -321,7 +321,7 @@
     return bi < 0 ? null : [h[bi], h[bj], h[bk], h[bl]];
   }
 
-  // TL, TR, BR, BL ke kram me lagao
+  // put them in TL, TR, BR, BL order
   function orderCorners(q) {
     var cx = 0, cy = 0, i;
     for (i = 0; i < 4; i++) { cx += q[i][0]; cy += q[i][1]; }
@@ -329,9 +329,9 @@
     var withAngle = q.map(function (p) {
       return { p: p, a: Math.atan2(p[1] - cy, p[0] - cx) };
     }).sort(function (a, b) { return a.a - b.a; });
-    // atan2 ka -PI upar-baayein se shuru hota hai
+    // atan2's -PI starts at the top-left
     var pts = withAngle.map(function (o) { return o.p; });
-    // sabse upar-baayein wale ko pehla banao
+    // make the top-left-most one the first
     var startIdx = 0, bestScore = Infinity;
     for (i = 0; i < 4; i++) {
       var sc = pts[i][0] + pts[i][1];
@@ -345,32 +345,32 @@
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  // Quad kitna "document jaisa" hai — 0 se 1
+  // How "document-like" the quad is — 0 to 1
   function quadConfidence(q, w, h) {
     var area = polyArea(q) / (w * h);
     if (area < MIN_QUAD_AREA) return 0;
 
-    // ── POORA FRAME = DETECTION FAIL ──
-    // Ye sabse zaroori check hai. Poori image ek perfect rectangle hai
-    // jiska area sabse bada hota hai, isliye baaki har naap usse 1.00
-    // score deta tha — aur "detection fail" hi sabse "confident" jawab
-    // ban jaata tha. Table/background ka blob theek yahi shakl deta hai.
-    // Asli document ke chaaron taraf thodi jagah bachti hai.
+    // ── FULL FRAME = DETECTION FAILED ──
+    // This is the most important check. The whole image is a perfect rectangle
+    // with the largest area, so every other measure gave it a score of 1.00 —
+    // and "detection failed" became the most "confident" answer.
+    // A table/background blob produces exactly this shape.
+    // A real document always leaves some space around its four sides.
     if (area > 0.90) return 0;
     var edgeTouch = 0;
     for (var t = 0; t < 4; t++) {
       if (q[t][0] < w * 0.02 || q[t][0] > w * 0.98) edgeTouch++;
       if (q[t][1] < h * 0.02 || q[t][1] > h * 0.98) edgeTouch++;
     }
-    if (edgeTouch >= 6) return 0;      // lagbhag har kona image ke kinare par
-    // 0.72 se upar jaate hi bharosa ghatne lagta hai
+    if (edgeTouch >= 6) return 0;      // almost every corner on the image edge
+    // confidence starts dropping above 0.72
     var roomy = area > 0.72 ? Math.max(0, 1 - (area - 0.72) / 0.18) : 1;
-    // Aamne-saamne ki bhujaayein aas-paas barabar honi chahiye
+    // Opposite sides should be roughly equal
     var top = dist(q[0], q[1]), bottom = dist(q[3], q[2]);
     var left = dist(q[0], q[3]), right = dist(q[1], q[2]);
     var hBal = Math.min(top, bottom) / Math.max(top, bottom);
     var vBal = Math.min(left, right) / Math.max(left, right);
-    // Har kona thoda-bahut 90° ke aas-paas ho (bahut tirchha nahi)
+    // Each corner should be roughly around 90° (not too skewed)
     var cornerOk = 1;
     for (var i = 0; i < 4; i++) {
       var p0 = q[(i + 3) % 4], p1 = q[i], p2 = q[(i + 1) % 4];
@@ -396,8 +396,8 @@
     var g = toGray(img.data, w, h);
 
     var thr = otsu(g);
-    // Document = ujla hissa. Dono taraf try karte hain — kabhi kagaz
-    // background se gehra bhi hota hai (kaala table nahi, safed table).
+    // Document = the bright part. Both directions are tried — sometimes the paper
+    // is darker than the background (a white table, not a black one).
     var out = null, outConf = 0;
     [true, false].forEach(function (bright) {
       var bin = new Uint8Array(w * h);
@@ -413,14 +413,14 @@
     });
 
     if (!out) return { quad: null, confidence: 0, gray: g, w: w, h: h };
-    // Wapas asli image ke paimane par
+    // Back to the scale of the original image
     var full = out.map(function (p) { return [p[0] / sc, p[1] / sc]; });
     return { quad: full, confidence: outConf, gray: g, w: w, h: h };
   }
 
   // ═════════════════════════════════════════════════════════════════
-  //  PERSPECTIVE — homography nikaalo aur image ko seedha karo
-  //  (sirf crop nahi — asli perspective correction, spec section 8)
+  //  PERSPECTIVE — compute the homography and straighten the image
+  //  (not just a crop — real perspective correction, spec section 8)
   // ═════════════════════════════════════════════════════════════════
   function solve8(A, b) {
     // Gaussian elimination with partial pivoting
@@ -445,8 +445,8 @@
     return x;
   }
 
-  // dst (seedha rectangle) se src (tirchha document) ka mapping —
-  // inverse mapping isliye ki har output pixel ko source me dhoondh sakein
+  // Mapping from dst (the straight rectangle) to src (the skewed document) —
+  // inverse mapping so every output pixel can be looked up in the source
   function homography(dst, src) {
     var A = [], b = [];
     for (var i = 0; i < 4; i++) {
@@ -475,11 +475,11 @@
     var oImg = octx.createImageData(outW, outH);
     var oD = oImg.data;
 
-    // Band-band karke — har band ke BAAD saans, band ke ANDAR nahi.
-    // Pehle `await` isi loop ke andar tha aur poori A4 ko seedha karne me
-    // 7.4 SECOND lagte the: async function ke andar await hone se V8 pure
-    // loop ko optimize karna chhod deta hai. Ab asli kaam ek saade
-    // function me hai (warpBand), jise V8 poori tarah optimize karta hai.
+    // Band by band — yield AFTER each band, not INSIDE it.
+    // The `await` used to sit inside this loop and straightening a full A4
+    // took 7.4 SECONDS: an await inside an async function makes V8 stop
+    // optimising the whole loop. The real work now lives in a plain
+    // function (warpBand), which V8 optimises fully.
     var BAND = 96;
     for (var yy = 0; yy < outH; yy += BAND) {
       warpBand(sD, sw, sh, oD, outW, H, yy, Math.min(outH, yy + BAND));
@@ -503,7 +503,7 @@
           oD[o] = 255; oD[o + 1] = 255; oD[o + 2] = 255; oD[o + 3] = 255;
           continue;
         }
-        // Bilinear — nearest lene par text ke kinare tootey hue dikhte hain
+        // Bilinear — nearest-neighbour makes text edges look broken
         var x0 = u | 0, y0 = v | 0;
         var x1 = x0 < swm ? x0 + 1 : x0;
         var y1 = y0 < shm ? y0 + 1 : y0;
@@ -520,24 +520,24 @@
 
   // ═════════════════════════════════════════════════════════════════
   //  ENHANCEMENT
-  //  Ek hi trick se teen kaam: chhaya hatti hai, roshni barabar hoti hai,
-  //  aur background saaf safed ho jaata hai —
-  //     pixel ÷ (uske aas-paas ka background)
-  //  Background bade radius ke box-blur se nikalta hai. Text chhota hota
-  //  hai isliye blur me ghul jaata hai aur bach jaata hai; chhaya bada
-  //  aur dheema hota hai isliye kat jaati hai.
+  //  One trick does three jobs: shadows disappear, lighting evens out,
+  //  and the background becomes clean white —
+  //     pixel ÷ (the background around it)
+  //  The background comes from a large-radius box blur. Text is small,
+  //  so it dissolves in the blur and survives; shadows are large and
+  //  gradual, so they get cancelled out.
   // ═════════════════════════════════════════════════════════════════
-  // Do bilkul alag cheezein scan hoti hain, aur dono ka ilaaj alag hai:
+  // Two very different things get scanned, and each needs its own treatment:
   //
-  //  'paper' — saada kagaz, kaala likha safed par. Yahan local background
-  //            normalization sahi hai: chhaya hatti hai, likha ubharta hai.
+  //  'paper' — plain paper, black writing on white. Local background
+  //            normalization is right here: shadows go, the writing stands out.
   //
-  //  'card'  — Aadhaar/PAN jaise rangeen card, jisme photo, hologram aur
-  //            barik security pattern hote hain. Inpar wahi normalization
-  //            NUKSAN karta hai: bade ek-rang wale hisse chapat ho jaate
-  //            hain, noise daag ban kar ubhar aata hai, aur chehre wali
-  //            photo dhul jaati hai. Isliye card mode me sirf halka global
-  //            contrast + white balance — na local normalization, na unsharp.
+  //  'card'  — colourful cards like Aadhaar/PAN, with a photo, hologram and
+  //            fine security patterns. The same normalization HARMS them:
+  //            large single-colour areas go flat, noise pops out as stains,
+  //            and the face photo gets washed out. So card mode only applies
+  //            a light global contrast + white balance — no local
+  //            normalization, no unsharp mask.
   async function enhance(canvas, mode) {
     if (mode === 'card') return enhanceCard(canvas);
     var w = canvas.width, h = canvas.height;
@@ -547,33 +547,33 @@
 
     var g = toGray(d, w, h);
     var ii = integral(g, w, h);
-    var R = Math.max(12, Math.round(Math.min(w, h) / 12));   // background ka radius
+    var R = Math.max(12, Math.round(Math.min(w, h) / 12));   // background radius
 
-    // 1. Illumination + shadow + background — sab ek saath
+    // 1. Illumination + shadow + background — all at once
     var norm = new Float32Array(w * h);
     for (var yy = 0; yy < h; yy += 96) {
       normBand(ii, g, norm, w, h, R, yy, Math.min(h, yy + 96));
       await breathe();
     }
 
-    // 2. Kitna gehra likha hua hai — isse contrast ka paimana milta hai
+    // 2. How dark the writing is — this gives the contrast scale
     var lo = 255, hi = 0;
-    for (var s = 0; s < norm.length; s += 7) {          // sampling kaafi hai
+    for (var s = 0; s < norm.length; s += 7) {          // sampling is enough
       if (norm[s] < lo) lo = norm[s];
       if (norm[s] > hi) hi = norm[s];
     }
     var span = Math.max(40, hi - lo);
 
-    // 3. Rang wapas jodo. Gray ka jitna sudhaar hua utna hi har channel par
-    //    lagao — isse logo, stamp, signature ka rang bacha rehta hai
-    //    (spec section 36: overprocess mat karo).
+    // 3. Add the colour back. Apply to each channel the same correction the
+    //    gray received — this keeps the colour of logos, stamps and signatures
+    //    (spec section 36: do not overprocess).
     var out = ctx.createImageData(w, h);
     var oD = out.data;
     for (var p = 0, q = 0; p < norm.length; p++, q += 4) {
       var ratio = g[p] > 1 ? norm[p] / g[p] : 1;
       // halka contrast stretch
       var lift = clamp((norm[p] - lo) / span, 0, 1);
-      var curved = lift * lift * (3 - 2 * lift);          // smoothstep — natural lagta hai
+      var curved = lift * lift * (3 - 2 * lift);          // smoothstep — looks natural
       var mix = 0.65 + 0.35 * curved;
       for (var ch = 0; ch < 3; ch++) {
         oD[q + ch] = clamp(d[q + ch] * ratio * mix, 0, 255);
@@ -583,25 +583,25 @@
     ctx.putImageData(out, 0, 0);
     await breathe();
 
-    // 4. Halka sharpen — text ke kinare saaf, par halo nahi
+    // 4. Light sharpen — crisp text edges, but no halo
     await unsharp(ctx, w, h, 0.45);
     return canvas;
   }
 
-  // Rangeen card ke liye halka ilaaj: safed ko safed banao (white balance)
-  // aur bas thoda contrast. Detail ko haath nahi lagate.
+  // Light treatment for a colourful card: make white white (white balance)
+  // and add a little contrast. Detail is left untouched.
   async function enhanceCard(canvas) {
     var w = canvas.width, h = canvas.height;
     var ctx = canvas.getContext('2d');
     var img = ctx.getImageData(0, 0, w, h);
     var d = img.data;
 
-    // Har channel ka 97th percentile — yahi "safed" maana jaata hai.
-    // Sabse ujla pixel lene se ek chamak wala daag poori tasveer bigaad
-    // deta hai, isliye percentile.
+    // The 97th percentile of each channel — this is treated as "white".
+    // Taking the single brightest pixel lets one shiny spot ruin the whole
+    // picture, hence the percentile.
     var hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
     var n = 0;
-    for (var p = 0; p < d.length; p += 16) {          // sampling kaafi hai
+    for (var p = 0; p < d.length; p += 16) {          // sampling is enough
       hist[0][d[p]]++; hist[1][d[p + 1]]++; hist[2][d[p + 2]]++; n++;
     }
     var white = [255, 255, 255];
@@ -613,12 +613,12 @@
       }
     }
     var gain = [255 / white[0], 255 / white[1], 255 / white[2]];
-    // Rang na bigde isliye gain ko kaabu me rakho
+    // Keep the gain under control so the colours are not distorted
     for (var k = 0; k < 3; k++) gain[k] = clamp(gain[k], 1, 1.35);
 
     await breathe();
 
-    // Halka S-curve — contrast thoda badhta hai par detail nahi udti
+    // A light S-curve — contrast rises a little but detail is not blown out
     var lut = new Uint8Array(256);
     for (var i = 0; i < 256; i++) {
       var t = i / 255;
@@ -685,7 +685,7 @@
   }
 
   // ═════════════════════════════════════════════════════════════════
-  //  OUTPUT SIZE — document ki asli shape ka andaaza
+  //  OUTPUT SIZE — estimating the document's real shape
   // ═════════════════════════════════════════════════════════════════
   function outputSize(quad) {
     var top = dist(quad[0], quad[1]), bottom = dist(quad[3], quad[2]);
@@ -693,12 +693,12 @@
     var wAvg = (top + bottom) / 2, hAvg = (left + right) / 2;
     var ratio = Math.max(wAvg, hAvg) / Math.max(1, Math.min(wAvg, hAvg));
 
-    // Standard shape ke kareeb ho to usi par set kar do — warna har scan
-    // thoda-thoda alag anupaat me aata hai aur print par ajeeb lagta hai.
+    // If it is close to a standard shape, snap to it — otherwise every scan
+    // comes out at a slightly different ratio and looks odd in print.
     //
-    // DHYAAN: sabse KAREEBI shape chunni hai, pehli milne wali nahi.
-    // Legal (1.647) aur ID card (1.585) sirf 3.8% door hain — pehle
-    // wale tarike me ID card "Legal" ban kar A4 jitna bada ho jaata tha.
+    // NOTE: the CLOSEST shape is chosen, not the first match.
+    // Legal (1.647) and ID card (1.585) are only 3.8% apart — with the earlier
+    // method an ID card became "Legal" and grew as large as A4.
     var shape = null, bestErr = SNAP_TOLERANCE;
     for (var i = 0; i < SHAPES.length; i++) {
       var err = Math.abs(ratio - SHAPES[i].r) / SHAPES[i].r;
@@ -709,8 +709,8 @@
         if (SHAPES[j].name === shape) { ratio = SHAPES[j].r; break; }
       }
     }
-    // Card jaisa chhota document A4 jitna bada banane ka koi matlab nahi
-    // (spec section 38) — anupaat wahi rehta hai, bas pixel kam.
+    // There is no point making a small document like a card as large as A4
+    // (spec section 38) — the ratio stays the same, just with fewer pixels.
     var longEdge = (shape === 'ID card' || shape === '4x6') ? CARD_LONG_EDGE : OUT_LONG_EDGE;
     var portrait = hAvg >= wAvg;
     var L = longEdge, S = Math.round(longEdge / ratio);
@@ -722,6 +722,7 @@
   // ═════════════════════════════════════════════════════════════════
   //  UI
   // ═════════════════════════════════════════════════════════════════
+  /* i18n-ignore: the scanner's own stylesheet, not text a person reads. */
   var CSS = [
     '.ssTpl{display:flex;flex-direction:column;gap:9px;margin:16px 0 4px;width:100%;}',
     '.ssTplBtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;',
@@ -758,10 +759,10 @@
       'cursor:pointer;font-family:inherit;}',
     '.ssPri{background:#16a34a;color:#fff;flex:1;max-width:280px;}',
     '.ssSec{background:#1b222b;color:#dbe3ec;}',
-    // "Add Back Side" ko jaan-bujh ke halka rakha hai. Pehle wo hara
-    // (ssPri) tha aur "aage badho" phika — aankh seedha hare par jaati
-    // thi, isliye log galti se baar-baar back side me chale jaate the.
-    // Ab hara sirf aage badhne wale par hai.
+    // "Add Back Side" is deliberately kept light. It used to be green
+    // (ssPri) and "continue" was faded — the eye went straight to the green,
+    // so people kept going into the back side by mistake.
+    // Now green is only on the button that moves forward.
     '.ssAdd{background:transparent;color:#f0b429;border:1.5px solid #6b5320;}',
     '.ssAdd:active{background:#2a2413;}',
     '#ssShot{width:74px;height:74px;border-radius:50%;background:#fff;border:5px solid #2a323d;',
@@ -784,14 +785,14 @@
 
   var HTML =
     '<div id="ssTop"><b>📸 Smart Scanner</b>' +
-      '<button id="ssClose" aria-label="Band karo">&times;</button></div>' +
+      '<button id="ssClose" aria-label="Close">&times;</button></div>' +
     '<div id="ssStage">' +
       '<video id="ssVideo" playsinline muted autoplay></video>' +
       '<div id="ssGuide"></div>' +
-      '<div id="ssHint">Document ko frame ke andar rakho</div>' +
+      '<div id="ssHint">Place the document inside the frame</div>' +
       '<div id="ssPanel"></div>' +
     '</div>' +
-    '<div id="ssBar"><button id="ssShot" aria-label="Photo kheencho"></button></div>';
+    '<div id="ssBar"><button id="ssShot" aria-label="Take a photo"></button></div>';
 
   function mount() {
     if (el('ssWrap')) return;
@@ -806,9 +807,9 @@
     el('ssShot').onclick = capture;
     video = el('ssVideo');
 
-    // Files wala rasta. Input overlay ke ANDAR rakha hai taaki overlay ke
-    // saath hi jiye-mare. value har baar khali karte hain, warna wahi file
-    // dobara chunne par change event aata hi nahi.
+    // The Files path. The input sits INSIDE the overlay so it lives and dies
+    // with the overlay. Its value is cleared every time, otherwise choosing the
+    // same file again fires no change event.
     var fi = document.createElement('input');
     fi.type = 'file';
     fi.accept = 'image/*';
@@ -834,16 +835,16 @@
   function processing(msg) {
     showBar(false);
     panel('<div id="ssSpin"></div><h3>' + msg + '</h3>' +
-          '<p>Ek pal — document saaf kiya ja raha hai.</p>');
+          '<p>One moment — cleaning up the document.</p>');
   }
 
-  // Har error ka ek hi roop — customer ko technical baat kabhi nahi dikhti
+  // Every error has one shape — the customer never sees technical details
   function problem(title, detail, retryLabel) {
     showBar(false);
     panel('<h3>' + title + '</h3><p>' + detail + '</p>' +
           '<div class="row">' +
-          '<button class="ssBtn ssPri" id="ssRetry">' + (retryLabel || 'Dobara photo lo') + '</button>' +
-          '<button class="ssBtn ssSec" id="ssQuit">Band karo</button>' +
+          '<button class="ssBtn ssPri" id="ssRetry">' + (retryLabel || 'Retake photo') + '</button>' +
+          '<button class="ssBtn ssSec" id="ssQuit">Close</button>' +
           '</div>');
     el('ssRetry').onclick = function () {
       hidePanel();
@@ -856,11 +857,11 @@
   // ═════════════════════════════════════════════════════════════════
   //  CAMERA
   // ═════════════════════════════════════════════════════════════════
-  // Browser ne camera ke baare me kya faisla kar rakha hai.
-  // 'denied'  = customer pehle "Block" daba chuka hai — ab JS se popup
-  //             LAAYA HI NAHI JA SAKTA, settings hi ek rasta hai
-  // 'prompt'  = abhi kuch tay nahi — getUserMedia popup dikhayega
-  // 'unknown' = browser batata hi nahi (iOS Safari) — seedha try karo
+  // What the browser has decided about the camera.
+  // 'denied'  = the customer already pressed "Block" — JS can NO LONGER
+  //             bring the popup back; the settings are the only way
+  // 'prompt'  = nothing decided yet — getUserMedia will show the popup
+  // 'unknown' = the browser does not say (iOS Safari) — just try
   async function camPermState() {
     try {
       if (!navigator.permissions || !navigator.permissions.query) return 'unknown';
@@ -872,16 +873,16 @@
   async function startCamera() {
     stopLive();
 
-    // Pehle se BLOCK hai to getUserMedia turant reject hoti hai aur
-    // koi popup nahi aata. Aise me "Dobara koshish karo" bekaar hai —
-    // customer wahi button dabata rehta hai. Seedha rasta batao.
+    // If it is already BLOCKED, getUserMedia rejects immediately and
+    // no popup appears. Then "Try again" is useless —
+    // the customer keeps pressing the same button. Show the direct way instead.
     if ((await camPermState()) === 'denied') { return camBlockedPanel(); }
 
     try {
       if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
 
-      // Ye call CLICK ke turant baad chalti hai, isliye browser ka
-      // "Allow camera?" popup apne aap saamne aata hai.
+      // This call runs right after the CLICK, so the browser's
+      // "Allow camera?" popup comes up by itself.
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -892,9 +893,9 @@
           audio: false
         });
       } catch (e1) {
-        // Kuch purane phone 1920x1440 ya back-camera ki maang par hi
-        // mana kar dete hain (ijazat se koi lena-dena nahi). Aise me
-        // ek baar bina koi shart ke maang lo — zyadatar chal jaata hai.
+        // Some old phones refuse a request for 1920x1440 or the back camera
+        // (nothing to do with permission). In that case ask once more
+        // without any constraints — that usually works.
         if (e1 && (e1.name === 'OverconstrainedError' ||
                    e1.name === 'NotFoundError' ||
                    e1.name === 'NotReadableError')) {
@@ -910,65 +911,65 @@
     } catch (e) {
       var name = (e && e.name) || '';
       if (name === 'NotAllowedError' || name === 'SecurityError') {
-        // Do bilkul alag halat, dono ka error naam ek hi hai:
-        //   • "Block" daba diya       → permission ab 'denied'
-        //   • popup ko swipe kar diya → permission abhi bhi 'prompt'
-        // Doosre case me dobara maangne par popup FIR aata hai, isliye
-        // usme customer ko settings me bhejna galat hai.
+        // Two completely different situations share the same error name:
+        //   • pressed "Block"          → permission is now 'denied'
+        //   • swiped the popup away   → permission is still 'prompt'
+        // In the second case asking again brings the popup back, so sending
+        // the customer to the settings would be wrong.
         var st = await camPermState();
         if (st === 'denied') return camBlockedPanel();
         showBar(false);
-        panel('<h3>Camera chahiye hoga</h3>' +
-              '<p>Neeche wala button dabao aur phone par jo popup aaye usme ' +
-              '<b>Allow</b> chun lo. Photo sirf aapke phone me banti hai.</p>' +
+        panel('<h3>Camera access is needed</h3>' +
+              '<p>Tap the button below, and in the popup on your phone choose ' +
+              '<b>Allow</b>. The photo is created only on your phone.</p>' +
               '<div class="row">' +
-              '<button class="ssBtn ssPri" id="ssRetry">\uD83D\uDCF7 Camera Allow Karo</button>' +
-              '<button class="ssBtn ssSec" id="ssQuit">Band karo</button></div>');
+              '<button class="ssBtn ssPri" id="ssRetry">📷 Allow Camera</button>' +
+              '<button class="ssBtn ssSec" id="ssQuit">Close</button></div>');
         el('ssRetry').onclick = startCamera;
         el('ssQuit').onclick = quit;
         return;
       }
       showBar(false);
-      panel('<h3>Camera nahi khul paya</h3>' +
-            '<p>Is phone ka camera shayad kisi aur app me chal raha hai. ' +
-            'Wo app band karke dobara koshish karo.</p>' +
+      panel('<h3>Could not open the camera</h3>' +
+            '<p>The camera may be in use by another app on this phone. ' +
+            'Close that app and try again.</p>' +
             '<div class="row">' +
-            '<button class="ssBtn ssPri" id="ssRetry">Dobara koshish karo</button>' +
-            '<button class="ssBtn ssSec" id="ssQuit">Band karo</button></div>');
+            '<button class="ssBtn ssPri" id="ssRetry">Please try again</button>' +
+            '<button class="ssBtn ssSec" id="ssQuit">Close</button></div>');
       el('ssRetry').onclick = startCamera;
       el('ssQuit').onclick = quit;
     }
   }
 
-  // Camera BLOCK ho chuka hai. Yahan se browser ka popup dobara laana
-  // mumkin nahi hai — ye browser ka niyam hai, koi bhi website ise
-  // nahi laa sakti. Isliye jhooth mat bolo ki "dobara koshish karo";
-  // theek-theek 3 step batao aur reload ka button do (setting badalne
-  // ke baad page reload kiye bina asar nahi hota).
+  // The camera is BLOCKED. From here it is impossible to bring the browser's
+  // popup back — that is a browser rule and no website can
+  // do it. So do not falsely say "try again";
+  // give exactly 3 steps and a reload button (after changing the setting
+  // it has no effect without reloading the page).
   function camBlockedPanel() {
     showBar(false);
-    panel('<h3>Camera band kar rakha hai</h3>' +
+    panel('<h3>Camera is turned off</h3>' +
           '<p style="text-align:left;line-height:1.85;">' +
-          'Is site ke liye camera pehle <b>Block</b> ho chuka hai, isliye ' +
-          'ijazat ka popup ab apne aap nahi aayega. 10 second ka kaam hai:' +
+          'For this site the camera is already set to <b>Block</b>, so ' +
+          'the permission popup will not appear on its own anymore. It takes 10 seconds:' +
           '<br><br>' +
-          '<b>1.</b> Upar address bar me, website ke naam se just pehle wale ' +
-          '<b>\uD83D\uDD12 / \u2139\uFE0F</b> nishan par tap karo<br>' +
-          '<b>2.</b> <b>Permissions</b> \u2192 <b>Camera</b> \u2192 <b>Allow</b> chuno<br>' +
-          '<b>3.</b> Neeche <b>Page Reload Karo</b> dabao' +
+          '<b>1.</b> In the address bar above, tap the ' +
+          '<b>\uD83D\uDD12 / \u2139\uFE0F</b> icon just before the website name<br>' +
+          '<b>2.</b> Choose <b>Permissions</b> \u2192 <b>Camera</b> \u2192 <b>Allow</b><br>' +
+          '<b>3.</b> Tap <b>Reload Page</b> below' +
           '</p>' +
           '<div class="row">' +
-          '<button class="ssBtn ssPri" id="ssReload">\uD83D\uDD04 Page Reload Karo</button>' +
-          '<button class="ssBtn ssSec" id="ssQuit">Band karo</button></div>' +
+          '<button class="ssBtn ssPri" id="ssReload">🔄 Reload Page</button>' +
+          '<button class="ssBtn ssSec" id="ssQuit">Close</button></div>' +
           '<p style="font-size:12px;opacity:.75;margin-top:12px;">' +
-          'Camera na dena ho to koi baat nahi \u2014 "Band karo" dabao aur ' +
-          '<b>Upload Document</b> se file bhej do.</p>');
+          'If you would rather not allow the camera, no problem — tap "Close" and ' +
+          'send the file with <b>Upload Document</b>.</p>');
     el('ssReload').onclick = function () { location.reload(); };
     el('ssQuit').onclick = quit;
   }
 
-  // Live hint — har ~400ms ek chhota frame dekh kar batate hain ki
-  // document dikh raha hai ya nahi. Chhota isliye ki battery na jale.
+  // Live hint — every ~400ms a small frame is checked to tell whether
+  // the document is visible. Small so the battery is not drained.
   function startLive() {
     stopLive();
     liveTimer = setInterval(function () {
@@ -980,9 +981,9 @@
         var ok = r.quad && r.confidence >= MIN_CONFIDENCE;
         el('ssGuide').classList.toggle('lock', !!ok);
         el('ssHint').innerHTML = ok
-          ? '<span class="ok">✓ Document mil gaya</span>'
-          : 'Document ko frame ke andar rakho';
-      } catch (e) { /* live hint fail ho to koi baat nahi */ }
+          ? '<span class="ok">✓ Document found</span>'
+          : 'Place the document inside the frame';
+      } catch (e) { /* if the live hint fails, no problem */ }
     }, LIVE_EVERY_MS);
   }
   function stopLive() { if (liveTimer) { clearInterval(liveTimer); liveTimer = null; } }
@@ -994,19 +995,19 @@
   }
 
   // ═════════════════════════════════════════════════════════════════
-  //  CAPTURE + POORA PIPELINE
+  //  CAPTURE + THE FULL PIPELINE
   // ═════════════════════════════════════════════════════════════════
   async function capture() {
     if (busy || !video || !video.videoWidth) return;
     busy = true;
     stopLive();
 
-    // Original photo — ise haath nahi lagate, sab kuch iski copy par
+    // The original photo — never touched; everything works on a copy of it
     var original = mkCanvas(video.videoWidth, video.videoHeight);
     original.getContext('2d').drawImage(video, 0, 0);
 
     try {
-      processing('Document dhoondh rahe hain…');
+      processing('Looking for the document…');
       await breathe();
 
       var det = detectQuad(original, DETECT_W);
@@ -1014,8 +1015,8 @@
       // ── Quality check ──
       var sharp = sharpness(det.gray, det.w, det.h);
       var bright = meanBrightness(det.gray);
-      // det.quad asli photo ke paimane par hai — glare naapne ke liye use
-      // detection wale chhote paimane par le aao
+      // det.quad is at the scale of the original photo — to measure glare, bring
+      // it to the smaller detection scale
       var qs = null;
       if (det.quad) {
         var kx = det.w / original.width, ky = det.h / original.height;
@@ -1024,74 +1025,74 @@
       var glare = glareFraction(det.gray, det.w, det.h, qs);
 
       if (bright < MIN_BRIGHT) {
-        return problem('Bahut andhera hai',
-          'Thodi roshni me ya khidki ke paas dobara photo lo.');
+        return problem('Too dark',
+          'Retake the photo in better light or near a window.');
       }
       if (sharp < MIN_SHARPNESS) {
-        return problem('Photo dhundhli hai',
-          'Phone ko sthir rakh kar dobara kheencho. Document par tap karke focus bhi kar sakte ho.');
+        return problem('Photo is blurry',
+          'Hold the phone steady and retake. You can also tap the document to focus.');
       }
       if (glare > MAX_GLARE) {
-        return problem('Roshni ki chamak aa rahi hai',
-          'Kuch likha hua chamak ke neeche chhup sakta hai. Thoda kona badal kar dobara lo.');
+        return problem('There is glare from the light',
+          'Some text may be hidden under the glare. Change the angle a little and retake.');
       }
-      // ── KONE KHUD THEEK KARO ──
-      // Pehle yahan detection ka jawab CHUP-CHAAP maan liya jaata tha, aur
-      // bharosa kam hone par poora fail. Dono galat the.
+      // ── LET THE CUSTOMER FIX THE CORNERS ──
+      // This used to SILENTLY accept the detection result, and fail completely
+      // when confidence was low. Both were wrong.
       //
-      // Otsu + sabse-bade-blob wala detector tabhi chalta hai jab document
-      // background se saaf alag ho. Haath me pakda Aadhaar? Ungli aur card
-      // ki brightness ek jaisi — blob me ungliyan bhi aa jaati hain aur
-      // "document" lagbhag poora frame ban jaata hai. Isiliye kuch document
-      // seedhe hote the, kuch tirchhe.
+      // The Otsu + largest-blob detector only works when the document stands out
+      // clearly from the background. An Aadhaar held in the hand? The finger and
+      // the card have the same brightness — the blob swallows the fingers and
+      // the "document" becomes almost the whole frame. That is why some documents
+      // came out straight and some skewed.
       //
-      // CamScanner bhi apne detection par bharosa nahi karta — wo photo ke
-      // baad HAMESHA ghasitne wale kone dikhata hai. Detection sirf ek
-      // shuruaati andaaza hai. Ab yahan bhi wahi: kone hamesha dikhenge,
-      // detection theek nikla to customer seedha Apply dabayega, galat
-      // nikla to 2 second me kheench kar theek kar dega. Fail kabhi nahi.
+      // CamScanner does not trust its own detection either — after the photo it
+      // ALWAYS shows draggable corners. Detection is only an initial
+      // guess. Now it is the same here: the corners always show; if detection
+      // was right the customer just presses Apply, if it was wrong they drag
+      // the corners into place in 2 seconds. It never fails.
       hidePanel();
-      el('ssWrap').style.visibility = 'hidden';   // crop screen ko saaf jagah do
+      el('ssWrap').style.visibility = 'hidden';   // give the crop screen a clean area
 
       var initPts = det.quad && det.confidence >= MIN_CONFIDENCE
         ? det.quad.map(function (p) { return { x: p[0], y: p[1] }; })
-        : null;                                    // null = 12% andar ka default
+        : null;                                    // null = the default 12% inside
 
-      var keep = original;                         // finally isko na mitaye
+      var keep = original;                         // so finally does not wipe this
       original = null;
 
       openCropOn(keep, initPts,
         function (warpedRaw) { onScanCropped(warpedRaw, keep); },
-        function () {                              // cancel — camera par wapas
+        function () {                              // cancel — back to the camera
           el('ssWrap').style.visibility = '';
           keep.width = keep.height = 0;
           startCamera();
         });
     } catch (e) {
-      problem('Kuch gadbad ho gayi', 'Ek baar dobara koshish karo.');
+      problem('Something went wrong', 'Please try once more.');
     } finally {
       busy = false;
-      // Original ko yahin chhod dete hain — koi copy nahi rakhi ja rahi
+      // The original is released here — no copy is kept
       if (original) original.width = original.height = 0;
     }
   }
 
-  // Kone confirm hone ke baad: sahi naap par le jao, phir saaf karo.
+  // After the corners are confirmed: bring it to the right size, then clean it.
   async function onScanCropped(warpedRaw, keep) {
     el('ssWrap').style.visibility = '';
     busy = true;
     try {
-      processing('Saaf kiya ja raha hai…');
+      processing('Cleaning up…');
       await breathe();
 
-      // Kone customer ne tay kiye — ab unhi se shape aur naap nikaalo
+      // The customer set the corners — derive the shape and size from them
       var quad = [[0, 0], [warpedRaw.width, 0],
                   [warpedRaw.width, warpedRaw.height], [0, warpedRaw.height]];
       var size = outputSize(quad);
 
-      // Template chuna hua ho to naap ANDAAZE se nahi lete — tay hai.
-      // ID card ka anupaat 85.6:54 pakka hai, isliye detection galat bhi
-      // ho to card khinchega nahi.
+      // When a template is chosen, the size is not GUESSED — it is fixed.
+      // The ID card ratio of 85.6:54 is exact, so even if detection is wrong
+      // the card will not be stretched.
       var T = currentTpl();
       if (T.id === 'idcard') {
         size = { w: 1011, h: 638, shape: 'ID card' };          // 85.6x54mm @300dpi
@@ -1099,17 +1100,17 @@
         size = { w: size.w, h: size.h, shape: 'paper' };
       }
 
-      // FRONT-BACK MATCH: doosri side ko pehli side ka hi naap aur mode do,
-      // warna dono page alag-alag size ke chhapte hain aur jodne par match
-      // nahi karte (yahi shikayat thi).
+      // FRONT-BACK MATCH: give the second side the same size and mode as the first,
+      // otherwise the two pages print at different sizes and do not match when
+      // put together (that was the complaint).
       if (capturedPages.length && capturedPages[0].size) {
         size = capturedPages[0].size;
       }
 
-      // Customer ne phone landscape me pakda ho, ya crop ke kone alag kram
-      // me kheenche hon, to warp ka output 90° ghuma hua aata hai — card
-      // tirchha/side me dikhta tha. Target ka rukh (ID card hamesha
-      // landscape) se mila kar zaroorat ho to ghuma do.
+      // If the customer held the phone in landscape, or dragged the crop corners in
+      // a different order, the warp output comes out rotated by 90° — the card
+      // looked skewed/sideways. Compare with the target orientation (an ID card is
+      // always landscape) and rotate if needed.
       var flat = mkCanvas(size.w, size.h);
       var fctx = flat.getContext('2d');
       fctx.imageSmoothingQuality = 'high';
@@ -1134,7 +1135,7 @@
       capturedPages.push({ canvas: flat, shape: size.shape, size: size, mode: mode });
       askBackSide();
     } catch (e) {
-      problem('Kuch gadbad ho gayi', 'Ek baar dobara koshish karo.');
+      problem('Something went wrong', 'Please try once more.');
     } finally {
       busy = false;
       if (keep) keep.width = keep.height = 0;
@@ -1151,48 +1152,48 @@
     var n = capturedPages.length;
     var prev = capturedPages[n - 1].canvas.toDataURL('image/jpeg', 0.72);
     panel(
-      '<h3>' + (n === 1 ? 'Front side ho gaya' : 'Back side ho gaya') + '</h3>' +
+      '<h3>' + (n === 1 ? 'Front side done' : 'Back side done') + '</h3>' +
       '<img id="ssPrev" src="' + prev + '" alt="scan preview">' +
       '<p style="margin-top:16px">' +
         (n === 1
-          ? 'Bas itna hi ho to <b>Print Karo</b> dabao \u2014 peeche bhi chhapa ho to neeche se add kar lo.'
-          : 'Bas itna hi ho to <b>Print Karo</b> dabao, ya ek aur page add kar lo.') +
+          ? 'If that\'s all, tap <b>Print</b>. To print the back side as well, add it below.'
+          : 'If that\'s all, tap <b>Print</b>, or add one more page.') +
       '</p>' +
-      // Kaunsa rukh sahi hai, ye photo dekh kar machine nahi bata sakti —
-      // uske liye likha padhna padta. Isliye ek tap ka button: har tap
-      // 90°. Ulta aaya ho to do tap.
+      // A machine cannot tell the correct orientation just by looking at the photo —
+      // that would require reading the text. So there is a one-tap button: each tap
+      // turns 90°. If it came out upside down, tap twice.
       '<div class="row" style="margin-bottom:6px">' +
-        '<button class="ssBtn ssSec" id="ssRot">\uD83D\uDD04 Ghumao (90°)</button>' +
+        '<button class="ssBtn ssSec" id="ssRot">\uD83D\uDD04 Rotate (90°)</button>' +
       '</div>' +
-      // Aam customer sirf ek side scan karke aage badhta hai — isliye
-      // wahi PEHLE aur wahi hara. Back side wala uske neeche, halke rang
-      // me, "+" ke saath, taaki dono alag dikhein.
+      // A typical customer scans only one side and moves on — so that
+      // button comes FIRST and is green. The back-side button sits below it in a
+      // lighter colour with a "+", so the two look different.
       '<div class="row">' +
-        '<button class="ssBtn ssPri" id="ssDone">\u2705 Ho Gaya — Print Karo</button>' +
+        '<button class="ssBtn ssPri" id="ssDone">✅ Done — Print</button>' +
       '</div>' +
       '<div class="row" style="margin-top:8px">' +
         '<button class="ssBtn ssAdd" id="ssMore">\u2795 ' +
-          (n === 1 ? 'Add Back Side' : 'Ek Aur Page Add Karo') + '</button>' +
+          (n === 1 ? 'Add Back Side' : 'Add Another Page') + '</button>' +
       '</div>' +
-      '<div id="ssCount">' + n + (n === 1 ? ' page' : ' pages') + ' taiyaar</div>'
+      '<div id="ssCount">' + n + (n === 1 ? ' page' : ' pages') + ' ready</div>'
     );
     el('ssMore').onclick = function () {
       hidePanel();
       el('ssHint').textContent = capturedPages.length === 1
-        ? 'Ab back side frame ke andar rakho'
-        : 'Agla page frame ke andar rakho';
+        ? 'Now place the back side inside the frame'
+        : 'Place the next page inside the frame';
       if (source === 'file') pickFile(); else startCamera();
     };
     el('ssRot').onclick = rotateLastScan;
     el('ssDone').onclick = finish;
   }
 
-  // Aakhri scan ko 90° ghumao aur preview dobara dikhao.
+  // Rotate the last scan by 90° and show the preview again.
   function rotateLastScan() {
     var p = capturedPages[capturedPages.length - 1];
     if (!p || !p.canvas) return;
     var s = p.canvas;
-    var c = mkCanvas(s.height, s.width);          // naap ulta ho jaata hai
+    var c = mkCanvas(s.height, s.width);          // the dimensions swap
     var x = c.getContext('2d');
     x.imageSmoothingQuality = 'high';
     x.translate(c.width / 2, c.height / 2);
@@ -1200,37 +1201,37 @@
     x.drawImage(s, -s.width / 2, -s.height / 2);
     p.canvas = c;
     if (p.size) p.size = { w: c.width, h: c.height, shape: p.size.shape };
-    s.width = s.height = 0;                       // purana canvas chhod do
+    s.width = s.height = 0;                       // release the old canvas
     askBackSide();
   }
 
   // ═════════════════════════════════════════════════════════════════
-  //  FINISH — banaye hue page purane flow ko de do
+  //  FINISH — hand the finished pages to the existing flow
   //
-  //  Yahan se aage kuch naya nahi hota: wahi pages[], wahi preview,
-  //  wahi paper/color/copies, wahi payment, wahi print job.
-  //  Print Agent ko pata bhi nahi chalta ki file scanner se aayi hai.
+  //  Nothing new happens from here on: the same pages[], the same preview,
+  //  the same paper/color/copies, the same payment, the same print job.
+  //  The Print Agent cannot even tell that the file came from the scanner.
   // ═════════════════════════════════════════════════════════════════
   // ═══════════════════════════════════════════════════════════════
-  //  ID CARD → EK A4 PAGE, ASLI NAAP ME
+  //  ID CARD → ONE A4 PAGE, AT REAL SIZE
   // ═══════════════════════════════════════════════════════════════
-  // Pehle har scan alag page banta tha aur us page par card ko A4 ki
-  // chaudai tak KHEENCH diya jaata tha — isliye Aadhaar poore page jitna
-  // bada chhapta tha aur front/back do alag kagaz par jaate the.
+  // Each scan used to become a separate page, and the card was STRETCHED to the
+  // width of A4 on that page — so the Aadhaar printed as large as the whole page
+  // and the front/back went onto two separate sheets.
   //
-  // Asli Aadhaar/PAN card CR80 hota hai: 85.6 x 54 mm. Dukaan me uski
-  // photocopy hamesha isi naap me nikalti hai, warna ID kaam ki nahi
-  // rehti. Isliye ab card ko A4 ke andar uske ASLI naap par rakha jaata
-  // hai, aur front-back dono ek hi kagaz par — upar-neeche, barabar naap,
-  // beech me 10 mm ka faasla (kaatne/mod ne ke liye kaafi).
+  // A real Aadhaar/PAN card is CR80: 85.6 x 54 mm. In a shop its photocopy
+  // always comes out at this size, otherwise the ID is useless.
+  // So the card is now placed inside the A4 at its REAL size,
+  // with front and back on the same sheet — one above the other, equal size,
+  // with a 10 mm gap between them (enough for cutting/folding).
   var CARD_W_MM = 85.6, CARD_H_MM = 54;      // CR80 — Aadhaar / PAN / DL
   var A4_W_MM = 210, A4_H_MM = 297;
   var SHEET_DPI = 300;
-  var CARD_GAP_MM = 10;                      // do card ke beech
+  var CARD_GAP_MM = 10;                      // between two cards
 
-  // Card ko hamesha seedha (landscape) rakho — customer ne phone portrait
-  // me pakda ho ya landscape me, chhapne par dono side ek jaisi dikhni
-  // chahiye. Zaroorat pade to 90° ghuma kar rakh dete hain.
+  // Always keep the card straight (landscape) — whether the customer held the phone
+  // in portrait or landscape, both sides must look the same when printed.
+  // Rotate by 90° if needed.
   function drawUpright(ctx, src, x, y, w, h) {
     var srcTall = src.height > src.width;
     var boxTall = h > w;
@@ -1242,16 +1243,16 @@
     ctx.restore();
   }
 
-  // A4 par ek box banao aur us box me document ko poora dikhao (contain
-  // fit — kuch katta nahi, khinchta nahi). Box ke beech me.
+  // Make a box on the A4 and show the whole document inside it (contain
+  // fit — nothing is cut, nothing is stretched). Centered in the box.
   function fitInBox(ctx, src, bx, by, bw, bh) {
     var r = Math.min(bw / src.width, bh / src.height);
     var w = src.width * r, h = src.height * r;
     ctx.drawImage(src, bx + (bw - w) / 2, by + (bh - h) / 2, w, h);
   }
 
-  // Composed sheet A4 hi hai — usse page par 1:1 bithao, na chhota na hila
-  // hua. Isse card asli naap (85.6x54 mm) me chhapta hai.
+  // The composed sheet is itself A4 — place it on the page 1:1, neither smaller nor
+  // shifted. This way the card prints at its real size (85.6x54 mm).
   function fitSheetsToPage() {
     if (typeof pages === 'undefined' || !pages.length) return;
     for (var i = 0; i < pages.length; i++) {
@@ -1261,7 +1262,7 @@
       it.w = A4_DISPLAY_W; it.h = A4_DISPLAY_H;
       it._ix = 0; it._iy = 0; it._iw = it.w; it._ih = it.h;
       it._baseW = it.w; it._baseH = it.h;
-      it.locked = true;              // hilane se naap bigadta hai
+      it.locked = true;              // moving it would spoil the size
     }
   }
 
@@ -1275,7 +1276,7 @@
     return { canvas: c, ctx: ctx, W: W, H: H, mm: mm };
   }
 
-  // Certificate: har side apne A4 page par, poora bhar kar (10mm margin)
+  // Certificate: each side on its own A4 page, filling it (10mm margin)
   function composeA4Full(list) {
     var out = [];
     for (var i = 0; i < list.length; i++) {
@@ -1287,8 +1288,8 @@
     return out;
   }
 
-  // Admit card / marksheet: front upar wale aadhe me, back neeche wale
-  // aadhe me — ek hi kagaz par. Screenshot wala layout.
+  // Admit card / marksheet: front in the top half, back in the bottom
+  // half — on a single sheet. The screenshot layout.
   function composeHalfSheet(list) {
     var s = blankA4();
     var m = Math.round(12 * s.mm);
@@ -1312,8 +1313,8 @@
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, W, H);
 
-    // Screenshot wala layout: dono card UPAR, aajubaju, beech me faasla.
-    // Ek hi side ho to wahi naap, upar, beech me — customer ne yahi kaha.
+    // The screenshot layout: both cards at the TOP, side by side, with a gap between.
+    // With only one side: the same size, at the top, centered — this is what the customer asked for.
     var top = Math.round(20 * mm);
     var totalW = list.length * cw + (list.length - 1) * gap;
     var x = Math.round((W - totalW) / 2);
@@ -1324,8 +1325,8 @@
     return sheet;
   }
 
-  // Card hai ya poora kagaz? Card wale ko asli naap chahiye, kagaz wale
-  // ko poora page bharna chahiye — dono ka ilaaj alag hai.
+  // A card or a full sheet of paper? A card needs its real size, a full sheet
+  // needs to fill the page — each gets different treatment.
   function allCards(list) {
     if (!list.length || list.length > 2) return false;
     for (var i = 0; i < list.length; i++) {
@@ -1337,25 +1338,25 @@
   function finish() {
     if (!capturedPages.length) { quit(); return; }
     try {
-      // ── 1. Purane flow ka bacha hua state saaf karo ──
+      // ── 1. Clear the leftover state of the old flow ──
       //
-      // ORIGINAL_PDF sabse zaroori hai. Ye hota tha:
-      //   customer PDF upload kare → "Wapas" dabaye (pages saaf hote hain,
-      //   ORIGINAL_PDF nahi) → Smart Scanner se scan kare → "Sab Theek Hai"
-      // Aage buildOutputFile() ka pdfUntouched() shortcut sach maan leta
-      // tha aur shop ko SCAN ki jagah PURANI PDF chali jaati thi. Customer
-      // scan ka paisa deta, print kuch aur nikalta.
+      // ORIGINAL_PDF is the most important. This used to happen:
+      //   the customer uploads a PDF → presses "Back" (pages are cleared,
+      //   ORIGINAL_PDF is not) → scans with the Smart Scanner → "Everything is fine"
+      // Later the pdfUntouched() shortcut in buildOutputFile() took this as true
+      // and the OLD PDF went to the shop instead of the SCAN. The customer
+      // paid for the scan and something else was printed.
       //
-      // pages bhi saaf — Mini Print se wapas aane par uske page bache
-      // reh sakte hain aur scan unke aage jud jaata.
+      // Clear pages too — after returning from Mini Print its pages can remain
+      // and the scan would be appended after them.
       if (typeof pages !== 'undefined' && pages.length) pages.length = 0;
       try { ORIGINAL_PDF = null; } catch (e) {}
       try { activePageIdx = 0; } catch (e) {}
 
-      // ── 2. Scanner hamesha A4 portrait par ──
-      // Dono card (Big Size aur Smart Scanner) ek hi screen par hain.
-      // Customer pehle "Big Size Print" chhoo le to state.paperSize 'a3'
-      // reh jaata tha aur scan A3 par chhapta — customer se zyada paisa.
+      // ── 2. The scanner always uses A4 portrait ──
+      // Both cards (Big Size and Smart Scanner) are on the same screen.
+      // If the customer touched "Big Size Print" first, state.paperSize stayed 'a3'
+      // and the scan printed on A3 — charging the customer more.
       try {
         state.paperSize = 'a4';
         state.orientation = 'portrait';
@@ -1364,15 +1365,15 @@
         if (typeof applyPaper === 'function') applyPaper();
       } catch (e) {}
 
-      // ── 3. Page(s) banao ──
-      // ID card (Aadhaar/PAN/DL): front+back EK hi A4 par, asli naap me.
-      // Poora kagaz scan kiya ho: pehle jaisa, har scan ka apna page.
+      // ── 3. Build the page(s) ──
+      // ID card (Aadhaar/PAN/DL): front+back on ONE A4, at real size.
+      // A full sheet was scanned: as before, each scan gets its own page.
       var T = currentTpl();
       var composed = true;
       if (T.id === 'idcard' || (T.id === 'auto' && allCards(capturedPages))) {
-        addPage([composeCardSheet(capturedPages)], true);        // ek page, asli card naap
+        addPage([composeCardSheet(capturedPages)], true);        // one page, real card size
       } else if (T.id === 'half') {
-        addPage([composeHalfSheet(capturedPages)], true);        // front upar, back neeche
+        addPage([composeHalfSheet(capturedPages)], true);        // front on top, back below
       } else if (T.id === 'a4full') {
         composeA4Full(capturedPages).forEach(function (c) { addPage([c], true); });
       } else {
@@ -1380,22 +1381,22 @@
         capturedPages.forEach(function (p) { addPage([p.canvas], true); });
       }
 
-      // ⚠️ ZAROORI: createItemFromCanvas() har document ko page ke 90% par
-      // fit karta hai (maxWPercent 0.92, phir h > a4H*0.9 wali line usse 0.9
-      // par le aati hai). Aam document ke liye theek hai — par hamari sheet
-      // KHUD A4 hai aur usme margin pehle se bana hua hai. 90% par lagane se
-      // 85.6 mm ka card 77 mm ka chhapta tha. Yahi "chhota aa raha hai" tha.
-      // Sheet ko poore page par bitha do aur lock kar do.
+      // ⚠️ IMPORTANT: createItemFromCanvas() fits every document to 90% of the page
+      // (maxWPercent 0.92, then the h > a4H*0.9 line brings it down to 0.9).
+      // That is fine for normal documents — but our sheet is ITSELF A4 and already
+      // has its margins built in. Placing it at 90% printed an 85.6 mm card at
+      // 77 mm. That was the "it comes out small" problem.
+      // Place the sheet on the full page and lock it.
       if (composed) fitSheetsToPage();
 
       stopCamera();
       el('ssWrap').classList.remove('on');
 
-      // ── 4. Upload screen chhupao ──
-      // Scanner secUpload ke andar wale card se khulta hai, isliye wo
-      // screen abhi bhi khuli padi hai. showChoiceScreen() sirf secEditor
-      // chhupata hai — secUpload ko nahi. Bina iske choice card ke neeche
-      // poora upload page (aur saare service card) dikhta reh jaata tha.
+      // ── 4. Hide the upload screen ──
+      // The scanner opens from a card inside secUpload, so that screen is
+      // still open. showChoiceScreen() only hides secEditor —
+      // not secUpload. Without this, the whole upload page (and all the service
+      // cards) stayed visible below the choice card.
       if (typeof hide === 'function') {
         hide('secUpload'); hide('secMini');
         hide('secEditor'); hide('secPreviewStep');
@@ -1406,12 +1407,12 @@
       capturedPages = [];
 
       if (typeof toast === 'function') {
-        toast('📸 ' + n + (n === 1 ? ' page' : ' pages') + ' scan ho gaye');
+        toast('📸 ' + n + (n === 1 ? ' page' : ' pages') + ' scanned');
       }
-      // Purane flow ka wahi screen jo upload ke baad aata hai
+      // The same screen of the existing flow that appears after an upload
       if (typeof showChoiceScreen === 'function') showChoiceScreen();
     } catch (e) {
-      problem('Page taiyaar nahi ho paya', 'Ek baar dobara koshish karo.');
+      problem('Could not prepare the page', 'Please try once more.');
     }
   }
 
@@ -1425,55 +1426,55 @@
   }
 
   // ═════════════════════════════════════════════════════════════════
-  //  ENTRY POINT — service card isi ko bulata hai
+  //  ENTRY POINT — the service card calls this
   // ═════════════════════════════════════════════════════════════════
   // ═══════════════════════════════════════════════════════════════
   //  A4 LAYOUT TEMPLATE
   // ═══════════════════════════════════════════════════════════════
-  // Auto-identify kabhi-kabhi galat naap deta hai (haath me pakda card,
-  // chamak, rangeen background). Customer pehle hi bata de ki kya scan
-  // kar raha hai, to naap ANDAAZE se nahi — TAY hokar aata hai.
+  // Auto-identify sometimes gets the size wrong (a card held in the hand,
+  // glare, a colourful background). If the customer says up front what is being
+  // scanned, the size is not GUESSED — it is FIXED.
   //
-  //  idcard — CR80 85.6x54mm, asli card naap. Ek side ho to beech me,
-  //           dono side hon to upar aajubaju (screenshot wala layout).
-  //  a4full — poora A4 bharo, chhota margin. Certificate, letter, deed.
-  //  half   — aadha page. Admit card / marksheet: front upar wale aadhe
-  //           me, back neeche wale aadhe me — ek hi kagaz par dono.
-  //  auto   — pehle jaisa, system khud naap pehchane.
+  //  idcard — CR80 85.6x54mm, the real card size. One side goes in the middle,
+  //           two sides go side by side at the top (the screenshot layout).
+  //  a4full — fill the whole A4, small margin. Certificate, letter, deed.
+  //  half   — half a page. Admit card / marksheet: front in the top half,
+  //           back in the bottom half — both on a single sheet.
+  //  auto   — as before, the system detects the size itself.
   var TEMPLATES = [
     { id: 'idcard', icon: '\uD83E\uDeaa', title: 'ID Card',
-      sub: 'Aadhaar · PAN · Voter · DL — front & back ek page par',
-      hint: 'Card ko frame ke andar rakho' },
+      sub: 'Aadhaar · PAN · Voter · DL — front & back on one page',
+      hint: 'Place the card inside the frame' },
     { id: 'a4full', icon: '\uD83D\uDCDC', title: 'Certificate',
-      sub: 'Poora A4 document — marksheet, certificate, letter',
-      hint: 'Poora page frame ke andar rakho' },
+      sub: 'Full A4 document — marksheet, certificate, letter',
+      hint: 'Place the whole page inside the frame' },
     { id: 'half',   icon: '\uD83C\uDFAB', title: 'Admit Card / Marksheet',
-      sub: 'Aadha page — front upar, back neeche, ek hi kagaz par',
-      hint: 'Document ko frame ke andar rakho' },
+      sub: 'Half page — front on top, back below, on the same sheet',
+      hint: 'Place the document inside the frame' },
     { id: 'auto',   icon: '\uD83E\uDD16', title: 'Auto',
-      sub: 'System khud naap pehchane',
-      hint: 'Document ko frame ke andar rakho' }
+      sub: 'Let the system detect the size',
+      hint: 'Place the document inside the frame' }
   ];
   var tpl = TEMPLATES[3];                       // default = auto
 
   function currentTpl() { return tpl || TEMPLATES[3]; }
 
-  // Har layout ka chhota naksha — shabdon se zyada ek nazar me samajh
-  // aata hai ki kagaz par kya kahan chhapega. A4 ka anupaat (36x51) hi
-  // rakha hai taaki jo dikhe wahi mile.
+  // A small map of each layout — one glance shows better than words
+  // what will print where on the paper. The A4 ratio (36x51) is kept
+  // so what you see is what you get.
   function tplThumb(id) {
     var box = '<rect x="1.5" y="1.5" width="33" height="48" rx="2.5" ' +
               'fill="#fff" stroke="#c8cdd4" stroke-width="1.4"/>';
     var inner = '';
     if (id === 'idcard') {
-      // dono card upar, aajubaju
+      // both cards on top, side by side
       inner = '<rect x="4.5" y="6" width="12.6" height="8" rx="1" fill="#7c3aed"/>' +
               '<rect x="19" y="6" width="12.6" height="8" rx="1" fill="#a78bfa"/>';
     } else if (id === 'a4full') {
-      // poora page bhara hua
+      // the whole page filled
       inner = '<rect x="5" y="5" width="26" height="41" rx="1.5" fill="#7c3aed"/>';
     } else if (id === 'half') {
-      // upar aadha + neeche aadha
+      // top half + bottom half
       inner = '<rect x="4.5" y="4.5" width="27" height="19.5" rx="1.5" fill="#7c3aed"/>' +
               '<rect x="4.5" y="27" width="27" height="19.5" rx="1.5" fill="#a78bfa"/>';
     } else {
@@ -1488,9 +1489,9 @@
 
   function askTemplate() {
     showBar(false);
-    var html = '<h3>Kya scan kar rahe ho?</h3>' +
-      '<p>Sahi chunne se naap apne aap theek baithta hai — crop ke baad ' +
-      'document seedha layout me lock ho jayega.</p><div class="ssTpl">';
+    var html = '<h3>What are you scanning?</h3>' +
+      '<p>Choosing the right one sets the size automatically — after cropping, ' +
+      'the document locks straight into the layout.</p><div class="ssTpl">';
     for (var i = 0; i < TEMPLATES.length; i++) {
       var t = TEMPLATES[i];
       html += '<button class="ssTplBtn" data-i="' + i + '">' +
@@ -1499,7 +1500,7 @@
               '</button>';
     }
     html += '</div><div class="row">' +
-            '<button class="ssBtn ssSec" id="ssTplQuit">Band karo</button></div>';
+            '<button class="ssBtn ssSec" id="ssTplQuit">Close</button></div>';
     panel(html);
 
     var btns = el('ssPanel').querySelectorAll('.ssTplBtn');
@@ -1514,7 +1515,7 @@
   }
 
   // ═════════════════════════════════════════════════════════════════
-  //  PHOTO KAHAN SE — camera ya device ki file
+  //  WHERE THE PHOTO COMES FROM — the camera or a file on the device
   // ═════════════════════════════════════════════════════════════════
   function camAvailable() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia &&
@@ -1527,22 +1528,22 @@
       ? '<button class="ssTplBtn" id="ssSrcCam">' +
           '<span class="ssTplIco">\uD83D\uDCF7</span>' +
           '<span class="ssTplTxt"><b>Camera</b>' +
-          '<i>Abhi photo kheencho \u2014 document saamne ho to yahi tez hai</i>' +
+          '<i>Take a photo now — fastest when the document is in front of you</i>' +
           '</span></button>'
       : '';
-    panel('<h3>Photo kahan se lein?</h3>' +
-      '<p>Dono ka nateeja ek jaisa \u2014 kone theek karna aur safai dono me hoti hai.</p>' +
+    panel('<h3>Where should the photo come from?</h3>' +
+      '<p>Both give the same result — corner fixing and cleanup happen in both.</p>' +
       '<div class="ssTpl">' + cam +
         '<button class="ssTplBtn" id="ssSrcFile">' +
           '<span class="ssTplIco">\uD83D\uDCC1</span>' +
           '<span class="ssTplTxt"><b>Files</b>' +
-          '<i>Phone ya computer me pehle se rakhi photo chuno</i>' +
+          '<i>Choose a photo already on your phone or computer</i>' +
           '</span></button>' +
       '</div>' +
       (camAvailable() ? ''
-        : '<p>Is browser me camera nahi chal raha, isliye sirf Files ka rasta khula hai.</p>') +
+        : '<p>The camera does not work in this browser, so only the Files option is available.</p>') +
       '<div class="row">' +
-        '<button class="ssBtn ssSec" id="ssSrcBack">\u2039 Peeche</button>' +
+        '<button class="ssBtn ssSec" id="ssSrcBack">‹ Back</button>' +
       '</div>');
     if (el('ssSrcCam')) {
       el('ssSrcCam').onclick = function () {
@@ -1556,28 +1557,28 @@
   function pickFile() {
     var fi = el('ssFile');
     if (!fi) {
-      return fileProblem('File chunne ka box nahi mila',
-        'Page ko refresh karke dobara koshish karo.');
+      return fileProblem('File picker not found',
+        'Refresh the page and try again.');
     }
     fi.click();
   }
 
-  // problem() ka "Dobara photo lo" camera kholta hai — file wale raste me
-  // wo galat jagah le jaata. Isliye uska file wala jodidar.
+  // problem()'s "Take the photo again" opens the camera — on the file path
+  // that would lead to the wrong place. Hence its file-path counterpart.
   function fileProblem(title, detail) {
     showBar(false);
     panel('<h3>' + title + '</h3><p>' + detail + '</p>' +
           '<div class="row">' +
-          '<button class="ssBtn ssPri" id="ssRetryF">Doosri file chuno</button>' +
-          '<button class="ssBtn ssSec" id="ssQuitF">Band karo</button>' +
+          '<button class="ssBtn ssPri" id="ssRetryF">Choose another file</button>' +
+          '<button class="ssBtn ssSec" id="ssQuitF">Close</button>' +
           '</div>');
     el('ssRetryF').onclick = pickFile;
     el('ssQuitF').onclick = quit;
   }
 
-  // Camera 1920x1440 par bandha hua hai; gallery ki photo 50MP tak ho
-  // sakti hai. Utni badi photo par detection aur warp phone ki memory kha
-  // jaate hain, isliye kaam se pehle naap ghata dete hain.
+  // The camera is limited to 1920x1440; a gallery photo can be up to 50MP.
+  // On a photo that large, detection and warp eat up the phone's memory,
+  // so the size is reduced before any work.
   var FILE_MAX = 2600;
 
   function loadPickedImage(f) {
@@ -1589,7 +1590,7 @@
         im.onerror = function () { URL.revokeObjectURL(url); rej(new Error('load')); };
         im.src = url;
       }
-      // createImageBitmap tez hai aur EXIF ka ghumav khud theek karta hai.
+      // createImageBitmap is fast and fixes the EXIF rotation by itself.
       if (window.createImageBitmap) {
         var p;
         try { p = createImageBitmap(f, { imageOrientation: 'from-image' }); }
@@ -1606,23 +1607,23 @@
     busy = true;
     stopCamera();
     try {
-      processing('File padhi ja rahi hai\u2026');
+      processing('Reading file…');
       await breathe();
 
       var img = null;
       try { img = await loadPickedImage(f); }
       catch (e) {
-        return fileProblem('Ye photo browser khol nahi paaya',
-          'HEIC photo aksar nahi khulti. Camera Settings me photo format ' +
-          '"JPEG / Most compatible" karke dobara kheencho, ya photo ko JPG ' +
-          'me badal kar chuno.');
+        return fileProblem('The browser could not open this photo',
+          'HEIC photos often do not open. In Camera Settings, set the photo format to ' +
+          '"JPEG / Most compatible" and take the photo again, or convert the photo to JPG ' +
+          'and choose it.');
       }
 
       var iw = img.width || img.naturalWidth;
       var ih = img.height || img.naturalHeight;
       if (!iw || !ih) {
-        return fileProblem('Photo khaali mili',
-          'Google Photos ya Drive ki jagah phone ki Gallery se chuno.');
+        return fileProblem('The photo came out empty',
+          'Choose from the phone\'s Gallery instead of Google Photos or Drive.');
       }
 
       var k = Math.min(1, FILE_MAX / Math.max(iw, ih));
@@ -1632,11 +1633,11 @@
       octx.drawImage(img, 0, 0, original.width, original.height);
       if (img.close) { try { img.close(); } catch (e3) {} }
 
-      processing('Document dhoondh rahe hain\u2026');
+      processing('Looking for the document…');
       await breathe();
 
-      // Roshni/dhundhlepan/chamak wali jaanch yahan JAAN-BOOJH kar nahi —
-      // upar file ke sar par iski wajah likhi hai.
+      // The lighting/blur/glare checks are DELIBERATELY not done here —
+      // the reason is written at the top of the file.
       var det = detectQuad(original, DETECT_W);
       var initPts = det.quad && det.confidence >= MIN_CONFIDENCE
         ? det.quad.map(function (p) { return { x: p[0], y: p[1] }; })
@@ -1649,39 +1650,39 @@
       original = null;
       openCropOn(keep, initPts,
         function (warpedRaw) { onScanCropped(warpedRaw, keep); },
-        function () {                       // cancel — chunne wali screen par wapas
+        function () {                       // cancel — back to the chooser screen
           el('ssWrap').style.visibility = '';
           keep.width = keep.height = 0;
           askSource();
         });
     } catch (e4) {
-      fileProblem('Kuch gadbad ho gayi', 'Ek baar dobara koshish karo.');
+      fileProblem('Something went wrong', 'Please try once more.');
     } finally {
       busy = false;
     }
   }
 
   function startSmartScanner() {
-    // Camera ki ijazat SIRF ab maangte hain, page khulte hi nahi
+    // Camera permission is requested ONLY now, not when the page opens
     // (spec section 42)
-    // Pehle yahan camera na hone par scanner khulta hi nahi tha. Ab Files
-    // ka rasta bhi hai, isliye rokna galat hoga — camera na chale to
-    // askSource() sirf Files dikha dega.
+    // The scanner used to refuse to open when there was no camera. Now there is
+    // also the Files path, so blocking would be wrong — if the camera does not
+    // work, askSource() will simply show only Files.
     mount();
     capturedPages = [];
     tpl = null;
     source = 'cam';
     el('ssWrap').classList.add('on');
-    el('ssHint').textContent = 'Document ko frame ke andar rakho';
-    // Pehle layout poochho — camera baad me. Isse naap andaaze par nahi,
-    // customer ke jawab par tay hota hai.
+    el('ssHint').textContent = 'Place the document inside the frame';
+    // Ask for the layout first — the camera comes later. This way the size is
+    // decided by the customer's answer, not by a guess.
     askTemplate();
   }
 
   window.startSmartScanner = startSmartScanner;
 
-  // Sirf test page ke liye. Production me __SS_TEST__ kabhi set nahi hota,
-  // isliye customer ke browser me ye chalta hi nahi.
+  // Only for the test page. __SS_TEST__ is never set in production,
+  // so this never runs in a customer's browser.
   if (window.__SS_TEST__) {
     window.__ss = {
       detectQuad: detectQuad, warp: warp, enhance: enhance,
