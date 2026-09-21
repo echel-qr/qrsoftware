@@ -5,6 +5,9 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Super Admin - Echel</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -698,7 +701,7 @@ input,select,textarea{border:1.5px solid #e3e5ec;border-radius:12px;
       <h2><span>📦 Easy Installer (.exe) URL</span></h2>
       <p style="font-size:12px;color:#6b6870;margin-bottom:12px;">To avoid the GitHub/Render file-size limit, upload the new .exe to Cloudinary, then paste its URL here.</p>
       <div style="display:flex;gap:10px;">
-        <input type="text" id="installerUrlInput" placeholder="https://res.cloudinary.com/.../QRSePrint-Setup.exe" style="flex:1;padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:13px;">
+        <input type="text" id="installerUrlInput" placeholder="https://github.com/.../releases/download/.../Echel-Agent-V2.exe" style="flex:1;padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:13px;">
         <button class="filter-tab" style="padding:11px 22px;background:#00c853;color:#fff;border-color:#00c853;font-size:13px;white-space:nowrap;" onclick="updateInstallerUrl()">💾 Save</button>
       </div>
       <p style="font-size:11px;color:#6b6870;margin-top:8px;" id="installerUrlUpdated"></p>
@@ -1644,7 +1647,7 @@ function downloadBackup(){
     .then(b => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);
-      a.download = 'qrseprint-backup-' + new Date().toISOString().slice(0,10) + '.json';
+      a.download = 'echel-backup-' + new Date().toISOString().slice(0,10) + '.json';
       a.click();
     })
     .catch(e => alert('❌ ' + e.message));

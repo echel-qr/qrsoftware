@@ -42,7 +42,7 @@ http.createServer((req,res)=>{
     const banner='<div style="position:fixed;bottom:10px;right:10px;z-index:99999;background:#25282c;color:#fff;padding:7px 12px;border-radius:6px;font:10px Segoe UI;pointer-events:none">LOCAL DESIGN PREVIEW · LIVE ACTIONS DISABLED</div>';
     let preview='';
     if(u.pathname==='/preview/superadmin')preview='<script>document.addEventListener("DOMContentLoaded",()=>{document.getElementById("loginScreen").classList.add("hidden");document.getElementById("panel").classList.remove("hidden");organizeSections();navTo("homepage");loadHomepageConfig();});</script>';
-    if(u.pathname==='/preview/owner')preview='<script>document.addEventListener("DOMContentLoaded",()=>{document.getElementById("loginScreen").classList.add("hidden");document.getElementById("adminPanel").classList.remove("hidden");navTo("overview");});</script>';
+    if(u.pathname==='/preview/owner')preview='<script>document.addEventListener("DOMContentLoaded",()=>{document.getElementById("loginScreen").classList.add("hidden");document.getElementById("adminPanel").classList.remove("hidden");navTo(new URLSearchParams(location.search).get("sect")||"overview");});</script>';
     data=Buffer.from(html.replace('</body>',banner+preview+'</body>'));
   }
   res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(data);

@@ -568,7 +568,7 @@ app.use(express.static('public', {
 
 // ─── Canonical host redirect ───
 // Old customers' QR codes / bookmarks / links shared on WhatsApp still point to
-// qr-se-print.onrender.com. Send them to the new domain — path,
+// the onrender.com address or www. Send them to the canonical domain — path,
 // query string, everything as-is. Until the PRIMARY_HOST env is set, the redirect
 // stays off (to avoid getting stuck on staging/local).
 const PRIMARY_HOST = process.env.PRIMARY_HOST || '';
@@ -8289,7 +8289,7 @@ app.get('/api/admin/export-data', verifyToken, async (req, res) => {
     const stamp = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Content-Disposition',
-      `attachment; filename="QRSePrint-${id}-${stamp}.json"`);
+      `attachment; filename="Echel-${id}-${stamp}.json"`);
     res.send(JSON.stringify(data, null, 2));
     console.log(`Data export: ${id} (${jobs.length} jobs)`);
   } catch (err) {

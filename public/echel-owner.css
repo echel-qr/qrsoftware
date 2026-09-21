@@ -1,154 +1,315 @@
-/* Echel owner portal: a horizontal workspace and an editorial sign-in page. */
-body.echel-owner{--owner-ink:#202526;--owner-muted:#686f70;--owner-paper:#f6f5f1;--owner-line:#deded7;--owner-red:#b82530;background:var(--owner-paper);color:var(--owner-ink);font-family:'Inter','Noto Sans Meetei Mayek',sans-serif}
-.echel-owner button,.echel-owner input,.echel-owner select{font-family:inherit}
-.echel-owner button:focus-visible,.echel-owner a:focus-visible,.echel-owner select:focus-visible{outline:3px solid #b82530;outline-offset:4px}
-.echel-owner>nav.owner-public-nav{background:var(--owner-paper)!important;border:0;padding:24px 5vw;box-shadow:none}
-.owner-public-nav .nav-link{background:transparent!important;color:#343b3b!important;border:0!important;font-size:12px;padding:8px}
-.owner-public-nav>div:last-child{align-items:center;gap:22px!important}
-.echel-owner select[data-i18n-select],.echel-owner select[data-i18n-select] option{background:#fff!important;color:#242b2b!important;border:1px solid #d9ddd8!important;border-radius:6px;font-size:12px;letter-spacing:0;font-weight:500;padding:9px 12px;width:auto}
+/* Echel owner portal — the sign-in page and the shop workspace.
+   Colours come from the logo: Echel red, black, white and silver.
+   Green, amber and red appear only where they mean something
+   (online, a warning, a problem). */
+body.echel-owner{
+  --o-red:#c81e28;--o-red-dark:#a8121b;--o-red-soft:#fdeeee;--o-red-line:#f2c8cb;
+  --o-ink:#16181b;--o-ink-2:#3b4148;--o-muted:#6b727a;--o-faint:#9aa1a8;
+  --o-line:#e3e6e9;--o-line-2:#d3d8dc;--o-bg:#f4f5f6;--o-silver:#eef0f2;--o-white:#ffffff;
+  --o-ok:#17663f;--o-ok-soft:#e9f7ef;--o-ok-line:#bfe5cf;
+  --o-warn:#8a5a12;--o-warn-soft:#fff6e5;--o-warn-line:#f1d9a6;
+  --o-shadow:0 1px 2px rgba(22,24,27,.04),0 6px 20px -12px rgba(22,24,27,.10);
+  background:var(--o-bg);color:var(--o-ink);font-family:'Inter','Noto Sans Meetei Mayek','Segoe UI',sans-serif;
+}
+.echel-owner button,.echel-owner input,.echel-owner select,.echel-owner textarea{font-family:inherit}
+.echel-owner button:focus-visible,.echel-owner a:focus-visible,.echel-owner select:focus-visible,.echel-owner input:focus-visible{outline:3px solid var(--o-red);outline-offset:3px}
+
+/* ── Public bar above the sign-in page ── */
+.echel-owner>nav.owner-public-nav{background:var(--o-white)!important;border:0;border-bottom:1px solid var(--o-line);padding:16px 5vw;box-shadow:none;position:relative}
+.echel-owner>nav.owner-public-nav:before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--o-red)}
+.owner-public-nav .nav-link{background:transparent!important;color:var(--o-ink-2)!important;border:0!important;font-size:13px;font-weight:600;padding:8px}
+.owner-public-nav .nav-link:hover{color:var(--o-red)!important}
+.owner-public-nav>div:last-child{align-items:center;gap:18px!important}
+.echel-owner select[data-i18n-select],.echel-owner select[data-i18n-select] option{background:var(--o-white)!important;color:var(--o-ink)!important;border:1px solid var(--o-line-2)!important;border-radius:8px;font-size:12px;font-weight:600;letter-spacing:0;padding:8px 12px;width:auto}
 .echel-owner:has(#adminPanel:not(.hidden))>nav.owner-public-nav{display:none}
-.echel-owner #loginScreen{position:relative!important;inset:auto!important;display:grid!important;grid-template-columns:minmax(0,1.18fr) minmax(360px,.82fr)!important;align-items:stretch!important;max-width:1440px!important;width:100%;margin:12px auto 0!important;padding:0 5vw 48px!important;min-height:640px;background:var(--owner-paper)!important;border:0;border-radius:0;box-shadow:none;overflow:visible}
+
+/* ── Sign-in page ── */
+.echel-owner #loginScreen{position:relative!important;inset:auto!important;display:grid!important;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr)!important;align-items:stretch!important;gap:32px;max-width:1320px!important;width:100%;margin:40px auto 0!important;padding:0 5vw 56px!important;min-height:600px;background:transparent!important;border:0;border-radius:0;box-shadow:none;overflow:visible}
 .echel-owner #loginScreen.hidden{display:none!important}
-.echel-owner #loginScreen .owner-login-intro{padding:46px 55px 28px 0;display:flex;flex-direction:column;justify-content:space-between;background:transparent}
-.owner-eyebrow{font-size:10px;font-weight:750;letter-spacing:1.8px;line-height:1.6;color:#8d2530;text-transform:uppercase}
-.owner-login-intro h2{font-family:Georgia,'Noto Sans Meetei Mayek',serif;font-size:clamp(46px,5.4vw,78px);font-weight:400;line-height:1.02;letter-spacing:-3.5px;margin:24px 0;color:#212827;max-width:660px}
-.owner-login-intro h2 em{color:#b82530;font-weight:400}
-.owner-login-intro .owner-login-lead{font-size:15px;color:#646d69;max-width:370px;line-height:1.8;margin:0 0 40px}
-.owner-login-details{max-width:480px;border-top:1px solid #cdcec6;display:grid;grid-template-columns:1fr 1fr;gap:32px;padding-top:23px}
-.owner-login-details span{font-size:10px;letter-spacing:1px;color:#a54e51}
-.owner-login-details h3{font-size:14px;font-weight:650;margin:10px 0}
-.owner-login-details p{font-size:12px;color:#747974;line-height:1.7;margin:0}
-.echel-owner #loginScreen .login-card{position:relative;align-self:stretch;margin:0!important;min-width:0;padding:44px 38px!important;background:#fff!important;border:1px solid #deded7!important;border-radius:8px!important;box-shadow:0 15px 40px -36px #15221b55!important;display:flex;flex-direction:column;justify-content:center;max-width:none!important}
-.echel-owner #loginScreen .owner-form-heading{border-bottom:1px solid #e7e7e1;padding-bottom:23px;margin-bottom:28px}
-.echel-owner #loginScreen .login-card h1{font-size:30px!important;line-height:1.2;font-weight:650!important;margin:9px 0 8px;letter-spacing:-1px;color:#252c2a!important;text-align:left!important}
-.echel-owner #loginScreen .login-card p{font-size:13px!important;color:#737976!important;margin:0!important;line-height:1.65}
-.echel-owner #loginScreen label{font-size:12px!important;color:#424a46!important;letter-spacing:0;text-transform:none;font-weight:600}
-.echel-owner #loginScreen .form-group{gap:9px;margin-bottom:22px}
-.echel-owner #loginScreen input:not([type=checkbox]){height:49px;padding:13px 14px!important;background:#fbfbf8!important;border:1px solid #dadcd4!important;border-radius:5px!important;font-size:14px!important;box-shadow:none!important}
-.echel-owner #loginScreen input:focus{border-color:#9d4148!important;outline:2px solid #b825301c;outline-offset:2px}
-.echel-owner #loginScreen .btn-primary{background:#b82530!important;border-radius:5px!important;box-shadow:none!important;font-size:13px;font-weight:650;padding:16px 20px;margin:18px 0 0;min-height:50px}
-.echel-owner #loginScreen .btn-primary:hover{background:#96202a!important;transform:none}
-.owner-password-option{display:flex;align-items:center;gap:9px;font-size:12px;margin-top:-5px}
-.echel-owner #loginScreen .owner-password-option input{width:15px;height:15px;accent-color:#b82530}
-.echel-owner #loginScreen .owner-password-option label{font-weight:400!important;font-size:12px!important;cursor:pointer}
-.echel-owner #loginScreen .help-text{font-size:11px;text-align:left;line-height:1.8;margin-top:18px;color:#747974}
-.echel-owner #loginScreen .help-text a{display:block;width:fit-content;font-size:12px;color:#872b34;text-decoration:underline;text-underline-offset:3px;margin-top:4px}
-.owner-register{margin-top:30px;padding-top:20px;border-top:1px solid #e7e7e1;font-size:12px;display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;color:#6f7670}
-.owner-register a{font-weight:650;color:#2b3831;text-underline-offset:4px}
-.echel-owner .echel-contact-footer{background:var(--owner-paper);border-color:#dcded5;padding:23px 5vw;font-size:11px;box-shadow:none}
-.echel-owner #adminPanel,.echel-owner #adminPanel .app-shell{background:var(--owner-paper);min-height:calc(100vh - 80px)}
+.echel-owner #loginScreen .owner-login-intro{position:relative;overflow:hidden;padding:48px 48px 40px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(145deg,#ffffff 0%,#f7f8f9 55%,#eceff1 100%);border:1px solid var(--o-line);border-radius:20px}
+.echel-owner #loginScreen .owner-login-intro:after{content:'';position:absolute;right:-70px;bottom:-70px;width:250px;height:250px;border-radius:50%;background:url('/img/echel-logo.jpeg') center/cover;opacity:.10;pointer-events:none}
+.owner-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.6px;line-height:1.6;color:var(--o-red);text-transform:uppercase}
+.owner-login-intro h2{font-family:'Plus Jakarta Sans','Inter','Noto Sans Meetei Mayek',sans-serif;font-size:clamp(44px,5vw,70px);font-weight:800;line-height:1.02;letter-spacing:-2.4px;margin:20px 0;color:var(--o-ink);max-width:620px}
+.owner-login-intro h2 em{color:var(--o-red);font-style:normal}
+.owner-login-intro .owner-login-lead{font-size:15px;color:var(--o-muted);max-width:380px;line-height:1.8;margin:0 0 40px}
+.owner-login-details{position:relative;z-index:1;max-width:500px;border-top:1px solid var(--o-line-2);display:grid;grid-template-columns:1fr 1fr;gap:32px;padding-top:22px}
+.owner-login-details span{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--o-red)}
+.owner-login-details h3{font-size:15px;font-weight:700;margin:10px 0 6px;color:var(--o-ink)}
+.owner-login-details p{font-size:12.5px;color:var(--o-muted);line-height:1.7;margin:0}
+.echel-owner #loginScreen .login-card{position:relative;align-self:stretch;margin:0!important;min-width:0;padding:44px 40px!important;background:var(--o-white)!important;border:1px solid var(--o-line)!important;border-top:3px solid var(--o-red)!important;border-radius:20px!important;box-shadow:var(--o-shadow)!important;display:flex;flex-direction:column;justify-content:center;max-width:none!important}
+.echel-owner #loginScreen .owner-form-heading{border-bottom:1px solid var(--o-line);padding-bottom:22px;margin-bottom:26px}
+.echel-owner #loginScreen .login-card h1{font-family:'Plus Jakarta Sans','Inter','Noto Sans Meetei Mayek',sans-serif;font-size:28px!important;line-height:1.2;font-weight:800!important;margin:9px 0 8px;letter-spacing:-.8px;color:var(--o-ink)!important;text-align:left!important}
+.echel-owner #loginScreen .login-card p{font-size:13px!important;color:var(--o-muted)!important;margin:0!important;line-height:1.65}
+.echel-owner #loginScreen label{font-size:12px!important;color:var(--o-ink-2)!important;letter-spacing:0;text-transform:none;font-weight:600}
+.echel-owner #loginScreen .form-group{gap:8px;margin-bottom:20px}
+.echel-owner #loginScreen input:not([type=checkbox]){height:48px;padding:12px 14px!important;background:var(--o-white)!important;border:1px solid var(--o-line-2)!important;border-radius:10px!important;font-size:14px!important;box-shadow:none!important;color:var(--o-ink)}
+.echel-owner #loginScreen input:focus{border-color:var(--o-red)!important;outline:3px solid rgba(200,30,40,.12);outline-offset:0}
+.echel-owner #loginScreen .btn-primary{background:var(--o-red)!important;border-radius:10px!important;box-shadow:0 8px 18px -10px rgba(200,30,40,.7)!important;font-size:14px;font-weight:700;padding:15px 20px;margin:18px 0 0;min-height:50px}
+.echel-owner #loginScreen .btn-primary:hover{background:var(--o-red-dark)!important;transform:none}
+.owner-password-option{display:flex;align-items:center;gap:9px;font-size:12px;margin-top:-4px}
+.echel-owner #loginScreen .owner-password-option input{width:16px;height:16px;accent-color:var(--o-red)}
+.echel-owner #loginScreen .owner-password-option label{font-weight:500!important;font-size:12px!important;cursor:pointer}
+.echel-owner #loginScreen .help-text{font-size:12px;text-align:left;line-height:1.8;margin-top:18px;color:var(--o-muted)}
+.echel-owner #loginScreen .help-text a{display:block;width:fit-content;font-size:12.5px;font-weight:600;color:var(--o-red);text-decoration:underline;text-underline-offset:3px;margin-top:4px;cursor:pointer}
+.owner-register{margin-top:28px;padding-top:18px;border-top:1px solid var(--o-line);font-size:13px;display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;color:var(--o-muted)}
+.owner-register a{font-weight:700;color:var(--o-ink);text-underline-offset:4px}
+.owner-register a:hover{color:var(--o-red)}
+.echel-owner #setPasswordSection{border-top-color:var(--o-line)!important}
+.echel-owner .echel-contact-footer{background:transparent;border-color:var(--o-line);padding:22px 5vw;font-size:12px;box-shadow:none}
+
+/* ── Workspace shell ── */
+.echel-owner #adminPanel,.echel-owner #adminPanel .app-shell{background:var(--o-bg);min-height:calc(100vh - 80px)}
 .echel-owner #adminPanel .app-shell{display:block}
 .echel-owner #adminPanel .app-main{margin:0;min-width:0;min-height:0}
-.owner-masthead{min-height:86px;background:#222a28;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:24px;padding:18px max(4vw,calc((100vw - 1400px)/2))}
-.owner-identity{display:flex;align-items:center;gap:32px;min-width:0}
-.echel-owner #adminPanel .owner-masthead .side-brand{border:0!important;margin:0;padding:0;gap:12px;flex-shrink:0}
-.echel-owner #adminPanel .owner-masthead .side-brand img{width:40px;height:40px}
-.echel-owner #adminPanel .owner-masthead .side-brand>span{font-size:22px;letter-spacing:-.5px;line-height:1.1}
-.echel-owner #adminPanel .owner-masthead .side-brand small{color:#a7b4ac!important;font-size:9px;font-weight:450;letter-spacing:1px;margin-top:5px}
-.echel-owner #adminPanel .owner-masthead .side-shop{padding:2px 0 2px 28px;margin:0;border:0!important;border-left:1px solid #53615a!important;border-radius:0;background:transparent!important;box-shadow:none;color:#aeb9b2!important;font-size:10px;max-width:420px}
-.echel-owner #adminPanel .owner-masthead .side-shop b{color:#f3f5f1;font-weight:550;font-size:13px;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.owner-masthead{position:relative;min-height:76px;background:#ffffff;color:var(--o-ink);display:flex;justify-content:space-between;align-items:center;gap:24px;padding:16px max(4vw,calc((100vw - 1400px)/2));border-bottom:1px solid var(--o-line)}
+.owner-masthead:before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--o-red)}
+.owner-identity{display:flex;align-items:center;gap:28px;min-width:0}
+.echel-owner #adminPanel .owner-masthead .side-brand{color:var(--o-ink)!important;border:0!important;margin:0;padding:0;gap:12px;flex-shrink:0}
+.echel-owner #adminPanel .owner-masthead .side-brand img{width:42px;height:42px;border-radius:50%;background:var(--o-silver);box-shadow:0 0 0 1px var(--o-line),0 4px 10px -6px rgba(22,24,27,.35)}
+.echel-owner #adminPanel .owner-masthead .side-brand>span{font-size:21px;font-weight:800;letter-spacing:-.5px;line-height:1.1;color:var(--o-ink)}
+.echel-owner #adminPanel .owner-masthead .side-brand small{color:var(--o-muted)!important;font-size:9.5px;font-weight:600;letter-spacing:1.4px;margin-top:4px}
+.echel-owner #adminPanel .owner-masthead .side-shop{padding:2px 0 2px 24px;margin:0;border:0!important;border-left:1px solid var(--o-line-2)!important;border-radius:0;background:transparent!important;box-shadow:none;color:var(--o-muted)!important;font-size:11px;max-width:420px}
+.echel-owner #adminPanel .owner-masthead .side-shop b{display:block;color:var(--o-ink);font-weight:700;font-size:14px;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .echel-owner #adminPanel .side-shop:after{display:none}
-.echel-owner #adminPanel .owner-masthead .side-foot{display:flex;align-items:center;gap:18px;border:0;margin:0;padding:0}
+.echel-owner #adminPanel .owner-masthead .side-foot{display:flex;align-items:center;gap:12px;border:0;margin:0;padding:0}
 .echel-owner #adminPanel .side-foot select{margin:0!important;max-width:160px}
-.echel-owner #adminPanel .side-lg{width:auto;margin:0;padding:9px 0;white-space:nowrap;font-size:12px;font-weight:500;background:transparent;color:#d1d9d3;box-shadow:none}
+.echel-owner #adminPanel .side-lg{width:auto;margin:0;padding:8px 14px;white-space:nowrap;font-size:12px;font-weight:600;background:var(--o-white);color:var(--o-ink-2);border:1px solid var(--o-line-2);border-radius:8px;box-shadow:none;cursor:pointer}
+.echel-owner #adminPanel .side-lg:hover{color:var(--o-red);border-color:var(--o-red-line)}
 .echel-owner #adminPanel .side-lg span{display:none}
-.echel-owner #adminPanel .side{position:sticky;inset:auto;top:0;width:100%;height:auto;max-height:none;display:block;transform:none;padding:0 4vw;background:#fff!important;border:0!important;border-bottom:1px solid #d9ddd6!important;box-shadow:none;z-index:105;overflow:visible}
-.owner-navigation{max-width:1400px;margin:0 auto;display:flex;align-items:stretch;gap:22px;overflow-x:auto;scrollbar-width:thin}
-.echel-owner #adminPanel .side .nav-it{display:flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;margin:0;padding:20px 0 17px;border-radius:0!important;border:0;border-bottom:3px solid transparent;font-weight:550;font-size:12px;color:#6e7772!important;background:transparent!important;box-shadow:none!important;white-space:nowrap;min-height:58px;gap:5px}
-.echel-owner #adminPanel .side .nav-it.active{color:#aa222e!important;border-bottom-color:#b82530;background:transparent!important}
-.echel-owner #adminPanel .side .nav-it:hover{background:transparent!important;color:#202b24!important}
-.echel-owner #adminPanel .side .owner-account{margin-left:auto;font-size:11px;color:#985154!important}
+
+/* Tabs */
+.echel-owner #adminPanel .side{position:sticky;inset:auto;top:0;width:100%;height:auto;max-height:none;display:block;transform:none;padding:0 4vw;background:#ffffff!important;border:0!important;border-bottom:1px solid var(--o-line)!important;box-shadow:0 6px 16px -14px rgba(22,24,27,.35);z-index:105;overflow:visible}
+.owner-navigation{max-width:1400px;margin:0 auto;display:flex;align-items:stretch;gap:26px;overflow-x:auto;scrollbar-width:thin}
+.echel-owner #adminPanel .side .nav-it{display:flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;margin:0;padding:18px 0 15px;border-radius:0!important;border:0;border-bottom:3px solid transparent;font-weight:600;font-size:13px;color:var(--o-muted)!important;background:transparent!important;box-shadow:none!important;white-space:nowrap;min-height:56px;gap:5px}
+.echel-owner #adminPanel .side .nav-it.active{color:var(--o-red)!important;border-bottom-color:var(--o-red);background:transparent!important}
+.echel-owner #adminPanel .side .nav-it:hover{background:transparent!important;color:var(--o-ink)!important}
+.echel-owner #adminPanel .side .nav-it.active:hover{color:var(--o-red)!important}
+.echel-owner #adminPanel .side .owner-account{margin-left:auto;font-size:12px;color:var(--o-faint)!important}
+.echel-owner #adminPanel .side .owner-account:hover{color:var(--o-red)!important}
 .owner-close{display:none}
-.echel-owner #adminPanel .app-topbar{position:static;background:transparent;backdrop-filter:none;border:0;padding:34px 0 26px;margin:0 auto;width:92%;max-width:1400px;gap:18px;align-items:center;box-shadow:none}
-.echel-owner #adminPanel .page-title{font-size:32px;font-weight:550;letter-spacing:-1px;line-height:1.3;color:#27322c}
-.echel-owner #adminPanel .page-crumb{font-size:10px;color:#91978e;letter-spacing:.2px;margin-top:6px}
-.echel-owner #adminPanel .top-btn{background:transparent;border:1px solid #cfd5ca;color:#434d43;font-size:11px;font-weight:550;border-radius:5px;padding:9px 13px;height:auto;width:auto}
-.echel-owner #adminPanel .agent-pill{background:#efeee8;color:#686d63;border:1px solid #dcded4;border-radius:4px;box-shadow:none;font-size:10px;font-weight:550;max-width:340px;line-height:1.5}
-.echel-owner #adminPanel .agent-pill.on{background:#edf4ec;color:#38604c;border-color:#cedecf}
-.echel-owner #adminPanel .agent-pill.off{background:#f5eee7;color:#85593d;border-color:#e8d8c8}
-.echel-owner #adminPanel .app-content{width:92%;max-width:1400px;margin:auto;padding:0 0 60px}
-.echel-owner #adminPanel .card{border:1px solid var(--owner-line)!important;border-radius:8px;box-shadow:none;background:#fff;padding:24px;margin:0 0 20px}
-.echel-owner #adminPanel .card h2{font-size:15px;font-weight:650;letter-spacing:-.25px;color:#2d3730}
-.echel-owner #adminPanel .owner-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid #d9ddd2;border-radius:8px;background:#eeefe7;margin:0 0 24px;padding:8px 0}
-.echel-owner #adminPanel .owner-metrics .stat{border:0;border-right:1px solid #d4d9cc;background:transparent;box-shadow:none;border-radius:0;text-align:left;padding:19px 26px;min-height:108px;display:flex;flex-direction:column;gap:9px}
-.echel-owner #adminPanel .owner-metrics .stat:last-child{border:0}
-.echel-owner #adminPanel .stat:before{display:none}
-.echel-owner #adminPanel .stat:hover{transform:none;box-shadow:none}
-.echel-owner #adminPanel .stat-lbl{font-size:10px;font-weight:500;line-height:1.7;letter-spacing:1px;color:#777e70}
-.echel-owner #adminPanel .stat-val{font-size:32px;font-weight:550;color:#283f30;letter-spacing:-1px;line-height:1.1}
-.echel-owner #adminPanel .stat-trend{position:static;font-size:10px;padding:0;margin:0}
+
+/* Page heading */
+.echel-owner #adminPanel .app-topbar{position:static;background:transparent;backdrop-filter:none;border:0;padding:30px 0 22px;margin:0 auto;width:92%;max-width:1400px;gap:14px;align-items:center;box-shadow:none}
+.echel-owner #adminPanel .page-title{font-family:'Plus Jakarta Sans','Inter','Noto Sans Meetei Mayek',sans-serif;font-size:30px;font-weight:800;letter-spacing:-.9px;line-height:1.25;color:var(--o-ink)}
+.echel-owner #adminPanel .page-crumb{font-size:12px;color:var(--o-faint);letter-spacing:0;margin-top:4px}
+.echel-owner #adminPanel .page-crumb span{color:var(--o-muted)}
+.echel-owner #adminPanel .top-btn{background:var(--o-white);border:1px solid var(--o-line-2);color:var(--o-ink-2);font-size:12px;font-weight:600;border-radius:8px;padding:9px 14px;height:auto;width:auto;box-shadow:none}
+.echel-owner #adminPanel .top-btn:hover{color:var(--o-red);border-color:var(--o-red-line)}
+.echel-owner #adminPanel .agent-pill{background:var(--o-white);color:var(--o-muted);border:1px solid var(--o-line-2);border-radius:999px;box-shadow:none;font-size:11.5px;font-weight:600;max-width:360px;line-height:1.5;padding:6px 12px}
+.echel-owner #adminPanel .agent-pill.on{background:var(--o-ok-soft);color:var(--o-ok);border-color:var(--o-ok-line)}
+.echel-owner #adminPanel .agent-pill.off{background:var(--o-warn-soft);color:var(--o-warn);border-color:var(--o-warn-line)}
+.echel-owner #adminPanel .app-content{width:92%;max-width:1400px;margin:auto;padding:0 0 64px}
+
+/* Cards, forms and buttons */
+.echel-owner #adminPanel .card{border:1px solid var(--o-line)!important;border-radius:14px!important;box-shadow:var(--o-shadow)!important;background:var(--o-white);padding:24px;margin:0 0 20px}
+.echel-owner #adminPanel .card h2{font-size:16px;font-weight:700;letter-spacing:-.2px;color:var(--o-ink)}
+.echel-owner #adminPanel input,.echel-owner #adminPanel select,.echel-owner #adminPanel textarea{border-radius:10px!important;border-color:var(--o-line-2)!important;font-size:13px;color:var(--o-ink)}
+.echel-owner #adminPanel input:focus,.echel-owner #adminPanel select:focus,.echel-owner #adminPanel textarea:focus{border-color:var(--o-red)!important;outline:3px solid rgba(200,30,40,.12);outline-offset:0}
+.echel-owner #adminPanel input[type=checkbox],.echel-owner #adminPanel input[type=radio]{accent-color:var(--o-red)}
+.echel-owner #adminPanel .btn-save{border-radius:10px;background:var(--o-red);font-size:13px;font-weight:700;box-shadow:0 8px 18px -12px rgba(200,30,40,.8)}
+.echel-owner #adminPanel .btn-save:hover{background:var(--o-red-dark)}
+.echel-owner #adminPanel .payment-opt{border-radius:12px;border-width:1px;padding:18px}
+.echel-owner #adminPanel .payment-opt.selected{border-color:var(--o-red);background:var(--o-red-soft)}
+.echel-owner #adminPanel .dl-row{border-radius:12px;box-shadow:none;border:1px solid var(--o-line)}
+.echel-owner #adminPanel table th{padding:11px 8px!important;background:var(--o-bg);color:var(--o-muted);font-weight:600;font-size:11.5px;letter-spacing:.2px;border-bottom:1px solid var(--o-line)!important}
+.echel-owner #adminPanel table td{padding:12px 8px!important;border-bottom:1px solid var(--o-silver)}
+
+/* ── Overview ── */
+.echel-owner #adminPanel .owner-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;border:0;border-radius:0;background:transparent;margin:0 0 24px;padding:0}
+.echel-owner #adminPanel .owner-metrics .stat{position:relative;border:1px solid var(--o-line);background:var(--o-white);box-shadow:var(--o-shadow);border-radius:14px;text-align:left;padding:20px 22px 20px 78px;min-height:104px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.echel-owner #adminPanel .owner-metrics .stat:before{content:'';display:block;position:absolute;left:22px;top:50%;width:40px;height:40px;margin-top:-20px;border-radius:12px;background:var(--o-red-soft);border:1px solid var(--o-red-line)}
+.echel-owner #adminPanel .owner-metrics .stat:after{content:'';position:absolute;left:32px;top:50%;width:20px;height:20px;margin-top:-10px;background:var(--o-red);-webkit-mask:var(--o-icon) center/contain no-repeat;mask:var(--o-icon) center/contain no-repeat}
+.echel-owner #adminPanel .owner-metrics .stat:nth-child(n+3):before{background:var(--o-silver);border-color:var(--o-line-2)}
+.echel-owner #adminPanel .owner-metrics .stat:nth-child(n+3):after{background:var(--o-ink)}
+.echel-owner #adminPanel .owner-metrics .stat:nth-child(1){--o-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 9V3h10v6'/%3E%3Crect x='3' y='9' width='18' height='8' rx='2'/%3E%3Cpath d='M7 14h10v7H7z'/%3E%3C/svg%3E")}
+.echel-owner #adminPanel .owner-metrics .stat:nth-child(2){--o-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 4h12M6 9h12M13 21 7 13h2a4.5 4.5 0 0 0 0-9'/%3E%3C/svg%3E")}
+.echel-owner #adminPanel .owner-metrics .stat:nth-child(3){--o-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h12v18l-3-2-3 2-3-2-3 2z'/%3E%3Cpath d='M9 8h6M9 12h6M9 16h3'/%3E%3C/svg%3E")}
+.echel-owner #adminPanel .owner-metrics .stat:nth-child(4){--o-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='6' width='18' height='14' rx='2'/%3E%3Cpath d='M16 13h2M3 10h18M7 6V4h10v2'/%3E%3C/svg%3E")}
+.echel-owner #adminPanel .stat:hover{transform:none}
+.echel-owner #adminPanel .stat-lbl{font-size:12px;font-weight:600;line-height:1.5;letter-spacing:0;text-transform:none;color:var(--o-muted)}
+.echel-owner #adminPanel .stat-val{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:28px;font-weight:800;color:var(--o-ink)!important;letter-spacing:-.8px;line-height:1.15}
+.echel-owner #adminPanel .stat-trend{position:static;font-size:11px;padding:0;margin:0}
 .owner-work-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:24px;align-items:start}
 .owner-main-column,.owner-rail{min-width:0}
-.owner-quick{background:#fff;border:1px solid var(--owner-line);border-radius:8px;padding:28px 30px;margin-bottom:24px}
-.owner-quick h2{font-family:Georgia,'Noto Sans Meetei Mayek',serif;font-size:32px;font-weight:400;letter-spacing:-.8px;line-height:1.2;margin:12px 0;color:#26342b}
-.owner-quick p{font-size:12px;line-height:1.8;color:#818477;max-width:420px}
-.owner-quick-links{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px;border-top:1px solid #e5e7df;padding-top:20px}
-.owner-quick-links button{display:flex;align-items:start;gap:15px;justify-content:space-between;text-align:left;font-size:12px;line-height:1.5;font-weight:600;color:#344238;background:transparent;border:0;cursor:pointer;padding:6px 0;min-height:40px}
-.owner-quick-links button:hover{color:#b82530}
-.owner-quick-links button>span:last-child{color:#aa373c}
+.owner-quick{position:relative;overflow:hidden;background:linear-gradient(120deg,#ffffff 0%,#ffffff 52%,#f1f3f5 100%);border:1px solid var(--o-line);border-radius:14px;box-shadow:var(--o-shadow);padding:30px 32px;margin-bottom:24px}
+.owner-quick:after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:url('/img/echel-logo.jpeg') center/cover;opacity:.09;pointer-events:none}
+.owner-quick h2{position:relative;font-family:'Plus Jakarta Sans','Inter','Noto Sans Meetei Mayek',sans-serif;font-size:30px;font-weight:800;letter-spacing:-.9px;line-height:1.2;margin:10px 0 8px;color:var(--o-ink)}
+.owner-quick p{position:relative;font-size:13px;line-height:1.8;color:var(--o-muted);max-width:440px;margin:0}
+.owner-quick-links{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+.owner-quick-links button{display:flex;align-items:center;gap:12px;justify-content:space-between;text-align:left;font-size:13px;line-height:1.4;font-weight:600;color:var(--o-ink);background:var(--o-white);border:1px solid var(--o-line-2);border-radius:10px;cursor:pointer;padding:12px 14px;min-height:46px}
+.owner-quick-links button:hover{color:var(--o-red);border-color:var(--o-red-line);background:var(--o-red-soft)}
+.owner-quick-links button>span:last-child{color:var(--o-red);font-weight:700}
 .echel-owner #adminPanel .owner-week{margin:0 0 24px!important}
-.echel-owner #adminPanel .owner-week>div{gap:0!important;background:#f7f8f3;border:1px solid #e4e6dc;border-radius:5px;overflow:hidden}
-.echel-owner #adminPanel .owner-week>div>div{border-radius:0!important;background:transparent!important;padding:18px!important}
-.echel-owner #adminPanel .owner-week>div>div:first-child{border-right:1px solid #e4e6dc}
-.echel-owner #adminPanel .owner-week table{font-size:12px;line-height:1.6}
-.echel-owner #adminPanel table th{padding:12px 8px!important;background:#f8f9f5;font-weight:600;letter-spacing:.3px;border-bottom:1px solid #e7e9e0!important}
-.echel-owner #adminPanel table td{padding:13px 8px!important;border-bottom:1px solid #edf0e7}
+.echel-owner #adminPanel .owner-week>div{gap:12px!important}
+.echel-owner #adminPanel .owner-week>div>div{border-radius:12px!important;background:var(--o-bg)!important;border:1px solid var(--o-line);padding:16px!important}
+.echel-owner #adminPanel .owner-week>div>div:first-child{background:var(--o-red-soft)!important;border-color:var(--o-red-line)}
+.echel-owner #adminPanel .owner-week>div>div>div:first-child{color:var(--o-muted)!important}
+.echel-owner #adminPanel .owner-week>div>div:first-child>div:first-child{color:var(--o-red)!important}
+.echel-owner #adminPanel .owner-week table{font-size:12.5px;line-height:1.6}
+.echel-owner #adminPanel .owner-week thead tr{color:var(--o-muted)!important}
 .echel-owner #adminPanel .owner-insights{grid-template-columns:repeat(3,1fr);gap:12px;margin:0!important}
-.echel-owner #adminPanel .owner-insights .stat{border-radius:6px;border:1px solid var(--owner-line);padding:16px;background:transparent;box-shadow:none;text-align:left}
-.echel-owner #adminPanel .owner-insights .stat-val{font-size:22px!important;margin-top:12px}
-.echel-owner #adminPanel .owner-shop-control{padding:24px;margin:0 0 24px!important}
-.echel-owner #adminPanel .owner-shop-control>div:last-child{border-top:1px solid #e4e7dd!important;margin-top:20px;padding-top:18px!important}
-.echel-owner #adminPanel #pauseBtn{padding:10px 13px!important;border-radius:5px!important;font-size:11px!important;background:#f7f2ef!important;border:1px solid #d8c9be!important;color:#795143!important;box-shadow:none}
-.echel-owner #adminPanel .supply-btn{border-radius:4px!important;padding:8px!important;font-size:10px!important;font-weight:500!important;box-shadow:none!important}
-.echel-owner #adminPanel .owner-software{border-radius:8px;background:#e9ede3!important;border:1px solid #d5ddcc!important;box-shadow:none!important;padding:23px!important;margin:0 0 24px!important;overflow:hidden}
+.echel-owner #adminPanel .owner-insights .stat{border-radius:12px;border:1px solid var(--o-line);padding:16px 18px;background:var(--o-white);box-shadow:none;text-align:left}
+.echel-owner #adminPanel .owner-insights .stat:before{display:none}
+.echel-owner #adminPanel .owner-insights .stat-val{font-size:21px!important;margin-top:8px}
+.echel-owner #adminPanel .owner-insights #fbDown{color:var(--o-red)!important}
+.echel-owner #adminPanel .owner-shop-control{padding:24px;margin:0 0 20px!important}
+.echel-owner #adminPanel .owner-shop-control>div:last-child{border-top:1px solid var(--o-line)!important;margin-top:18px;padding-top:16px!important}
+.echel-owner #adminPanel #pauseBtn{padding:10px 16px!important;border-radius:10px!important;font-size:12.5px!important;font-weight:700!important;background:var(--o-white)!important;border:1px solid var(--o-red)!important;color:var(--o-red)!important;box-shadow:none}
+.echel-owner #adminPanel #pauseBtn:hover{background:var(--o-red-soft)!important}
+.echel-owner #adminPanel #pauseBtn[data-state="closed"]{background:var(--o-ok)!important;border-color:var(--o-ok)!important;color:#fff!important}
+.echel-owner #adminPanel .supply-btn{border-radius:999px!important;padding:8px 14px!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important;background:var(--o-white)!important;border:1px solid var(--o-line-2)!important;color:var(--o-ink-2)!important}
+.echel-owner #adminPanel .supply-btn.selected{background:var(--o-red-soft)!important;border-color:var(--o-red)!important;color:var(--o-red)!important}
+.echel-owner #adminPanel .owner-software{position:relative;border-radius:14px!important;background:var(--o-white)!important;border:1px solid var(--o-line)!important;border-top:3px solid var(--o-red)!important;box-shadow:var(--o-shadow)!important;padding:22px!important;margin:0 0 20px!important;overflow:hidden}
 .echel-owner #adminPanel .dlCard-glow,.echel-owner #adminPanel .dlCard-ico,.echel-owner #adminPanel .dlBigBtn-shine,.echel-owner #adminPanel .dlBigBtn-ico{display:none}
-.echel-owner #adminPanel .dlCard-title{font-size:15px;color:#33432e;line-height:1.5}
-.echel-owner #adminPanel .dlCard-sub{font-size:11px;color:#738168;line-height:1.7;margin-top:6px}
+.echel-owner #adminPanel .dlCard-title{font-size:16px;font-weight:700;color:var(--o-ink);line-height:1.5}
+.echel-owner #adminPanel .dlCard-title span{color:var(--o-red);font-weight:700}
+.echel-owner #adminPanel .dlCard-sub{font-size:12.5px;color:var(--o-muted);line-height:1.7;margin-top:4px}
 .echel-owner #adminPanel .dlCard-top{margin:0;gap:10px;align-items:start}
-.echel-owner #adminPanel .dlBigBtn{background:#354b36!important;box-shadow:none!important;border-radius:5px;padding:12px 16px;min-height:0;margin:18px 0 0;width:100%;font-size:12px;animation:none}
-.echel-owner #adminPanel .dlBigBtn-label{font-size:12px}
-.echel-owner #adminPanel .dlCard-hint{font-size:10px;color:#708069;margin-top:11px;text-align:left}
-.echel-owner #adminPanel .owner-notice{background:#fff!important;margin:0!important;border:1px solid var(--owner-line)!important}
-.echel-owner #adminPanel .owner-notice p{font-size:11px!important;line-height:1.7;color:#818574!important;margin-bottom:14px}
-.echel-owner #adminPanel .owner-notice button{border-radius:4px!important;font-size:11px!important;box-shadow:none!important}
-.echel-owner #adminPanel .owner-notice button:first-child{background:#354b36!important}
-.echel-owner #adminPanel input,.echel-owner #adminPanel select,.echel-owner #adminPanel textarea{border-radius:5px!important;border-color:#d9ddd4!important;font-size:13px}
-.echel-owner #adminPanel .btn-save{border-radius:5px;background:#354b36;font-size:13px;box-shadow:none}
-.echel-owner #adminPanel .payment-opt{border-radius:5px;border-width:1px;padding:18px}
-.echel-owner #adminPanel .payment-opt.selected{border-color:#9cad94;background:#f3f6ee}
-.echel-owner #adminPanel .dl-row{border-radius:6px;box-shadow:none}
+.echel-owner #adminPanel .dlCard-notes{background:var(--o-white)!important;color:var(--o-ink-2)!important;border:1px solid var(--o-line-2)!important;border-radius:8px!important;box-shadow:none!important}
+.echel-owner #adminPanel .dlBigBtn{background:var(--o-red)!important;box-shadow:0 10px 20px -12px rgba(200,30,40,.8)!important;border-radius:10px;padding:13px 16px;min-height:0;margin:18px 0 0;width:100%;font-size:13px;font-weight:700;animation:none}
+.echel-owner #adminPanel .dlBigBtn:hover{background:var(--o-red-dark)!important}
+.echel-owner #adminPanel .dlBigBtn-label{font-size:13.5px}
+.echel-owner #adminPanel .dlCard-hint{font-size:11.5px;color:var(--o-faint);margin-top:10px;text-align:left}
+.echel-owner #adminPanel .owner-notice{background:var(--o-white)!important;margin:0!important;border:1px solid var(--o-line)!important}
+.echel-owner #adminPanel .owner-notice p{font-size:12.5px!important;line-height:1.7;color:var(--o-muted)!important;margin-bottom:14px}
+.echel-owner #adminPanel .owner-notice button{border-radius:10px!important;font-size:13px!important;font-weight:700!important;box-shadow:none!important}
+.echel-owner #adminPanel .owner-notice button:first-child{background:var(--o-red)!important;color:#fff!important}
+.echel-owner #adminPanel .owner-notice button:first-child:hover{background:var(--o-red-dark)!important}
+.echel-owner #adminPanel .owner-notice button:last-child{background:var(--o-white)!important;color:var(--o-ink-2)!important;border:1px solid var(--o-line-2)!important}
+/* Section headers (payment, support, demo help) */
+.owner-hero{position:relative;background:linear-gradient(120deg,#ffffff 0%,#ffffff 45%,#f1f3f5 100%);border-bottom:1px solid var(--o-line);color:var(--o-ink)}
+.owner-hero:before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--o-red)}
+.owner-hero h2{color:var(--o-ink)!important;font-weight:800;letter-spacing:-.5px}
+.owner-hero p{color:var(--o-muted)!important}
+.owner-hero-ico{width:58px;height:58px;margin:0 auto 6px;border-radius:50%;background:var(--o-red-soft);border:1px solid var(--o-red-line);display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1}
+
+/* ── QR and downloads ── */
+.echel-owner #adminPanel .qr-frame{border:1px solid var(--o-line);border-radius:16px;box-shadow:var(--o-shadow)}
+.echel-owner #adminPanel .qr-chip{background:var(--o-bg);border-color:var(--o-line);border-radius:10px}
+.echel-owner #adminPanel .qr-chip small{color:var(--o-red)}
+.echel-owner #adminPanel .share-btn{border-color:var(--o-line-2);border-radius:12px}
+.echel-owner #adminPanel .share-btn:hover{border-color:var(--o-red);background:var(--o-red-soft);transform:none}
+.echel-owner #adminPanel .share-btn span{color:var(--o-ink-2);font-weight:600;font-size:11.5px}
+.echel-owner #adminPanel .dl-row,.echel-owner #adminPanel .dl-row.hot,.echel-owner #adminPanel .dl-row.good,.echel-owner #adminPanel .dl-row.info,.echel-owner #adminPanel .dl-row.plum{background:var(--o-white);border:1px solid var(--o-line);border-radius:14px;box-shadow:var(--o-shadow)}
+.echel-owner #adminPanel .dl-row:hover{transform:none;border-color:var(--o-line-2)}
+.echel-owner #adminPanel .dl-row .dl-ico{background:var(--o-silver);border:1px solid var(--o-line)}
+.echel-owner #adminPanel .dl-row.hot{border-left:3px solid var(--o-red)}
+.echel-owner #adminPanel .dl-row.hot .dl-ico{background:var(--o-red-soft);border-color:var(--o-red-line)}
+.echel-owner #adminPanel .dl-txt b{font-weight:700;color:var(--o-ink)}
+.echel-owner #adminPanel .dl-meta{color:var(--o-faint);font-weight:600}
+.echel-owner #adminPanel .dl-row .dl-btn{background:var(--o-white);color:var(--o-ink);border:1px solid var(--o-line-2);border-radius:10px;font-weight:700}
+.echel-owner #adminPanel .dl-row .dl-btn:hover{color:var(--o-red);border-color:var(--o-red);filter:none;transform:none}
+.echel-owner #adminPanel .dl-row.hot .dl-btn{background:var(--o-red);color:#fff;border-color:var(--o-red)}
+.echel-owner #adminPanel .dl-row.hot .dl-btn:hover{background:var(--o-red-dark);color:#fff}
+.owner-steps{margin:12px 0 0;padding:0;list-style:none;counter-reset:step;display:grid;gap:10px}
+.owner-steps li{counter-increment:step;position:relative;padding:2px 0 2px 38px;font-size:13px;line-height:1.7;color:var(--o-ink-2)}
+.owner-steps li:before{content:counter(step);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--o-red-soft);border:1px solid var(--o-red-line);color:var(--o-red);font-size:12px;font-weight:700;line-height:24px;text-align:center}
+.owner-steps b{color:var(--o-ink)}
 .echel-owner #adminPanel [data-sect="settings"],.echel-owner #adminPanel [data-sect="payment"]{max-width:1000px;margin:auto}
 .echel-owner #adminPanel [data-sect="orders"] .card{overflow-x:auto}
 .echel-owner #adminPanel .hamburger{display:none}
-@media(min-width:1550px){.owner-navigation{gap:30px}.owner-login-intro h2{font-size:78px}}
-@media(max-width:1100px){.owner-navigation{gap:20px}.owner-work-grid{grid-template-columns:minmax(0,1.35fr) minmax(285px,1fr)}.owner-quick{padding:25px}.echel-owner #adminPanel .owner-metrics .stat{padding:18px}.owner-quick-links{grid-template-columns:1fr;gap:0;margin-top:18px;padding-top:10px}.owner-quick-links button{align-items:center;border-bottom:1px solid #eef0e8;padding:11px 0}.owner-quick-links button:last-child{border:0}.echel-owner #loginScreen{grid-template-columns:1fr 1fr!important}.echel-owner #loginScreen .owner-login-intro{padding-right:32px}.echel-owner #loginScreen .login-card{padding:30px!important}}
-@media(max-width:760px){
-  .echel-owner>nav.owner-public-nav{padding:18px 5vw}.owner-public-nav .echel-brand small{display:none}.owner-public-nav .echel-brand{font-size:20px}
-  .owner-public-nav>div:last-child{gap:12px!important}.owner-public-nav .nav-link{font-size:11px}
-  .echel-owner #loginScreen{display:flex!important;flex-direction:column;min-height:0;max-width:620px!important;width:90%;padding:0 0 32px!important;margin:0 auto!important}
-  .echel-owner #loginScreen .owner-login-intro{padding:26px 0 30px!important}.owner-login-intro h2{font-size:48px;letter-spacing:-2px;margin:14px 0}.owner-login-intro .owner-login-lead{font-size:13px;margin:0;max-width:350px}.owner-login-details{display:none}
-  .echel-owner #loginScreen .login-card{padding:28px!important}.echel-owner #loginScreen .owner-form-heading{padding-bottom:18px;margin-bottom:22px}.echel-owner #loginScreen .login-card h1{font-size:26px!important}
-  .owner-masthead{padding:17px 5vw;gap:12px;flex-wrap:wrap}.owner-identity{gap:18px;flex:1}.echel-owner #adminPanel .owner-masthead .side-shop{padding-left:16px;font-size:9px;max-width:180px}.echel-owner #adminPanel .owner-masthead .side-shop b{font-size:11px;max-width:150px}
-  .echel-owner #adminPanel .owner-masthead .side-foot{gap:12px}.echel-owner #adminPanel .side-foot select{padding:7px;font-size:10px;max-width:125px}.echel-owner #adminPanel .side-lg{font-size:11px}
-  .echel-owner #adminPanel .side{position:fixed;inset:0 auto 0 0;top:0;width:min(340px,87vw);height:100dvh;padding:25px;transform:translateX(-105%);overflow-y:auto;border-right:1px solid #d3dacb!important;z-index:120;visibility:hidden}
-  .echel-owner #adminPanel .side.open{transform:none;visibility:visible}.owner-navigation{display:flex;flex-direction:column;gap:0;overflow:visible}.echel-owner #adminPanel .side .nav-it{justify-content:start;width:100%;padding:17px 8px;border-bottom:1px solid #edf0e8;white-space:normal}.echel-owner #adminPanel .side .nav-it.active{border-bottom-color:#b82530}.echel-owner #adminPanel .side .owner-account{margin-left:0}.owner-close{display:block;padding:10px 0 22px;background:none;border:0;color:#842c36;font-size:12px;text-align:left;width:100%}.echel-owner #adminPanel .side-overlay.show{display:block}
-  .echel-owner #adminPanel .hamburger{display:block;font-size:22px;color:#354b36;padding:4px}.echel-owner #adminPanel .app-topbar{padding:24px 0 20px;gap:12px;flex-wrap:wrap}.echel-owner #adminPanel .page-title{font-size:25px}.echel-owner #adminPanel .agent-pill{font-size:9px;max-width:220px}.echel-owner #adminPanel .top-btn{font-size:10px;padding:7px}
-  .echel-owner #adminPanel .owner-metrics{grid-template-columns:repeat(2,minmax(0,1fr));padding:0;gap:0;margin-bottom:20px}.echel-owner #adminPanel .owner-metrics .stat{padding:18px;min-height:100px;border-bottom:1px solid #d4d9cc}.echel-owner #adminPanel .owner-metrics .stat:nth-child(2){border-right:0}.echel-owner #adminPanel .owner-metrics .stat:nth-child(n+3){border-bottom:0}.echel-owner #adminPanel .stat-val{font-size:29px}
-  .owner-work-grid{grid-template-columns:1fr;gap:20px}.owner-rail{display:grid;grid-template-columns:1fr;gap:20px}.echel-owner #adminPanel .owner-rail>.card{margin:0!important}.owner-quick{padding:24px}.owner-quick h2{font-size:31px}.owner-quick-links{grid-template-columns:1fr}.echel-owner #adminPanel .card{padding:20px}.echel-owner #adminPanel .owner-insights .stat{padding:12px}.echel-owner #adminPanel .owner-insights .stat-lbl{font-size:9px;letter-spacing:.3px}.echel-owner #adminPanel .owner-insights .stat-val{font-size:19px!important}.echel-owner .echel-contact-footer{gap:15px;line-height:1.7}
+
+@media(min-width:1550px){.owner-navigation{gap:32px}.owner-login-intro h2{font-size:72px}}
+@media(max-width:1100px){
+  .owner-navigation{gap:20px}
+  .owner-work-grid{grid-template-columns:minmax(0,1.35fr) minmax(285px,1fr)}
+  .owner-quick{padding:25px}
+  .echel-owner #adminPanel .owner-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .owner-quick-links{grid-template-columns:1fr}
+  .echel-owner #loginScreen{grid-template-columns:1fr 1fr!important;gap:24px}
+  .echel-owner #loginScreen .owner-login-intro{padding:40px 32px 32px}
+  .echel-owner #loginScreen .login-card{padding:32px!important}
 }
-@media(prefers-reduced-motion:reduce){.echel-owner *, .echel-owner *:before,.echel-owner *:after{animation:none!important;transition:none!important}}
-/* Override the shared legacy card rules, which use !important. */
-.echel-owner #adminPanel .card{border-radius:8px!important;box-shadow:none!important}
-.echel-owner #adminPanel .owner-metrics .stat{border:0!important;border-right:1px solid #d4d9cc!important;border-radius:0!important;box-shadow:none!important}
-.echel-owner #adminPanel .owner-metrics .stat:last-child{border-right:0!important}
-.echel-owner #adminPanel .owner-insights .stat{border-radius:6px!important;box-shadow:none!important}
-.echel-owner #adminPanel .stat-val{background:none}
+@media(max-width:760px){
+  .echel-owner>nav.owner-public-nav{padding:14px 5vw}
+  .owner-public-nav .echel-brand small{display:none}
+  .owner-public-nav .echel-brand{font-size:20px}
+  .owner-public-nav>div:last-child{gap:10px!important}
+  .owner-public-nav .nav-link{font-size:12px}
+  .echel-owner #loginScreen{display:flex!important;flex-direction:column;min-height:0;max-width:620px!important;width:90%;padding:0 0 32px!important;margin:20px auto 0!important;gap:18px}
+  .echel-owner #loginScreen .owner-login-intro{padding:28px 24px!important}
+  .owner-login-intro h2{font-size:44px;letter-spacing:-1.6px;margin:12px 0}
+  .owner-login-intro .owner-login-lead{font-size:13px;margin:0;max-width:350px}
+  .owner-login-details{display:none}
+  .echel-owner #loginScreen .login-card{padding:28px 22px!important}
+  .echel-owner #loginScreen .owner-form-heading{padding-bottom:18px;margin-bottom:22px}
+  .echel-owner #loginScreen .login-card h1{font-size:24px!important}
+  .owner-masthead{padding:16px 5vw;gap:12px;flex-wrap:wrap}
+  .owner-identity{gap:16px;flex:1}
+  .echel-owner #adminPanel .owner-masthead .side-shop{padding-left:14px;font-size:10px;max-width:180px}
+  .echel-owner #adminPanel .owner-masthead .side-shop b{font-size:12px;max-width:150px}
+  .echel-owner #adminPanel .owner-masthead .side-foot{gap:8px}
+  .echel-owner #adminPanel .side-foot select{padding:7px;font-size:11px;max-width:125px}
+  .echel-owner #adminPanel .side-lg{font-size:11px;padding:7px 10px}
+  .echel-owner #adminPanel .side{position:fixed;inset:0 auto 0 0;top:0;width:min(340px,87vw);height:100dvh;padding:22px;transform:translateX(-105%);overflow-y:auto;border-right:1px solid var(--o-line)!important;z-index:120;visibility:hidden}
+  .echel-owner #adminPanel .side.open{transform:none;visibility:visible}
+  .owner-navigation{display:flex;flex-direction:column;gap:2px;overflow:visible}
+  .echel-owner #adminPanel .side .nav-it{justify-content:start;width:100%;padding:14px 12px;border-bottom:0;border-left:3px solid transparent;border-radius:0 10px 10px 0!important;white-space:normal;min-height:0}
+  .echel-owner #adminPanel .side .nav-it.active{border-left-color:var(--o-red);background:var(--o-red-soft)!important}
+  .echel-owner #adminPanel .side .owner-account{margin-left:0;margin-top:12px}
+  .owner-close{display:block;padding:6px 0 18px;background:none;border:0;color:var(--o-red);font-size:13px;font-weight:600;text-align:left;width:100%}
+  .echel-owner #adminPanel .side-overlay.show{display:block}
+  .echel-owner #adminPanel .hamburger{display:block;font-size:22px;color:var(--o-ink);padding:4px;background:none;border:0}
+  .echel-owner #adminPanel .app-topbar{padding:22px 0 18px;gap:10px;flex-wrap:wrap}
+  .echel-owner #adminPanel .page-title{font-size:24px}
+  .echel-owner #adminPanel .agent-pill{font-size:10.5px;max-width:220px}
+  .echel-owner #adminPanel .top-btn{font-size:11px;padding:7px 10px}
+  .echel-owner #adminPanel .owner-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:20px}
+  .echel-owner #adminPanel .owner-metrics .stat{padding:64px 16px 16px;min-height:0}
+  .echel-owner #adminPanel .owner-metrics .stat:before{left:16px;top:16px;margin-top:0;width:36px;height:36px}
+  .echel-owner #adminPanel .owner-metrics .stat:after{left:24px;top:24px;margin-top:0}
+  .echel-owner #adminPanel .stat-val{font-size:24px}
+  .owner-work-grid{grid-template-columns:1fr;gap:20px}
+  .owner-rail{display:grid;grid-template-columns:1fr;gap:20px}
+  .echel-owner #adminPanel .owner-rail>.card{margin:0!important}
+  .owner-quick{padding:24px 20px}
+  .owner-quick h2{font-size:26px}
+  .echel-owner #adminPanel .card{padding:20px}
+  .echel-owner #adminPanel .owner-insights .stat{padding:12px}
+  .echel-owner #adminPanel .owner-insights .stat-lbl{font-size:10.5px}
+  .echel-owner #adminPanel .owner-insights .stat-val{font-size:18px!important}
+  .echel-owner .echel-contact-footer{gap:15px;line-height:1.7}
+}
+@media(prefers-reduced-motion:reduce){.echel-owner *,.echel-owner *:before,.echel-owner *:after{animation:none!important;transition:none!important}}
+/* The shared theme (echel-theme.css) styles every .card and .stat with
+   !important, so the workspace repeats its own values the same way. */
+.echel-owner #adminPanel .card{border-radius:14px!important;box-shadow:var(--o-shadow)!important}
+.echel-owner #adminPanel .owner-metrics .stat{border:1px solid var(--o-line)!important;border-radius:14px!important;box-shadow:var(--o-shadow)!important}
+.echel-owner #adminPanel .owner-insights .stat{border:1px solid var(--o-line)!important;border-radius:12px!important;box-shadow:none!important}
+.echel-owner #adminPanel .stat-val{background:none;-webkit-text-fill-color:currentColor}
 .echel-owner #adminPanel .agent-pill span.txt{display:inline}
 .echel-owner #adminPanel .owner-navigation .nav-it[aria-current=page]{font-weight:700}
 @media(max-width:760px){
-  .echel-owner #adminPanel .owner-metrics .stat:nth-child(-n+2){border-bottom:1px solid #d4d9cc!important}
-  .echel-owner #adminPanel .owner-metrics .stat:nth-child(2){border-right:0!important}
-  .echel-owner #adminPanel .app-topbar .agent-pill{order:5;max-width:100%;font-size:10px}
+  .echel-owner #adminPanel .app-topbar .agent-pill{order:5;max-width:100%;font-size:10.5px}
   .echel-owner #adminPanel .app-topbar .top-spacer{display:none}
   .echel-owner #adminPanel .app-topbar>div:has(.page-title){flex:1}
+}
+/* The page's older sign-in styles add coloured blobs and an emoji tile. */
+.echel-owner #loginScreen:before,.echel-owner #loginScreen:after,.echel-owner #loginScreen .login-card:before{display:none!important;content:none!important}
+/* Arrows are symbols, not letters: keep them out of the Manipuri font stack,
+   where they would fall back to a blue emoji. */
+html .echel-owner .owner-quick-links button>span:last-child,html[lang] body.echel-owner .owner-quick-links button>span:last-child{font-family:'Segoe UI Symbol','Segoe UI',Arial,sans-serif!important}
+/* Phones: logo with language and log-out on the first line, the shop's name
+   on its own line below, so nothing overlaps. */
+@media(max-width:560px){
+  .owner-masthead{padding:14px 5vw 10px}
+  .owner-identity{display:contents}
+  .echel-owner #adminPanel .owner-masthead .side-brand{order:1}
+  .echel-owner #adminPanel .owner-masthead .side-brand img{width:36px;height:36px}
+  .echel-owner #adminPanel .owner-masthead .side-brand>span{font-size:19px}
+  .echel-owner #adminPanel .owner-masthead .side-foot{order:2;margin-left:auto}
+  .echel-owner #adminPanel .owner-masthead .side-shop{order:3;flex:1 1 100%;max-width:none;padding:9px 0 0!important;border-left:0!important;border-top:1px solid var(--o-line)!important;display:flex;align-items:baseline;gap:8px}
+  .echel-owner #adminPanel .owner-masthead .side-shop span{display:flex;align-items:baseline;gap:8px;min-width:0}
+  .echel-owner #adminPanel .owner-masthead .side-shop b{display:inline;max-width:none;font-size:13px}
+}
+@media(max-width:560px){
+  .echel-owner #adminPanel .app-topbar .hamburger{order:1}
+  .echel-owner #adminPanel .app-topbar>div:has(.page-title){order:2;flex:1;min-width:0}
+  .echel-owner #adminPanel .app-topbar .top-btn{order:3}
+  .echel-owner #adminPanel .app-topbar .top-spacer{display:block;order:4;flex:0 0 100%;height:0}
+  .echel-owner #adminPanel .app-topbar .agent-pill{order:5}
+}
+@media(max-width:560px){
+  .echel-owner #adminPanel .owner-masthead .side-brand small{display:none}
+  .echel-owner #adminPanel .owner-masthead .side-foot select{max-width:118px}
 }

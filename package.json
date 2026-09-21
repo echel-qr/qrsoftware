@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/branding.test.js test/branding-routes.test.js test/billing.test.js test/billing-postgres.test.js test/edition.test.js test/deployment.test.js test/database-init.test.js test/i18n.test.js test/desktop.test.js test/runtime-dependencies.test.js test/server-start.test.js test/language-select.test.js test/demo-config.test.js test/owner-workspace.test.js test/no-hinglish.test.js test/manipuri-coverage.test.js",
+    "test": "node --test test/branding.test.js test/branding-routes.test.js test/billing.test.js test/billing-postgres.test.js test/edition.test.js test/deployment.test.js test/database-init.test.js test/i18n.test.js test/desktop.test.js test/runtime-dependencies.test.js test/server-start.test.js test/language-select.test.js test/demo-config.test.js test/owner-workspace.test.js test/no-hinglish.test.js test/manipuri-coverage.test.js test/brand-assets.test.js",
     "check": "node --check server.js && node test/check-syntax.js",
     "i18n:build": "node scripts/i18n/build-manipuri.js",
     "i18n:missing": "node scripts/i18n/ui-strings.js --missing",

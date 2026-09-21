@@ -5,6 +5,22 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Echel | Shop workspace</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<!-- Link preview (WhatsApp, Facebook, X) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Echel">
+<meta property="og:title" content="Echel — Shop owner sign-in">
+<meta property="og:description" content="Sign in to manage print orders, printers, payments and your shop settings.">
+<meta property="og:image" content="https://echel.in/img/echel-share.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Echel — scan a QR, print automatically">
+<meta property="og:locale" content="en_IN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://echel.in/img/echel-share.png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -826,7 +842,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
     <div data-sect="overview" class="show">
 
     <!-- AGENT DASHBOARD BANNER — shown to agents only -->
-    <div id="agentBanner" style="display:none;margin-bottom:16px;border-radius:16px;background:linear-gradient(135deg,#1a1a22,#3b1230);padding:14px 18px;color:#fff;box-shadow:0 14px 34px rgba(17,17,20,.22);">
+    <div id="agentBanner" style="display:none;margin-bottom:16px;border-radius:14px;background:#16181b;border-left:4px solid #c81e28;padding:14px 18px;color:#fff;box-shadow:0 10px 24px -14px rgba(22,24,27,.6);">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:22px;">💼</span>
@@ -874,7 +890,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
     <!-- DEMO UPGRADE CARD (shown to demo accounts only) -->
     <div id="demoUpgradeCard" class="card" style="display:none;overflow:hidden;padding:0;margin-bottom:20px;">
-      <div style="background:linear-gradient(135deg,#ff3b6b 0%,#c81e4a 100%);padding:22px 18px;text-align:center;color:#fff;">
+      <div style="background:linear-gradient(135deg,#c81e28 0%,#a8121b 100%);padding:22px 18px;text-align:center;color:#fff;">
         <div style="font-size:36px;line-height:1;">⏳</div>
         <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;margin:8px 0 10px;color:#fff;">Your Demo Is Running</h2>
         <!-- HH:MM:SS countdown — ticks every second.
@@ -912,18 +928,18 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
     <!-- DEMO SUPPORT CARD (shown to demo accounts only) -->
     <div id="demoSupportCard" class="card" style="display:none;overflow:hidden;padding:0;margin-bottom:20px;">
-      <div style="background:linear-gradient(135deg,#25D366 0%,#128C7E 100%);padding:22px;text-align:center;color:#fff;">
-        <div style="font-size:38px;">💬</div>
-        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;margin:6px 0 4px;color:#fff;">Any Problem in Setup?</h2>
-        <p style="font-size:13px;opacity:.95;margin:0;">Or is the print not coming out? — Write a message now, get help on WhatsApp</p>
+      <div class="owner-hero" style="padding:22px;text-align:center;">
+        <div class="owner-hero-ico">💬</div>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;margin:6px 0 4px;">Any Problem in Setup?</h2>
+        <p style="font-size:13px;margin:0;">Or is the print not coming out? — Write a message now, get help on WhatsApp</p>
       </div>
       <div style="padding:18px;">
-        <label style="font-size:12px;font-weight:700;color:#128C7E;display:block;margin-bottom:6px;">🏪 Your Shop ID</label>
+        <label style="font-size:12px;font-weight:700;color:#3b4148;display:block;margin-bottom:6px;">🏪 Your Shop ID</label>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
           <input id="demoSupShopId" readonly style="flex:1;padding:11px 14px;border:1.5px solid #e2ddd6;border-radius:12px;font-family:monospace;font-weight:700;font-size:14px;background:#f7f7f9;">
-          <button onclick="copyDemoShopId()" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:11px 14px;cursor:pointer;font-size:16px;">📋</button>
+          <button onclick="copyDemoShopId()" style="background:#f4f5f6;border:1.5px solid #d3d8dc;border-radius:12px;padding:11px 14px;cursor:pointer;font-size:16px;">📋</button>
         </div>
-        <label style="font-size:12px;font-weight:700;color:#128C7E;display:block;margin-bottom:6px;">✍️ Write your problem</label>
+        <label style="font-size:12px;font-weight:700;color:#3b4148;display:block;margin-bottom:6px;">✍️ Write your problem</label>
         <textarea id="demoSupMsg" rows="3" placeholder="e.g. Print not coming out / Printer list not showing / Setup problem..." style="width:100%;padding:12px 14px;border:1.5px solid #e2ddd6;border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
         <button onclick="sendDemoWhatsApp()" style="width:100%;margin-top:14px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:14px;padding:15px;font-weight:800;font-size:15px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(37,211,102,.3);">
           <span style="font-size:20px;">📱</span> Send on WhatsApp
@@ -1034,11 +1050,11 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
         <div>
           <h2 style="margin-bottom:6px;">
             <span style="display:inline-flex;align-items:center;gap:9px;">
-              <span style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#b51c26,#e0489f);display:inline-flex;align-items:center;justify-content:center;font-size:17px;">📱</span>
+              <span style="width:38px;height:38px;border-radius:11px;background:#fdeeee;border:1px solid #f2c8cb;display:inline-flex;align-items:center;justify-content:center;font-size:17px;">📱</span>
               Your shop QR code
             </span>
           </h2>
-          <p style="font-size:12.5px;color:#8b8e9e;line-height:1.65;margin-bottom:15px;">
+          <p style="font-size:12.5px;color:#6b727a;line-height:1.65;margin-bottom:15px;">
             Display this QR code for customers to scan, upload their files and print.
           </p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
@@ -1046,7 +1062,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
             <div class="qr-chip"><small>Shop ID</small><b id="qrShopId">—</b></div>
           </div>
 
-          <div style="font-size:11px;font-weight:800;color:#8b8e9e;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Share</div>
+          <div style="font-size:11px;font-weight:700;color:#6b727a;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Share</div>
           <div class="share-grid" style="margin-bottom:14px;">
             <button class="share-btn" onclick="qrCopyLink()"><div>🔗</div><span>Copy Link</span></button>
             <button class="share-btn" onclick="qrShareWhatsApp()"><div>💬</div><span>WhatsApp</span></button>
@@ -1054,19 +1070,19 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
             <button class="share-btn" onclick="downloadPoster()"><div>🖨️</div><span>Print</span></button>
           </div>
 
-          <div style="font-size:11px;font-weight:800;color:#8b8e9e;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px;">Direct Link</div>
+          <div style="font-size:11px;font-weight:700;color:#6b727a;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px;">Direct Link</div>
           <div style="display:flex;gap:8px;">
             <input id="adminQrUrl" readonly
-              style="flex:1;min-width:0;padding:11px 13px;border:1px solid #e9eaf0;border-radius:11px;font-size:12.5px;background:#f8f9fc;color:#3f4150;box-sizing:border-box;">
+              style="flex:1;min-width:0;padding:11px 13px;border:1px solid #d3d8dc;border-radius:10px;font-size:12.5px;background:#f4f5f6;color:#3b4148;box-sizing:border-box;">
             <button onclick="qrCopyLink()"
-              style="background:#12131a;color:#fff;border:none;border-radius:11px;padding:0 17px;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap;">📋 Copy</button>
+              style="background:#16181b;color:#fff;border:none;border-radius:10px;padding:0 17px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">📋 Copy</button>
           </div>
         </div>
 
         <div class="qr-frame">
           <img id="adminQrImg" src="" alt="Shop QR code">
           <button onclick="downloadQrOnly()"
-            style="width:100%;background:linear-gradient(135deg,#b51c26,#e0489f);color:#fff;border:none;border-radius:11px;padding:11px;font-size:12.5px;font-weight:800;cursor:pointer;">
+            style="width:100%;background:#c81e28;color:#fff;border:none;border-radius:10px;padding:11px;font-size:12.5px;font-weight:700;cursor:pointer;">
             ⬇️ Download QR Code
           </button>
         </div>
@@ -1099,7 +1115,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
         <b>Setup Guide (README)</b>
         <span>A step-by-step guide to setting up your shop computer.</span>
       </div>
-      <div class="dl-meta">PDF</div>
+      <div class="dl-meta">TXT</div>
       <button class="dl-btn" onclick="downloadReadme()">⬇️ Download Guide</button>
     </div>
 
@@ -1109,7 +1125,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
         <b>Shop poster with QR code</b>
         <span>Print this A4 poster and display it in your shop for customers to scan.</span>
       </div>
-      <div class="dl-meta">PDF · A4</div>
+      <div class="dl-meta">PNG · A4</div>
       <button class="dl-btn" onclick="downloadPoster()">⬇️ Download Poster</button>
     </div>
 
@@ -1120,13 +1136,13 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
     <div class="card">
       <h2>📌 Important Instructions</h2>
-      <div style="font-size:13px;color:#333;line-height:2;margin-top:8px;">
-        1️⃣ <b>Always keep the latest version installed</b> — from the green button above. New features (duplex, counter approval) and bug fixes come only in the latest version.<br>
-        2️⃣ Software <b>install it on the same PC the printer is connected to</b> and which stays on during shop hours.<br>
-        After install, enter your <b>Shop ID</b> — that's it, done. No need to install Python or SumatraPDF separately, <b>no need</b>— everything is bundled inside the software.<br>
-        Before installing a new version, the old one <b>no need to uninstall</b> — the new one replaces it automatically.<br>
-        5️⃣ The 🖨️ in the agent tray icon (bottom-right) staying visible = all good. You can also "Check for Update" from there.
-      </div>
+      <ol class="owner-steps">
+        <li data-i18n-sentence><b>Always keep the latest version installed</b> — use the Download Now button above. New features and fixes come only in the latest version.</li>
+        <li data-i18n-sentence>Install the software on <b>the computer your printer is connected to</b>, and keep that computer on during shop hours.</li>
+        <li data-i18n-sentence>After installing, enter your <b>Shop ID</b> — that is all. Python and SumatraPDF are already inside the software.</li>
+        <li data-i18n-sentence>You <b>don't need to uninstall</b> an old version first — the new one replaces it automatically.</li>
+        <li data-i18n-sentence>The 🖨️ icon in the tray (bottom-right) means everything is working. You can also choose "Check for Update" from there.</li>
+      </ol>
     </div>
 
     </div><!-- /qr -->
@@ -1209,17 +1225,17 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
               <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;color:#166534;">₹<span id="agAvail">0</span></div>
               <div style="font-size:11px;color:#166534;font-weight:700;">Ready for withdrawal</div>
             </div>
-            <div style="background:#f2f4f5;border:1.5px solid #f0e2ba;border-radius:14px;padding:13px 15px;">
-              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;color:#8a6d1f;">₹<span id="agTotal">0</span></div>
-              <div style="font-size:11px;color:#8a6d1f;font-weight:700;">Total earnings</div>
+            <div style="background:#fdeeee;border:1px solid #f2c8cb;border-radius:12px;padding:13px 15px;">
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;color:#16181b;">₹<span id="agTotal">0</span></div>
+              <div style="font-size:11px;color:#c81e28;font-weight:700;">Total earnings</div>
             </div>
-            <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:13px 15px;">
-              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;color:#1e40af;"><span id="agPaidShops">0</span></div>
-              <div style="font-size:11px;color:#1e40af;font-weight:700;">Paid shops onboarded</div>
+            <div style="background:#f4f5f6;border:1px solid #e3e6e9;border-radius:12px;padding:13px 15px;">
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;color:#16181b;"><span id="agPaidShops">0</span></div>
+              <div style="font-size:11px;color:#6b727a;font-weight:700;">Paid shops onboarded</div>
             </div>
-            <div style="background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:14px;padding:13px 15px;">
-              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;color:#5b21b6;"><span id="agPending">0</span></div>
-              <div style="font-size:11px;color:#5b21b6;font-weight:700;">Pending payment</div>
+            <div style="background:#f4f5f6;border:1px solid #e3e6e9;border-radius:12px;padding:13px 15px;">
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;color:#16181b;"><span id="agPending">0</span></div>
+              <div style="font-size:11px;color:#6b727a;font-weight:700;">Pending payment</div>
             </div>
           </div>
           <p data-i18n-sentence style="font-size:11.5px;color:#9b9690;margin-top:12px;line-height:1.6;">
@@ -1331,7 +1347,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           <label style="display:block;font-size:11.5px;font-weight:800;color:#6b6870;margin:0 0 5px;">PASSWORD</label>
           <input id="agOnPass" placeholder="Leave blank to auto-generate" style="width:100%;padding:12px;border:1.5px solid #e2ddd6;border-radius:11px;font-size:14px;box-sizing:border-box;margin-bottom:10px;">
 
-          <div data-i18n-sentence style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:11px;padding:11px 13px;font-size:11.5px;color:#1e40af;line-height:1.65;margin-bottom:12px;">
+          <div data-i18n-sentence style="background:#f4f5f6;border:1px solid #e3e6e9;border-left:3px solid #c81e28;border-radius:0;padding:11px 13px;font-size:11.5px;color:#3b4148;line-height:1.65;margin-bottom:12px;">
             💳 The payment mode will be set to <b>Cash at counter</b>. The shop owner can later log in and turn on online payment
             from <b>Payment Setup</b> (they'll need their own Razorpay/UPI key).
           </div>
@@ -1847,11 +1863,10 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
     <div data-sect="payment">
     <div class="card" style="overflow:hidden;padding:0;">
-      <div style="background:linear-gradient(135deg,#065f46 0%,#059669 50%,#10b981 100%);padding:24px 20px;text-align:center;color:#fff;position:relative;">
-        <div style="position:absolute;top:-25px;right:-25px;width:110px;height:110px;background:rgba(255,255,255,.08);border-radius:50%;"></div>
-        <div style="font-size:38px;position:relative;">💳</div>
-        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;margin:6px 0 4px;color:#fff;position:relative;">Payment Setup</h2>
-        <p style="font-size:12px;opacity:.92;margin:0;position:relative;">How you'll take money from customers — counter, online or both</p>
+      <div class="owner-hero" style="padding:24px 20px;text-align:center;">
+        <div class="owner-hero-ico">💳</div>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;margin:6px 0 4px;">Payment Setup</h2>
+        <p style="font-size:12.5px;margin:0;">How you'll take money from customers — counter, online or both</p>
       </div>
       <div style="padding:18px;">
       <label style="margin-bottom:8px;display:block;">Payment Mode</label>
@@ -1940,14 +1955,14 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
     <!-- ══ DELETE ACCOUNT ══ -->
     <div data-sect="account">
-      <div class="card" style="border:1.5px solid #bfdbfe;background:#f0f7ff;">
+      <div class="card" style="border:1px solid #e3e6e9;background:#fff;">
         <h3 style="margin-bottom:6px;">📥 Download Your Data</h3>
         <p data-i18n-sentence style="font-size:13px;color:#475569;line-height:1.7;margin-bottom:14px;">
           Your account's <b>complete data</b> in one file — shop details, registration, all print orders, earnings, reviews, withdrawals and activity logs. Download it before deleting the account.
         </p>
         <button id="dlDataBtn" onclick="downloadMyData()"
-          style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;
-                 padding:15px;font-weight:800;font-size:15px;cursor:pointer;">
+          style="width:100%;background:#16181b;color:#fff;border:none;border-radius:10px;
+                 padding:15px;font-weight:700;font-size:15px;cursor:pointer;">
           📥 Download My Data
         </button>
         <div id="dlDataMsg" style="display:none;font-size:12.5px;margin-top:10px;"></div>
@@ -1982,29 +1997,27 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
         <div id="delAccMsg" style="display:none;font-size:12.5px;margin-top:10px;"></div>
         <p style="font-size:11.5px;color:#94a3b8;margin-top:12px;text-align:center;line-height:1.6;">
           Just want to change some settings? Go to <a href="#" onclick="navTo('settings',null);return false;"
-            style="color:#2563eb;font-weight:700;">Settings</a>.
+            style="color:#c81e28;font-weight:700;">Settings</a>.
         </p>
       </div>
     </div>
 
     <div data-sect="support">
     <div class="card" style="overflow:hidden;padding:0;">
-      <div style="background:linear-gradient(135deg,#25D366 0%,#128C7E 100%);padding:28px 22px;text-align:center;color:#fff;position:relative;">
-        <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:rgba(255,255,255,.1);border-radius:50%;"></div>
-        <div style="position:absolute;bottom:-40px;left:-20px;width:100px;height:100px;background:rgba(255,255,255,.08);border-radius:50%;"></div>
-        <div style="font-size:46px;margin-bottom:6px;position:relative;">💬</div>
-        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;margin:0;color:#fff;position:relative;">Need Support?</h2>
-        <p style="font-size:13px;opacity:.95;margin:6px 0 0;position:relative;">Any problem — talk to us directly on WhatsApp</p>
+      <div class="owner-hero" style="padding:28px 22px;text-align:center;">
+        <div class="owner-hero-ico">💬</div>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;margin:0;">Need Support?</h2>
+        <p style="font-size:13px;margin:6px 0 0;">Any problem — talk to us directly on WhatsApp</p>
       </div>
 
       <div style="padding:22px;">
-        <label style="font-size:12px;font-weight:700;color:#128C7E;display:block;margin-bottom:6px;">🏪 Your Shop ID (automatic)</label>
+        <label style="font-size:12px;font-weight:700;color:#3b4148;display:block;margin-bottom:6px;">🏪 Your Shop ID (automatic)</label>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
           <input id="supShopId" readonly style="flex:1;padding:12px 14px;border:1.5px solid #e2ddd6;border-radius:12px;font-family:monospace;font-weight:700;font-size:14px;background:#f7f7f9;">
-          <button onclick="copySupShopId()" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;cursor:pointer;font-size:16px;">📋</button>
+          <button onclick="copySupShopId()" style="background:#f4f5f6;border:1.5px solid #d3d8dc;border-radius:12px;padding:12px 14px;cursor:pointer;font-size:16px;">📋</button>
         </div>
 
-        <label style="font-size:12px;font-weight:700;color:#128C7E;display:block;margin-bottom:6px;">✍️ Write your problem</label>
+        <label style="font-size:12px;font-weight:700;color:#3b4148;display:block;margin-bottom:6px;">✍️ Write your problem</label>
         <textarea id="supMsg" rows="4" placeholder="e.g. Print not coming out / Printer list not showing / Payment issue..." style="width:100%;padding:12px 14px;border:1.5px solid #e2ddd6;border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
 
         <button onclick="sendWhatsApp()" style="width:100%;margin-top:16px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:14px;padding:16px;font-weight:800;font-size:16px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(37,211,102,.35);">
@@ -2015,7 +2028,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           Your Shop ID is added to the message automatically<br>so we can find your shop right away 🔍
         </p>
 
-        <div style="border-top:1.5px dashed #ece7f5;margin-top:16px;padding-top:14px;text-align:center;">
+        <div style="border-top:1px solid #e3e6e9;margin-top:16px;padding-top:14px;text-align:center;">
           <div style="font-size:12px;color:#6b6870;">Or call/message directly:</div>
           <a  data-echel-contact="whatsapp" hidden target="_blank" style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:19px;color:#128C7E;text-decoration:none;">WhatsApp support</a>
           <div style="font-size:11.5px;color:#6b6870;margin-top:6px;line-height:1.7;">
@@ -2142,18 +2155,18 @@ function qspTrack(eventType){
 let shopPaused = false, shopSupply = '';
 function renderStatusUI(){
   const lbl = document.getElementById('pauseLabel'), btn = document.getElementById('pauseBtn');
+  // The look of each state lives in echel-owner.css (data-state, .selected).
   if (shopPaused){
     lbl.textContent = '🔴 Shop Is Closed';
-    btn.textContent = '▶️ Open Shop'; btn.style.background='#dcfce7'; btn.style.color='#166534';
+    btn.textContent = '▶️ Open Shop'; btn.dataset.state = 'closed';
   } else {
     lbl.textContent = '🟢 Shop Is Open';
-    btn.textContent = '⏸️ Close Shop'; btn.style.background='#fee2e2'; btn.style.color='#c22222';
+    btn.textContent = '⏸️ Close Shop'; btn.dataset.state = 'open';
   }
   document.querySelectorAll('.supply-btn').forEach(b=>{
     const sel = b.dataset.w === shopSupply;
-    b.style.borderColor = sel ? '#b51c26' : '#e3e5ec';
-    b.style.background  = sel ? '#f3ecff' : '#fff';
-    b.style.color       = sel ? '#b51c26' : '#333';
+    b.classList.toggle('selected', sel);
+    b.setAttribute('aria-pressed', String(sel));
   });
 }
 async function togglePause(){
@@ -2351,7 +2364,7 @@ async function downloadMyData(){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'QRSePrint-' + (currentShop && currentShop.id ? currentShop.id : 'data')
+    a.download = 'Echel-' + (currentShop && currentShop.id ? currentShop.id : 'data')
                + '-' + new Date().toISOString().slice(0,10) + '.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
@@ -3725,7 +3738,7 @@ async function loadAgentShops() {
       return;
     }
     box.innerHTML = d.shops.map(s => {
-      const st = s.demo ? ['🎯 Demo','#ede9fe','#5b21b6']
+      const st = s.demo ? ['🎯 Demo','#eef0f2','#3b4148']
                : s.setup_paid ? ['✅ Paid','#dcfce7','#166534']
                : ['⏳ Payment pending','#fef3c7','#92400e'];
       const earn = s.earned ? `<span style="color:#166534;font-weight:800;">+₹${s.earned}</span>` : '<span style="color:#9b9690;">—</span>';
@@ -4195,31 +4208,58 @@ async function removeShopLogo() { /* removed */ }
 function downloadReadme(){
   const sid = (window.__shopId || document.getElementById('spShopId')?.value || '').toUpperCase();
   const url = '/api/setup-readme/' + (currentShopId || sid || 'SHOP');
-  const link = document.createElement('a'); link.href = url; link.download = 'QRSePrint-Setup-Guide.txt'; link.click();
+  const link = document.createElement('a'); link.href = url; link.download = 'Echel-Setup-Guide.txt'; link.click();
 }
 
-// ===== POSTER (QR embedded) =====
+// ===== POSTER (the shop's QR and name drawn into /poster.jpg) =====
+// /poster.jpg is made by scripts/brand/build-images.py from poster.html.
+// These are the white QR box and the shop-name line in that picture, as
+// fractions of its width and height — change them together with poster.html.
+const POSTER_QR = { left: 0.2573, top: 0.3358, width: 0.4855, height: 0.3432 };
+const POSTER_NAME = { middle: 0.9706, maxWidth: 0.8871 };
+async function posterFont(name){
+  // A shop name in Meitei Mayek needs the Manipuri font before it is drawn.
+  if (!/[ꯀ-꯿]/.test(name) || !window.FontFace || !document.fonts) return;
+  try {
+    const face = new FontFace('Noto Sans Meetei Mayek', 'url(/fonts/NotoSansMeeteiMayek.ttf)');
+    document.fonts.add(await face.load());
+  } catch (e) { /* the name is still drawn with the fonts the device has */ }
+}
 function downloadPoster(){
   const qrImg = document.getElementById('adminQrImg');
   if (!qrImg || !qrImg.src) { alert('QR hasn\'t loaded yet, please refresh the page'); return; }
   const poster = new Image();
-  poster.onload = function(){
+  poster.onload = async function(){
     const cv = document.createElement('canvas');
     cv.width = poster.naturalWidth; cv.height = poster.naturalHeight;
     const ctx = cv.getContext('2d');
     ctx.drawImage(poster, 0, 0);
-    // Blank box (measured): left 31.45%, top 30.19%, w 37.42%, h 25.51%
-    const bx = cv.width*0.3145, by = cv.height*0.3019, bw = cv.width*0.3742, bh = cv.height*0.2551;
+    const bx = cv.width*POSTER_QR.left, by = cv.height*POSTER_QR.top;
+    const bw = cv.width*POSTER_QR.width, bh = cv.height*POSTER_QR.height;
     const side = Math.min(bw, bh) * 0.96;              // square QR, a little padding
     const qx = bx + (bw - side)/2, qy = by + (bh - side)/2;
     ctx.fillStyle = '#fff'; ctx.fillRect(bx, by, bw, bh);
+    const name = String((currentShop && currentShop.name) || '').trim();
+    if (name) {
+      await posterFont(name);
+      /* i18n-ignore: a canvas font description, not text for people. */
+      const font = px => '700 ' + px + 'px "Segoe UI", "Noto Sans Meetei Mayek", Roboto, Arial, sans-serif';
+      const maxWidth = cv.width * POSTER_NAME.maxWidth;
+      let size = Math.round(cv.width * 0.052);
+      ctx.font = font(size);
+      while (size > 40 && ctx.measureText(name).width > maxWidth) {
+        size -= 4; ctx.font = font(size);
+      }
+      ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(name, cv.width / 2, cv.height * POSTER_NAME.middle, maxWidth);
+    }
     const qr = new Image();
     qr.onload = function(){
       ctx.imageSmoothingEnabled = false;               // keep the QR crisp
       ctx.drawImage(qr, qx, qy, side, side);
       const a = document.createElement('a');
       a.href = cv.toDataURL('image/png');
-      a.download = 'QRSePrint-Poster.png';
+      a.download = 'Echel-Poster.png';
       a.click();
     };
     qr.src = qrImg.src;
@@ -4284,7 +4324,7 @@ async function loadJobs() {
         ? '<span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;">🌈 Color</span>'
         : '<span style="background:#e5e7eb;color:#374151;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;">⚫ B&W</span>';
       const duplexChip = job.duplex
-        ? ' <span style="background:#ede9fe;color:#6d28d9;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;">📄 Duplex</span>'
+        ? ' <span style="background:#eef0f2;color:#3b4148;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;">📄 Duplex</span>'
         : '';
 
       // Payment — from payment_status, NOT payment_method (its DB default is
@@ -4647,15 +4687,15 @@ function logout() {
   border:1.5px solid #e5e0d8;background:#fff;border-radius:12px;padding:11px 8px;
   cursor:pointer;text-align:center;font-family:inherit;position:relative;transition:.15s;
 }
-.duPlan:hover{border-color:#ff3b6b;background:#fff5f7}
-.duPlan.hot{border-color:#ff3b6b;background:#fff5f7}
+.duPlan:hover{border-color:#c81e28;background:#fdeeee}
+.duPlan.hot{border-color:#c81e28;background:#fdeeee}
 .duPlan-name{font-weight:800;font-size:12px;color:#2b2b31;margin-bottom:2px}
-.duPlan-price{font-size:16px;font-weight:800;color:#ff3b6b;line-height:1.2}
+.duPlan-price{font-size:16px;font-weight:800;color:#c81e28;line-height:1.2}
 .duPlan-cut{font-size:10px;color:#9b9690;text-decoration:line-through;font-weight:600;margin-right:3px}
 .duPlan-note{font-size:9.5px;color:#6b6870;margin-top:3px;line-height:1.4}
 .duPlan-tag{
   position:absolute;top:-8px;left:50%;transform:translateX(-50%);
-  background:#ff3b6b;color:#fff;font-size:8.5px;font-weight:800;
+  background:#c81e28;color:#fff;font-size:8.5px;font-weight:800;
   border-radius:20px;padding:2px 8px;white-space:nowrap;
 }
 /* ══════════════════════════════════════════════════════════════

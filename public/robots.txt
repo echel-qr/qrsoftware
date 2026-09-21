@@ -16,7 +16,7 @@ Allow: /agent
 Allow: /og-image.png
 Allow: /icon-192.png
 Allow: /icon-512.png
-Allow: /qr-logo.png
+Allow: /img/echel-share.png
 Disallow: /api/
 Disallow: /admin
 Disallow: /superadmin

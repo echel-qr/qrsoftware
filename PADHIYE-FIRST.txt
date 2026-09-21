@@ -1,26 +1,36 @@
-ECHEL — ENGLISH WEBSITE + MANIPURI (ꯃꯤꯇꯩꯂꯣꯟ) SECOND LANGUAGE
-=============================================================
+ECHEL — NAYA BRAND LOOK + ENGLISH/MANIPURI (SAB EK SAATH)
+=========================================================
 
-Ye folder GitHub repo (rupeshkr73/qrsoftware) me upload karna hai.
-Folder structure bilkul repo jaisa hi hai — wahi jagah par daaliye.
+Is ZIP me DONO kaam hain:
+  (1) pichhla kaam  — poori website English + Manipuri (ꯃꯤꯇꯩꯂꯣꯟ)
+  (2) naya kaam     — owner dashboard + desktop software panel
+                      logo ke rangon me (laal, kaala, safed, silver),
+                      link preview me Echel ka logo, naya shop poster
+
+Pichhla ZIP (echel-english-manipuri.zip) upload NAHI kiya hai?
+  -> Koi baat nahi. Sirf YE ZIP upload kijiye, sab aa jayega.
+Pichhla ZIP upload kar chuke hain?
+  -> Phir bhi ye poora ZIP upload kar dijiye. Jo files same hain
+     wo waisi hi rahengi, koi nuksaan nahi.
+
+Folder structure bilkul GitHub repo jaisa hai — wahi jagah par daaliye.
+
+NOTE: Ye file (PADHIYE-FIRST.txt) upload MAT kijiye — ye sirf
+      aapke padhne ke liye hai.
 
 -------------------------------------------------------------
-STEP 1 — Ye 36 files upload kijiye (drag & drop)
+STEP 1 — Saari 50 files upload kijiye (drag & drop)
 -------------------------------------------------------------
 GitHub repo -> "Add file" -> "Upload files" -> is folder ke
 andar ki saari files/folders drag kar dijiye -> Commit.
 
-NOTE 1: public/downloads/Echel-Agent-V2.exe (44 MB) is ZIP me
-        JAANBOOJH KAR nahi hai — wo alag bheja hai (Step 3).
-
-NOTE 2: Ye file (PADHIYE-FIRST.txt) upload MAT kijiye — ye sirf
-        aapke padhne ke liye hai, website ka hissa nahi hai.
-
 -------------------------------------------------------------
-STEP 2 — Ye 14 purani files GitHub par DELETE kijiye
+STEP 2 — Ye 15 purani files GitHub par DELETE kijiye
 -------------------------------------------------------------
 (GitHub par file kholiye -> upar right me "..." -> Delete file)
+(Jo pehle hi delete kar chuke hain, unhe chhod dijiye.)
 
+   public/qr-logo.png          <- NAYA: purane brand ka logo
    public/echel-english.js
    public/echel-mayek.js
    public/i18n-extra.js
@@ -36,44 +46,49 @@ STEP 2 — Ye 14 purani files GitHub par DELETE kijiye
    test/ui-strings-raw.json
    test/update-client-assets.py
 
-Ye purani translation files hain. Inke bina website theek chalegi;
-inhe rakhne se purana Hinglish wapas aa sakta hai.
-
 -------------------------------------------------------------
-STEP 3 — Naya Agent EXE (alag se bheja hai)
+STEP 3 — Naya Agent EXE (alag se bheja hai, 44 MB)
 -------------------------------------------------------------
-Echel-Agent-V2.exe (44 MB) — GitHub "Releases" me upload kijiye:
+Is EXE me naya SAFED software panel hai.
+Pichhli baar wala EXE upload kiya ho to bhi ISE upload kijiye.
 
    GitHub repo -> Releases -> "Draft a new release"
-   -> file attach kijiye -> Publish
+   -> Echel-Agent-V2.exe attach kijiye -> Publish
 
 Phir us file ka link copy karke:
-   Superadmin -> Agents/Settings -> "Easy Installer (.exe) URL"
-   me paste karke Save kijiye.
+   Superadmin -> "Easy Installer (.exe) URL" me paste -> Save
 
-VERSION NAHI BADLA HAI (v2.0 hi hai) — matlab jin shops me agent
-pehle se laga hai, unme auto-update NAHI jayega. Jo naya download
-karega usko naya (English) agent milega. Ye jaanbujh kar aisa hai.
+VERSION NAHI BADLA (v2.0 hi hai) — jis shop me agent pehle se laga
+hai, wahan apne aap update nahi hoga. Naya panel dekhna ho to us PC
+par dashboard se software dobara download karke install kar lijiye.
 
 -------------------------------------------------------------
-STEP 4 — Upload ke baad
+STEP 4 — Upload ke baad check kijiye
 -------------------------------------------------------------
-Render apne aap deploy karega (2-3 minute).
-Phir www.echel.in kholiye aur neeche-left ke language box se
-"ꯃꯤꯇꯩꯂꯣꯟ" chuniye — poori website Manipuri me ho jayegi.
-Wapas "English" chunne par sab English.
+Render apne aap deploy karega (2-3 minute). Phir:
+
+ * www.echel.in/admin  -> login -> naya safed dashboard
+ * QR & Downloads -> "Download Poster" -> naya Echel poster
+   (QR aur aapki shop ka naam apne aap chhapta hai)
+ * WhatsApp par echel.in ka link bhejiye -> Echel logo wali photo
+
+LINK PREVIEW ke baare me: WhatsApp/Facebook purane bheje gaye link
+ki photo kuch din yaad rakhte hain. Naye bheje gaye link me turant
+nayi photo aayegi. Facebook par turant badalna ho to:
+   developers.facebook.com/tools/debug -> echel.in daaliye
+   -> "Scrape Again" dabaiye.
 
 -------------------------------------------------------------
 KYA BADLA — chhota saar
 -------------------------------------------------------------
-* Poori website ab English me hai — page, button, error, log,
-  report, email, aur source code ke comments tak. Hinglish 0.
-* Doosri bhasha: Manipuri (Meitei Mayek) — 3,201 lines translate
-  ki gayi hain. Har jagah jahan English text hai, wahan Manipuri
-  available hai.
-* Manipuri file sirf tab download hoti hai jab koi Manipuri
-  chunta hai — English wale customers par koi extra load nahi.
-* Koi bhi line galat lage to: Superadmin -> 🌐 Languages ->
-  usko wahin edit karke Save (deploy ki zaroorat nahi).
-* Aage ke liye guard lag gaya hai: naya Hinglish word ya bina
-  translation wala naya text aaya to "npm test" fail hoga.
+* Owner dashboard: safed header, upar patli laal line, laal active
+  tab, silver background, laal buttons, har number ke saath icon.
+  Payment/Support ke hare (green) header hata diye.
+* Owner login page: usi laal-safed-silver design me.
+* Desktop software panel: dark sidebar ab safed, chuna hua item laal.
+* Link preview + icons: purani "QR Se Print" photo hatakar Echel
+  logo wali nayi photo; browser tab icon (favicon) bhi Echel.
+* Shop poster: "QR se Print" + Hindi wala poster hatakar naya Echel
+  poster (English + ꯃꯤꯇꯩꯂꯣꯟ), shop ka naam apne aap.
+* Download file ke naam: QRSePrint-... ki jagah Echel-...
+* Guard: purana brand ka naam/photo wapas aaya to "npm test" fail.

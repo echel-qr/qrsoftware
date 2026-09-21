@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!-- Shop wall poster, A4. 1240x1754 CSS pixels rendered at 2x = 2480x3508 (300 dpi).
+     Rendered by build-images.py; not a public page. The white box inside the
+     frame and the black band stay empty: downloadPoster() in public/admin.html
+     draws the shop's QR and name there. Keep .frame and .band where they are,
+     or update the numbers in downloadPoster() too. -->
+<html lang="en"><head><meta charset="utf-8"><style>
+@font-face{font-family:'Noto Sans Meetei Mayek';src:url('{{MEITEI_FONT}}')}
+*{margin:0;box-sizing:border-box}
+html,body{width:1240px;height:1754px;overflow:hidden;background:#fff}
+body{font-family:'Segoe UI','Noto Sans Meetei Mayek',sans-serif;color:#16181b;position:relative;text-align:center}
+.top{position:absolute;left:0;right:0;top:0;height:30px;background:#c81e28}
+.logo{position:absolute;left:515px;top:88px;width:210px;height:210px;filter:drop-shadow(0 14px 14px rgba(20,24,28,.22))}
+.name{position:absolute;left:0;right:0;top:296px;font-family:'Segoe UI Black','Segoe UI',sans-serif;font-weight:900;font-size:115px;line-height:1.1;letter-spacing:-3px}
+.tag{position:absolute;left:0;right:0;top:432px;font-size:48px;font-weight:600;color:#c81e28;word-spacing:6px}
+.tag-mni{position:absolute;left:0;right:0;top:497px;font-size:31px;font-weight:600;color:#5d646b;word-spacing:4px}
+.frame{position:absolute;left:295px;top:565px;width:650px;height:650px;border:9px solid #16181b;border-radius:32px;background:#fff}
+.corner{position:absolute;width:95px;height:95px;border:0 solid #c81e28}
+.c1{left:273px;top:543px;border-top-width:13px;border-left-width:13px}
+.c2{left:872px;top:543px;border-top-width:13px;border-right-width:13px}
+.c3{left:273px;top:1142px;border-bottom-width:13px;border-left-width:13px}
+.c4{left:872px;top:1142px;border-bottom-width:13px;border-right-width:13px}
+.scan{position:absolute;left:0;right:0;top:1246px;font-size:38px;font-weight:700}
+.scan-mni{position:absolute;left:0;right:0;top:1302px;font-size:28px;font-weight:600;color:#5d646b}
+.rule{position:absolute;left:70px;right:70px;top:1368px;height:2px;background:#d9dde1}
+.steps{position:absolute;left:70px;right:70px;top:1390px;display:grid;grid-template-columns:repeat(3,1fr)}
+.num{width:56px;height:56px;border-radius:50%;background:#c81e28;color:#fff;font-size:34px;font-weight:700;line-height:54px;margin:0 auto 10px}
+.step h2{font-size:31px;font-weight:700;line-height:1.25}
+.step .t-mni{font-size:22px;font-weight:600;margin-top:4px}
+.step p{font-size:21px;color:#5d646b;margin-top:8px}
+.step .s-mni{font-size:18px;color:#5d646b;margin-top:2px}
+.band{position:absolute;left:0;right:0;top:1620px;bottom:0;background:#16181b;border-top:5px solid #c81e28}
+.band-row{position:absolute;left:70px;right:70px;top:17px;display:flex;justify-content:space-between;font-size:22px;font-weight:700;color:#bec4c9;letter-spacing:.5px}
+.band-row span:last-child{font-weight:600;letter-spacing:0}
+</style></head><body>
+<div class="top"></div>
+<img class="logo" src="{{LOGO}}" alt="">
+<div class="name">Echel</div>
+<div class="tag">Scan · Upload · Pay · Print</div>
+<div class="tag-mni">ꯁ꯭ꯀꯦꯟ · ꯑꯥꯄꯂꯣꯗ · ꯁꯦꯜ ꯄꯤꯌꯨ · ꯄ꯭ꯔꯤꯟꯠ</div>
+<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+<div class="frame"></div>
+<div class="scan">Scan this QR with your phone camera</div>
+<div class="scan-mni">ꯅꯍꯥꯛꯀꯤ ꯐꯣꯟꯒꯤ ꯀꯦꯃꯔꯥꯅꯥ QR ꯑꯁꯤ ꯁ꯭ꯀꯦꯟ ꯇꯧꯕꯤꯌꯨ</div>
+<div class="rule"></div>
+<div class="steps">
+  <div class="step"><div class="num">1</div><h2>Scan the QR</h2><div class="t-mni">QR ꯑꯗꯨ ꯁ꯭ꯀꯦꯟ ꯇꯧꯕꯤꯌꯨ</div><p>Open the print page</p><div class="s-mni">ꯐꯣꯟꯗꯥ ꯄ꯭ꯔꯤꯟꯠ ꯄꯦꯖ ꯍꯥꯡꯗꯣꯀꯎ</div></div>
+  <div class="step"><div class="num">2</div><h2>Upload and pay</h2><div class="t-mni">ꯑꯥꯄꯂꯣꯗ ꯇꯧꯔꯒꯥ ꯁꯦꯜ ꯄꯤꯌꯨ</div><p>Online, or cash here</p><div class="s-mni">ꯑꯣꯅꯂꯥꯏꯟ, ꯅꯠꯇ꯭ꯔꯒꯥ ꯀꯥꯎꯟꯇꯔꯗꯥ ꯀꯦꯁ</div></div>
+  <div class="step"><div class="num">3</div><h2>Collect your print</h2><div class="t-mni">ꯅꯍꯥꯛꯀꯤ ꯄ꯭ꯔꯤꯟꯠ ꯂꯧꯕꯤꯌꯨ</div><p>It prints on its own</p><div class="s-mni">ꯄ꯭ꯔꯤꯟꯠ ꯃꯊꯟꯇꯥ ꯊꯣꯛꯀꯅꯤ</div></div>
+</div>
+<div class="band"><div class="band-row"><span>AVAILABLE AT · ꯃꯐꯝ ꯑꯁꯤꯗꯥ ꯐꯪꯏ</span><span>No WhatsApp. No pen drive.</span></div></div>
+</body></html>

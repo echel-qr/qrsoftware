@@ -11,7 +11,7 @@
    To correct one line without a deploy: Superadmin -> Languages. Those edits
    live in the database and are applied on top of this file.
 
-   3201 entries. */
+   3208 entries. */
 (function (w) {
  var D = {
  "-- Select brand --": "-- ꯕ꯭ꯔꯥꯟꯗ ꯈꯜꯂꯨ --",
@@ -1046,6 +1046,7 @@
  "Advanced printing unlock (webhook)": "ꯑꯦꯗꯚꯥꯟꯁ ꯄ꯭ꯔꯤꯟꯇꯤꯡ ꯍꯥꯡꯗꯣꯛꯄꯥ (ꯋꯦꯕꯍꯨꯛ)",
  "Advanced Unlock (%s)": "ꯑꯦꯗꯚꯥꯟꯁ ꯍꯥꯡꯗꯣꯛꯄꯥ (%s)",
  "After install, enter your": "ꯏꯟꯁ꯭ꯇꯣꯜ ꯇꯧꯔꯕꯥ ꯃꯇꯨꯡꯗꯥ ꯅꯍꯥꯛꯀꯤ ꯑꯁꯤ ꯍꯥꯄꯆꯤꯜꯂꯨ",
+ "After installing, enter your Shop ID — that is all. Python and SumatraPDF are already inside the software.": "ꯏꯟꯁ꯭ꯇꯣꯜ ꯇꯧꯔꯕꯥ ꯃꯇꯨꯡꯗꯥ ꯅꯍꯥꯛꯀꯤ ꯁꯣꯞ ID ꯍꯥꯄꯆꯤꯜꯂꯨ — ꯑꯗꯨꯃꯛ, ꯂꯣꯏꯔꯦ꯫ Python ꯑꯃꯁꯨꯪ SumatraPDF ꯁꯐ꯭ꯇꯋꯦꯔꯒꯤ ꯃꯅꯨꯡꯗꯥ ꯍꯥꯟꯅꯗꯒꯤ ꯌꯥꯎꯔꯦ꯫",
  "After registering:": "ꯔꯦꯖꯤꯁ꯭ꯇꯔ ꯇꯧꯔꯕꯥ ꯃꯇꯨꯡꯗꯥ:",
  "After registration you'll get a new Shop ID — enter it in the agent.": "ꯔꯦꯖꯤꯁ꯭ꯇ꯭ꯔꯦꯁꯟ ꯇꯧꯔꯕꯥ ꯃꯇꯨꯡꯗꯥ ꯑꯅꯧꯕꯥ ꯁꯣꯞ ID ꯐꯪꯒꯅꯤ — ꯃꯗꯨ ꯑꯦꯖꯦꯟꯇꯇꯥ ꯍꯥꯄꯆꯤꯜꯂꯨ꯫",
  "After selecting a printer, save it right here — no need to go to the Settings tab": "ꯄ꯭ꯔꯤꯟꯇꯔ ꯈꯅꯔꯕꯥ ꯃꯇꯨꯡꯗꯥ ꯃꯐꯝ ꯑꯁꯤꯗꯃꯛꯇꯥ ꯊꯃꯕꯤꯌꯨ — ꯁꯦꯇꯤꯡ ꯇꯦꯕꯇꯥ ꯆꯠꯄꯥ ꯃꯊꯧ ꯇꯥꯗꯦ",
@@ -1086,6 +1087,7 @@
  "Already registered? Log in ↗": "ꯍꯥꯟꯅꯗꯒꯤ ꯔꯦꯖꯤꯁ꯭ꯇꯔ ꯇꯧꯔꯕ꯭ꯔꯥ? ꯂꯣꯒꯏꯟ ꯇꯧꯔꯨ ↗",
  "Alt: %s": "ꯑꯇꯣꯞꯄꯥ: %s",
  "Always keep the latest version installed": "ꯃꯇꯝ ꯄꯨꯝꯅꯃꯛꯇꯥ ꯑꯅꯧꯕꯥ ꯚꯔꯁꯟ ꯏꯟꯁ꯭ꯇꯣꯜ ꯇꯧꯔꯒꯥ ꯊꯃꯕꯤꯌꯨ",
+ "Always keep the latest version installed — use the Download Now button above. New features and fixes come only in the latest version.": "ꯃꯇꯝ ꯄꯨꯝꯅꯃꯛꯇꯥ ꯑꯅꯧꯕꯥ ꯚꯔꯁꯟ ꯏꯟꯁ꯭ꯇꯣꯜ ꯇꯧꯔꯒꯥ ꯊꯝꯃꯨ — ꯃꯊꯛꯀꯤ “ꯍꯧꯖꯤꯛ ꯗꯥꯎꯅꯂꯣꯗ ꯇꯧꯔꯨ” ꯕꯇꯟ ꯁꯤꯖꯤꯟꯅꯕꯤꯌꯨ꯫ ꯑꯅꯧꯕꯥ ꯐꯤꯆꯔ ꯑꯃꯁꯨꯪ ꯁꯦꯃꯗꯣꯛꯄꯁꯤꯡ ꯑꯅꯧꯕꯥ ꯚꯔꯁꯅꯗꯥ ꯈꯛꯇꯃꯛ ꯂꯥꯀꯏ꯫",
  "Amount": "ꯁꯦꯜ ꯃꯃꯜ",
  "Amount:": "ꯁꯦꯜ:",
  "an 8-page bill is": "ꯂꯥꯃꯥꯏ 8 ꯒꯤ ꯕꯤꯜ",
@@ -1854,6 +1856,7 @@
  "instagram.com/": "instagram.com/",
  "install it on the same PC the printer is connected to": "ꯄ꯭ꯔꯤꯟꯇꯔ ꯁꯝꯅꯔꯤꯕꯥ PC ꯑꯗꯨꯃꯛꯇꯥ ꯏꯟꯁ꯭ꯇꯣꯜ ꯇꯧꯔꯨ",
  "Install the latest features and improvements.": "ꯑꯅꯧꯕꯥ ꯐꯤꯆꯔ ꯑꯃꯁꯨꯪ ꯐꯒꯠꯂꯀꯄꯁꯤꯡ ꯏꯟꯁ꯭ꯇꯣꯜ ꯇꯧꯔꯨ꯫",
+ "Install the software on the computer your printer is connected to, and keep that computer on during shop hours.": "ꯁꯐ꯭ꯇꯋꯦꯔ ꯑꯁꯤ ꯅꯍꯥꯛꯀꯤ ꯄ꯭ꯔꯤꯟꯇꯔ ꯁꯝꯅꯔꯤꯕꯥ ꯀꯝꯄ꯭ꯌꯨꯇꯔ ꯑꯗꯨꯗꯥ ꯏꯟꯁ꯭ꯇꯣꯜ ꯇꯧꯔꯨ, ꯑꯃꯁꯨꯪ ꯁꯣꯞ ꯍꯥꯡꯂꯤꯉꯩꯗꯥ ꯀꯝꯄ꯭ꯌꯨꯇꯔ ꯑꯗꯨ ꯍꯧꯗꯣꯛꯇꯨꯅꯥ ꯊꯝꯃꯨ꯫",
  "Installed printer": "ꯏꯟꯁꯇꯣꯜ ꯇꯧꯔꯕꯥ ꯄ꯭ꯔꯤꯟꯇꯔ",
  "Installer download error: %s": "ꯏꯟꯁ꯭ꯇꯣꯂꯔ ꯗꯥꯎꯅꯂꯣꯗꯀꯤ ꯑꯁꯣꯏꯕꯥ: %s",
  "instant email": "ꯈꯨꯗꯛꯀꯤ ꯏꯃꯦꯜ",
@@ -2328,6 +2331,7 @@
  "Please wait, we're confirming": "ꯉꯥꯏꯕꯤꯌꯨ, ꯑꯩꯈꯣꯌꯅꯥ ꯆꯨꯝꯅꯥ ꯌꯦꯡꯂꯤ",
  "Please wait...": "ꯉꯥꯏꯕꯤꯌꯨ...",
  "Plug in a customer's pendrive = risk of a virus. The PC slows down, files corrupt, and sometimes the whole system crashes.": "ꯀꯁꯇꯃꯔꯒꯤ ꯄꯦꯟ ꯗ꯭ꯔꯥꯏꯚ ꯁꯝꯅꯍꯅꯕꯥ = ꯚꯥꯏꯔꯁꯀꯤ ꯈꯨꯗꯣꯡꯊꯤꯕꯥ꯫ PC ꯇꯞꯅꯥ ꯆꯠꯂꯀꯏ, ꯐꯥꯏꯜꯁꯤꯡ ꯁꯣꯀꯏ, ꯑꯃꯁꯨꯪ ꯃꯇꯝ ꯈꯔꯗꯥ ꯁꯤꯁ꯭ꯇꯦꯝ ꯄꯨꯝꯅꯃꯛ ꯂꯦꯞꯂꯀꯏ꯫",
+ "PNG · A4": "PNG · A4",
  "PO (Post Office)": "PO (ꯄꯣꯁ꯭ꯠ ꯑꯣꯐꯤꯁ)",
  "PO: %s": "PO: %s",
  "Police station": "ꯄꯨꯂꯤꯁ ꯁ꯭ꯇꯦꯁꯟ",
@@ -2745,6 +2749,7 @@
  "That number does not look real — please enter your WhatsApp number.": "ꯅꯝꯕꯔ ꯑꯁꯤ ꯑꯁꯦꯡꯕꯥ ꯑꯣꯏꯅꯥ ꯎꯏꯗꯦ — ꯅꯍꯥꯛꯀꯤ WhatsApp ꯅꯝꯕꯔ ꯍꯥꯄꯆꯤꯜꯂꯨ꯫",
  "That Shop ID is also a demo account. Enter your paid Shop ID.": "ꯁꯣꯞ ID ꯑꯗꯨꯁꯨ ꯗꯦꯃꯣ ꯑꯦꯀꯥꯎꯟꯇꯅꯤ꯫ ꯁꯦꯜ ꯄꯤꯔꯕꯥ ꯅꯍꯥꯛꯀꯤ ꯁꯣꯞ ID ꯍꯥꯄꯆꯤꯜꯂꯨ꯫",
  "The \"24h log\" count above is": "ꯃꯊꯛꯀꯤ \"ꯄꯨꯡ 24 ꯒꯤ ꯂꯣꯒ\" ꯃꯁꯤꯡ ꯑꯁꯤ",
+ "The 🖨️ icon in the tray (bottom-right) means everything is working. You can also choose \"Check for Update\" from there.": "ꯠꯔꯦꯗꯥ (ꯃꯈꯥ ꯌꯦꯠꯇꯥ) 🖨️ ꯑꯥꯏꯀꯟ ꯎꯔꯕꯗꯤ ꯄꯨꯝꯅꯃꯛ ꯆꯨꯝꯅꯥ ꯊꯕꯛ ꯇꯧꯔꯤ꯫ ꯃꯐꯝ ꯑꯗꯨꯗꯒꯤ \"Check for Update\" ꯈꯅꯕꯁꯨ ꯌꯥꯏ꯫",
  "The account is paused": "ꯑꯦꯀꯥꯎꯟꯠ ꯊꯤꯡꯖꯤꯜꯂꯦ",
  "The account will be deleted PERMANENTLY.": "ꯑꯦꯀꯥꯎꯟꯠ ꯃꯇꯝ ꯆꯨꯞꯄꯗꯥ ꯃꯨꯠꯊꯠꯀꯅꯤ꯫",
  "The account will be deleted PERMANENTLY. All orders, earnings and your QR code will be erased. This cannot be undone. Continue?": "ꯑꯦꯀꯥꯎꯟꯠ ꯃꯇꯝ ꯆꯨꯞꯄꯗꯥ ꯃꯨꯠꯊꯠꯀꯅꯤ꯫ ꯑꯔ꯭ꯗꯔ, ꯁꯦꯜ ꯐꯪꯕꯥ ꯑꯃꯁꯨꯪ ꯅꯍꯥꯛꯀꯤ QR ꯀꯣꯗ ꯄꯨꯝꯅꯃꯛ ꯃꯥꯡꯒꯅꯤ꯫ ꯃꯁꯤ ꯍꯟꯗꯣꯛꯄꯥ ꯌꯥꯔꯣꯏ꯫ ꯃꯈꯥ ꯆꯠꯀꯗ꯭ꯔꯥ?",
@@ -2985,6 +2990,7 @@
  "Two plans are available through your agent link. Each plan has its own price. For each paid shop, you earn flat ₹100 commission.": "ꯅꯍꯥꯛꯀꯤ ꯑꯦꯖꯦꯟꯠ ꯂꯤꯡꯛꯇꯒꯤ ꯄ꯭ꯂꯥꯟ ꯑꯅꯤ ꯐꯪꯏ꯫ ꯄ꯭ꯂꯥꯟ ꯈꯨꯗꯤꯡꯃꯛꯀꯤ ꯃꯁꯥꯒꯤ ꯃꯃꯜ ꯂꯩ꯫ ꯁꯦꯜ ꯄꯤꯔꯕꯥ ꯁꯣꯞ ꯈꯨꯗꯤꯡꯃꯛꯇꯒꯤ ꯅꯍꯥꯛꯅꯥ ꯍꯣꯡꯗꯕꯥ ₹100 ꯀꯃꯤꯁꯟ ꯐꯪꯒꯅꯤ꯫",
  "Two-sided option on B&W prints": "B&W ꯄ꯭ꯔꯤꯟꯇꯇꯥ ꯃꯥꯏ ꯑꯅꯤꯃꯛꯀꯤ ꯑꯣꯄꯁꯟ",
  "Two-sided option on Color prints": "ꯀꯂꯔ ꯄ꯭ꯔꯤꯟꯇꯇꯥ ꯃꯥꯏ ꯑꯅꯤꯃꯛꯀꯤ ꯑꯣꯄꯁꯟ",
+ "TXT": "TXT",
  "Type DELETE first": "ꯍꯥꯟꯅꯥ DELETE ꯏꯔꯨ",
  "Type DELETE to confirm": "ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ DELETE ꯏꯔꯨ",
  "Type the model": "ꯃꯣꯗꯦꯜ ꯏꯔꯨ",
@@ -3143,6 +3149,7 @@
  "You can stop using Echel at any time. We may suspend or close a shop account that breaches these Terms, does not pay for its plan, abuses the referral or withdrawal system, or puts the Platform or other shops at risk. On termination the licence to run the agent ends immediately.": "ꯅꯍꯥꯛꯅꯥ ꯀꯗꯥꯏꯗꯥ ꯑꯣꯏꯔꯕꯁꯨ Echel ꯁꯤꯖꯤꯟꯅꯕꯥ ꯂꯦꯞꯄꯥ ꯌꯥꯏ꯫ ꯇꯥꯛꯂꯤꯕꯥ ꯑꯁꯤꯁꯤꯡ ꯊꯨꯒꯥꯏꯕꯥ, ꯃꯁꯥꯒꯤ ꯄ꯭ꯂꯥꯅꯒꯤ ꯁꯦꯜ ꯄꯤꯗꯕꯥ, ꯔꯦꯐꯔꯦꯜ ꯅꯠꯇ꯭ꯔꯒꯥ ꯁꯦꯜ ꯂꯧꯊꯣꯛꯄꯒꯤ ꯁꯤꯁ꯭ꯇꯦꯝ ꯑꯔꯥꯅꯕꯥ ꯁꯤꯖꯤꯟꯅꯕꯥ, ꯅꯠꯇ꯭ꯔꯒꯥ ꯄ꯭ꯂꯦꯠꯐꯣꯔꯝ ꯅꯠꯇ꯭ꯔꯒꯥ ꯑꯇꯣꯞꯄꯥ ꯁꯣꯄꯁꯤꯡꯕꯨ ꯈꯨꯗꯣꯡꯊꯤꯕꯗꯥ ꯊꯃꯕꯥ ꯁꯣꯞ ꯑꯦꯀꯥꯎꯟꯠ ꯑꯩꯈꯣꯌꯅꯥ ꯊꯤꯡꯖꯤꯟꯕꯥ ꯅꯠꯇ꯭ꯔꯒꯥ ꯂꯣꯟꯁꯤꯟꯕꯥ ꯌꯥꯏ꯫ ꯂꯣꯏꯁꯤꯅꯕꯥ ꯃꯇꯃꯗꯥ ꯑꯦꯖꯦꯟꯠ ꯆꯂꯥꯏꯕꯒꯤ ꯂꯥꯏꯁꯦꯟꯁ ꯈꯨꯗꯛꯇꯥ ꯂꯣꯏꯁꯤꯜꯂꯤ꯫",
  "You can watch it happen": "ꯊꯣꯀꯄꯥ ꯑꯗꯨ ꯅꯍꯥꯛꯅꯥ ꯌꯦꯡꯕꯥ ꯌꯥꯏ",
  "You can withdraw ✅": "ꯅꯍꯥꯛꯅꯥ ꯁꯦꯜ ꯂꯧꯊꯣꯛꯄꯥ ꯌꯥꯏ ✅",
+ "You don't need to uninstall an old version first — the new one replaces it automatically.": "ꯑꯍꯥꯅꯕꯗꯥ ꯑꯔꯤꯕꯥ ꯚꯔꯁꯟ ꯑꯅꯏꯟꯁ꯭ꯇꯣꯜ ꯇꯧꯕꯒꯤ ꯃꯊꯧ ꯇꯥꯗꯦ — ꯑꯅꯧꯕꯥ ꯑꯗꯨꯅꯥ ꯃꯊꯟꯇꯥ ꯃꯍꯨꯠ ꯁꯤꯟꯒꯅꯤ꯫",
  "You get the fastest reply here": "ꯃꯐꯝ ꯑꯁꯤꯗꯥ ꯈ꯭ꯋꯥꯏꯗꯒꯤ ꯊꯨꯅꯥ ꯄꯥꯎꯈꯨꯝ ꯐꯪꯏ",
  "You have to give your personal number to every customer. Files get lost in chat, and you keep hunting for \"that file I sent earlier\".": "ꯅꯍꯥꯛꯅꯥ ꯀꯁꯇꯃꯔ ꯈꯨꯗꯤꯡꯃꯛꯇꯥ ꯅꯍꯥꯛꯀꯤ ꯃꯁꯥꯒꯤ ꯅꯝꯕꯔ ꯄꯤꯒꯗꯕꯅꯤ꯫ ꯐꯥꯏꯜꯁꯤꯡ ꯆꯦꯇꯇꯥ ꯃꯥꯡꯏ, ꯑꯃꯁꯨꯪ ꯅꯍꯥꯛꯅꯥ \"ꯃꯃꯥꯡꯗꯥ ꯊꯥꯈꯤꯕꯥ ꯐꯥꯏꯜ ꯑꯗꯨ\" ꯊꯤꯔꯤ꯫",
  "You just sit at the counter — no taking files, opening them, or hitting print. The payment record builds itself.": "ꯅꯍꯥꯛ ꯀꯥꯎꯟꯇꯔꯗꯥ ꯐꯝꯂꯤꯕꯥ ꯈꯛꯇꯃꯛ — ꯐꯥꯏꯜ ꯂꯧꯕꯥ, ꯍꯥꯡꯗꯣꯛꯄꯥ ꯅꯠꯇ꯭ꯔꯒꯥ ꯄ꯭ꯔꯤꯟꯠ ꯅꯝꯕꯥ ꯇꯥꯗꯦ꯫ ꯄꯦꯃꯦꯟꯠꯀꯤ ꯔꯦꯀꯣꯔꯗ ꯃꯁꯥꯃꯛꯇꯅꯥ ꯁꯦꯝꯃꯤ꯫",
