@@ -78,9 +78,20 @@ function keyOf(text) {
     .replace(/(%s\s*)+%s/g, '%s');                       // adjacent slots collapse
 }
 
-// An element marked data-i18n-sentence is looked up by its whole text, the way
-// the browser's textContent reads it, so a sentence split by <b>/<em> keeps its
-// word order in Manipuri.
+// An element marked data-i18n-sentence is looked up as one sentence, so a
+// sentence split by <b>/<a>/<span> keeps its word order in Manipuri. When it has
+// child elements, each one becomes {1}, {2}... in the key — exactly what
+// public/i18n.js builds — and the child elements' own text is a separate key.
+function markedOf(node) {
+  let s = '', n = 0;
+  for (const c of node.childNodes || []) {
+    if (c.nodeName === '#text') s += c.value;
+    else if (c.nodeName !== '#comment') s += '{' + (++n) + '}';
+  }
+  return n ? normWs(s) : '';
+}
+// Without child elements the key is its whole text, the way the browser's
+// textContent reads it.
 function sentenceOf(node) {
   let s = '';
   (function read(n) {
@@ -88,6 +99,41 @@ function sentenceOf(node) {
     for (const c of n.childNodes || []) read(c);
   })(node);
   return normWs(s);
+}
+// The same choice public/i18n.js makes at run time needs the dictionary.
+let dictCache = null;
+function inDictionary(key) {
+  if (!dictCache) {
+    try { dictCache = JSON.parse(fs.readFileSync(path.join(ROOT, 'i18n', 'manipuri.json'), 'utf8')); }
+    catch (e) { dictCache = {}; }
+  }
+  return Object.prototype.hasOwnProperty.call(dictCache, key);
+}
+const CONTROL_TAGS = new Set(['a', 'button', 'input', 'select', 'textarea', 'label']);
+function hasControls(node) {
+  return (node.childNodes || []).some(c => CONTROL_TAGS.has(c.nodeName) || hasControls(c));
+}
+
+// The key(s) of one data-i18n-sentence element. visitChild collects the text
+// inside its child elements, which is translated on its own.
+//
+// public/i18n.js uses the {1} entry when there is one. Otherwise a sentence
+// already translated as a whole keeps that translation — unless it contains a
+// link or a button, which only the {1} form can keep.
+function sentenceKeys(node, out, where, visitChild) {
+  const marked = markedOf(node);
+  const whole = sentenceOf(node);
+  if (marked) {
+    const mk = keyOf(marked);
+    if (!inDictionary(mk) && !hasControls(node) && inDictionary(keyOf(whole))) {
+      out(keyOf(whole), where);
+      return;
+    }
+    if (isProse(marked.replace(/\{\d+\}/g, ' '), true)) out(mk, where);
+    for (const c of node.childNodes || []) if (c.nodeName !== '#text') visitChild(c);
+    return;
+  }
+  if (isProse(whole, true)) out(keyOf(whole), where);
 }
 function isSentence(node) {
   return (node.attrs || []).some(a => a.name === 'data-i18n-sentence');
@@ -104,8 +150,7 @@ function htmlPieces(html, out, where) {
     const tag = node.tagName;
     const noI18n = (node.attrs || []).some(a => a.name === 'data-no-i18n');
     if (!skip && !noI18n && isSentence(node)) {
-      const whole = sentenceOf(node);
-      if (isProse(whole, true)) out(keyOf(whole), where);
+      sentenceKeys(node, out, where, c => visit(c, false));
       return;
     }
     const skipHere = skip || SKIP_TAGS.has(tag) || noI18n;
@@ -335,8 +380,7 @@ function collectUiStrings() {
         }
         const noI18n = (node.attrs || []).some(a => a.name === 'data-no-i18n');
         if (!skip && !noI18n && isSentence(node)) {
-          const whole = sentenceOf(node);
-          if (isProse(whole, true)) out(keyOf(whole), f);
+          sentenceKeys(node, out, f, c => visit(c, false));
           return;
         }
         const skipHere = skip || SKIP_TAGS.has(tag) || noI18n;

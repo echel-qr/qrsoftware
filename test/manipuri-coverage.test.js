@@ -30,6 +30,15 @@ test('the translations keep their %s and %d placeholders', () => {
   assert.deepEqual(wrong, [], 'these translations do not match their English placeholders');
 });
 
+// A whole sentence with links or bold words in it is keyed with {1}, {2}...
+// for those elements. The translation may move them, but each has to appear
+// exactly once — otherwise a link would vanish from the Manipuri page.
+test('sentence translations keep each {1}, {2} marker exactly once', () => {
+  const marks = s => (String(s).match(/\{\d+\}/g) || []).sort().join('');
+  const wrong = Object.entries(dict()).filter(([en, mni]) => marks(en) !== marks(mni));
+  assert.deepEqual(wrong, [], 'these translations lose or repeat a sentence marker');
+});
+
 // public/i18n/mni-mtei.js is generated. If someone edits i18n/manipuri.json and
 // forgets npm run i18n:build, the website would keep serving the old text.
 test('public/i18n/mni-mtei.js is up to date with i18n/manipuri.json', () => {

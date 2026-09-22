@@ -48,3 +48,43 @@ test('a data-i18n-sentence element is translated whole and restored exactly', as
   assert.equal(w.document.getElementById('f').innerHTML, 'Earn <b>more</b>');
   dom.window.close();
 });
+
+test('a sentence with links keeps them, moved to the Manipuri word order', async () => {
+  const dom = new JSDOM('<!doctype html><body><p id="s" data-i18n-sentence>To confirm, type <b data-no-i18n>DELETE</b> below. Or go to <a id="go" href="/settings">Settings</a>.</p></body>', { url: 'http://localhost/', runScripts: 'outside-only' });
+  const w = dom.window;
+  w.ECHEL_OFFLINE = true;
+  w.eval(fs.readFileSync(require.resolve('../public/i18n.js'), 'utf8'));
+  w.QSPi18n.addDict({
+    'To confirm, type {1} below. Or go to {2}.': 'ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ ꯃꯈꯥꯗꯥ {1} ꯏꯕꯤꯌꯨ꯫ ꯅꯠꯇ꯭ꯔꯒꯥ {2} ꯗꯥ ꯆꯠꯂꯨ꯫',
+    Settings: 'ꯁꯦꯇꯤꯡ',
+  }, 'mni-mtei');
+  const link = w.document.getElementById('go');
+  let clicks = 0;
+  link.addEventListener('click', e => { e.preventDefault(); clicks++; });
+  await tick(); w.QSPi18n.setLang('mni-mtei');
+  const p = w.document.getElementById('s');
+  assert.equal(p.textContent, 'ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ ꯃꯈꯥꯗꯥ DELETE ꯏꯕꯤꯌꯨ꯫ ꯅꯠꯇ꯭ꯔꯒꯥ ꯁꯦꯇꯤꯡ ꯗꯥ ꯆꯠꯂꯨ꯫');
+  // The same link element — its address and its click handler — is still there.
+  assert.strictEqual(p.querySelector('a'), link);
+  assert.equal(link.getAttribute('href'), '/settings');
+  link.click(); assert.equal(clicks, 1);
+  // A number inside the sentence changes while Manipuri is on.
+  p.querySelector('b').textContent = 'DELETE';
+  await tick();
+  assert.equal(p.textContent, 'ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ ꯃꯈꯥꯗꯥ DELETE ꯏꯕꯤꯌꯨ꯫ ꯅꯠꯇ꯭ꯔꯒꯥ ꯁꯦꯇꯤꯡ ꯗꯥ ꯆꯠꯂꯨ꯫');
+  w.QSPi18n.setLang('en');
+  assert.equal(p.innerHTML, 'To confirm, type <b data-no-i18n="">DELETE</b> below. Or go to <a id="go" href="/settings">Settings</a>.');
+  dom.window.close();
+});
+
+test('a sentence entry that loses a link marker is not used', async () => {
+  const dom = new JSDOM('<!doctype html><body><p id="s" data-i18n-sentence>Go to <a href="/x">Settings</a> now</p></body>', { url: 'http://localhost/', runScripts: 'outside-only' });
+  const w = dom.window;
+  w.ECHEL_OFFLINE = true;
+  w.eval(fs.readFileSync(require.resolve('../public/i18n.js'), 'utf8'));
+  w.QSPi18n.addDict({ 'Go to {1} now': 'ꯍꯧꯖꯤꯛ ꯆꯠꯂꯨ' }, 'mni-mtei');   // {1} forgotten
+  await tick(); w.QSPi18n.setLang('mni-mtei');
+  const p = w.document.getElementById('s');
+  assert.ok(p.querySelector('a'), 'the link must never disappear');
+  dom.window.close();
+});

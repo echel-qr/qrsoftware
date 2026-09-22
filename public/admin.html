@@ -919,7 +919,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
             <div class="duPlan-note">Advance + all upcoming<br>features are included</div>
           </button>
         </div>
-        <p style="font-size:11.5px;color:#6b6870;margin:12px 0 0;line-height:1.6;text-align:center;">
+        <p style="font-size:11.5px;color:#6b6870;margin:12px 0 0;line-height:1.6;text-align:center;" data-i18n-sentence>
           As soon as you click a plan, <b>new shop registration</b> will open — the same normal process.<br>
           After registration you'll get a new Shop ID — enter it in the agent.
         </p>
@@ -1197,7 +1197,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <div id="agJoin" class="card" style="display:none;text-align:center;">
         <div style="font-size:38px;">💼</div>
         <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;margin:8px 0 8px;">Become an agent — ₹100 per shop</h2>
-        <p style="font-size:13px;color:#6b6870;line-height:1.7;max-width:420px;margin:0 auto 14px;">
+        <p style="font-size:13px;color:#6b6870;line-height:1.7;max-width:420px;margin:0 auto 14px;" data-i18n-sentence>
           <b style="color:#111114;">Earn lifetime by becoming an agent in Echel.</b><br>
           Get nearby cyber cafes onto Echel. On every paid shop,
           <b>flat ₹100 commission</b> — straight to your UPI.
@@ -1421,7 +1421,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <!-- One Shop ID runs on only ONE PC -->
       <div style="margin-top:22px;padding-top:18px;border-top:1.5px solid #e8e6f0;">
         <div style="font-size:14px;font-weight:800;margin-bottom:6px;">🖥️ Connected Computer</div>
-        <p style="font-size:12.5px;color:#64748b;line-height:1.7;margin-bottom:12px;">
+        <p style="font-size:12.5px;color:#64748b;line-height:1.7;margin-bottom:12px;" data-i18n-sentence>
           Your Shop ID works on only <b>one computer</b>, to protect customer files from access through another computer using your Shop ID.<br>
           Before using another computer or reinstalling Windows, disconnect the old computer here. You can then enter your Shop ID on the new installation.
         </p>
@@ -1981,7 +1981,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           <li>the QR code will stop accepting orders</li>
         </ul>
         <div style="background:#fff;border:1.5px solid #fecaca;border-radius:12px;padding:13px;margin-bottom:14px;">
-          <div style="font-size:12.5px;font-weight:800;color:#b91c1c;margin-bottom:8px;">
+          <div style="font-size:12.5px;font-weight:800;color:#b91c1c;margin-bottom:8px;" data-i18n-sentence>
             To confirm, type <code style="background:#fee2e2;padding:2px 8px;border-radius:5px;">DELETE</code> below
           </div>
           <input id="delConfirmInput" type="text" placeholder="DELETE" autocomplete="off" spellcheck="false"
@@ -1995,7 +1995,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           🗑️ Delete My Account Permanently
         </button>
         <div id="delAccMsg" style="display:none;font-size:12.5px;margin-top:10px;"></div>
-        <p style="font-size:11.5px;color:#94a3b8;margin-top:12px;text-align:center;line-height:1.6;">
+        <p style="font-size:11.5px;color:#94a3b8;margin-top:12px;text-align:center;line-height:1.6;" data-i18n-sentence>
           Just want to change some settings? Go to <a href="#" onclick="navTo('settings',null);return false;"
             style="color:#c81e28;font-weight:700;">Settings</a>.
         </p>
@@ -3378,7 +3378,9 @@ function updateAdvModSummary() {
     el.innerHTML = '⚠️ Everything is off — customers only see <b>normal A4 print</b>.';
     el.style.color = '#b45309';
   } else {
-    el.innerHTML = '✅ Customers see <b>' + on.length + '</b> option' + (on.length > 1 ? 's' : '') +
+    el.innerHTML = (on.length === 1
+                     ? '<span data-i18n-sentence>✅ Customers see <b>1</b> option</span>'
+                     : '<span data-i18n-sentence>✅ Customers see <b>' + on.length + '</b> options</span>') +
                    ' — ' + on.map(m => m.icon + ' ' + m.title).join(' · ');
     el.style.color = '#166534';
   }

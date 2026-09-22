@@ -924,7 +924,7 @@ body{
   </div>
 
   <div class="footer">
-    <p style="font-weight:700;color:#7a7a8c;">⚡ Powered by <b id="poweredByName">Echel</b></p>
+    <p style="font-weight:700;color:#7a7a8c;" data-i18n-sentence>⚡ Powered by <b id="poweredByName">Echel</b></p>
     <p style="font-size:10px;color:#9a9aab;" id="footerLegal">© 2026 Echel · All Rights Reserved<br>Smart printing. Simply connected.</p>
   </div>
 
@@ -1014,8 +1014,10 @@ const PAPER_SIZES = {
   '4x6':    { label: '4×6 Photo', wmm: 101.6, hmm: 152.4 },
   'a4':     { label: 'A4',        wmm: 210,   hmm: 297   },
   'a5':     { label: 'A5',        wmm: 148,   hmm: 210   },
-  'letter': { label: 'Letter',    wmm: 215.9, hmm: 279.4 },
-  'legal':  { label: 'Legal',     wmm: 215.9, hmm: 355.6 },
+  // "Letter" and "Legal" are also ordinary words (a letter, the law), so the
+  // size names say "size" — otherwise the translation picks the other meaning.
+  'letter': { label: 'Letter size', wmm: 215.9, hmm: 279.4 },
+  'legal':  { label: 'Legal size',  wmm: 215.9, hmm: 355.6 },
   'a3':     { label: 'A3',        wmm: 297,   hmm: 420   },
   'a2':     { label: 'A2',        wmm: 420,   hmm: 594   },
   'a1':     { label: 'A1',        wmm: 594,   hmm: 841   }
@@ -1161,6 +1163,8 @@ async function init() {
     state.duplexBwOn    = shop.duplex_bw_enabled    !== false;
     state.duplexColorOn = shop.duplex_color_enabled !== false;
     updateDuplexVisibility();
+    // The shop's own name is never translated ("Sharma Print Point" must stay).
+    document.getElementById('shopName').setAttribute('data-no-i18n', '');
     document.getElementById('shopName').textContent = shop.name;
     document.getElementById('shopAddr').textContent = '📍 ' + (shop.address || '');
     document.getElementById('priceBWBadge').textContent = `B&W: ₹${shop.price_bw}/page`;
@@ -1326,8 +1330,9 @@ function promptPdfPassword(fileName, wrongCount) {
     const errBox = document.getElementById('pwErr');
     if (wrongCount > 0) {
       const left = PW_MAX_ATTEMPTS - wrongCount;
-      errBox.textContent = '❌ Wrong password — ' + left +
-        (left === 1 ? ' attempt left' : ' attempts left');
+      errBox.textContent = left === 1
+        ? '❌ Wrong password — 1 attempt left'
+        : '❌ Wrong password — ' + left + ' attempts left';
       errBox.classList.remove('hidden');
     } else {
       errBox.textContent = '';
@@ -2782,8 +2787,10 @@ function changePaperSize() {
   // A size change can change the rate too — refresh the summary immediately
   if (typeof updatePriceSummary === 'function') updatePriceSummary();
   const big = getBigSizeRate();
-  toast('📐 ' + (PAPER_SIZES[state.paperSize] || {}).label + ' selected' +
-        (big > 0 ? ' — ₹' + money(big) + '/page' : ' — the print will come out at this size'));
+  const sizeLabel = (PAPER_SIZES[state.paperSize] || {}).label;
+  toast(big > 0
+    ? '📐 ' + sizeLabel + ' selected — ₹' + money(big) + '/page'
+    : '📐 ' + sizeLabel + ' selected — the print will come out at this size');
 }
 
 function toggleOrientation() {
@@ -4096,11 +4103,14 @@ async function buildMiniPreview(){
                                     miniSheets);
       const rate = (miniSlab != null) ? miniSlab : baseRate;
       const price = (parseFloat(rate) || 0) * total;
+      // Whole phrases and data-i18n-sentence, so Manipuri gets a complete
+      // sentence instead of English words with an "s" glued on.
+      const sheets = total === 1 ? '1 sheet' : total + ' sheets';
       sum.innerHTML =
-          pages.length + ' pages → <b>' + total + ' sheet' + (total>1?'s':'') + '</b>'
-        + ' (' + mini.per + ' per sheet)<br>'
-        + 'You pay only for <b>' + total + ' sheet' + (total>1?'s':'') + '</b>'
-        + (price ? ' — at the current rate <b>₹' + Math.round(price) + '</b>' : '')
+          '<span data-i18n-sentence>' + pages.length + ' pages → <b>' + sheets + '</b> (' + mini.per + ' per sheet)</span><br>'
+        + (price
+            ? '<span data-i18n-sentence>You pay only for <b>' + sheets + '</b> — at the current rate <b>₹' + Math.round(price) + '</b></span>'
+            : '<span data-i18n-sentence>You pay only for <b>' + sheets + '</b></span>')
         + '<br><span style="font-size:11.5px;color:var(--muted)">That is '
         + (pages.length - total) + ' sheets less than printing one page per sheet</span>';
     }
@@ -4493,6 +4503,14 @@ function getTotal() {
   const pricePerPage = getPerPageRate();
   return Math.round(pricePerPage * getEffectivePageCount() * state.copies * 100) / 100;
 }
+// "3 pages × 2 copies" as one of four whole phrases — never an English
+// plural ending glued on, which a translation cannot follow.
+function pagesTimesCopies(pages, copies) {
+  if (pages === 1 && copies === 1) return '1 page × 1 copy';
+  if (pages === 1) return '1 page × ' + copies + ' copies';
+  if (copies === 1) return pages + ' pages × 1 copy';
+  return pages + ' pages × ' + copies + ' copies';
+}
 function updatePriceSummary() {
   setServiceBadge();
   const rate = getServiceRate();
@@ -4522,10 +4540,10 @@ function updatePriceSummary() {
     const total = rate * state.copies;
     const label = state.service === 'photo4x6'
       ? ('4×6 Photo Sheet (' + state.photoCount + ' photos)')
-      : ('Resume ' + (state.colorMode === 'bw' ? 'B&W' : 'Color'));
+      : (state.colorMode === 'bw' ? 'Resume B&W' : 'Resume Color');
     document.getElementById('sumType').textContent = label;
     document.getElementById('sumPerPage').textContent = '₹' + rate + '/sheet';
-    document.getElementById('sumPages').textContent = '1 sheet × ' + state.copies + ' cop' + (state.copies>1?'ies':'y');
+    document.getElementById('sumPages').textContent = state.copies === 1 ? '1 sheet × 1 copy' : '1 sheet × ' + state.copies + ' copies';
     document.getElementById('sumPagesAmt').textContent = '₹' + total;
     document.getElementById('sumTotal').textContent = '₹' + total;
     return;
@@ -4536,12 +4554,21 @@ function updatePriceSummary() {
     ((state.colorMode === 'bw' && state.priceBwDuplex > 0) ||
      (state.colorMode !== 'bw' && state.priceColorDuplex > 0));
   // For big sizes include the size in the label — the bill is easier to understand
-  const bigLbl = (getBigSizeRate() > 0 && PAPER_SIZES[state.paperSize])
-    ? ' — ' + PAPER_SIZES[state.paperSize].label : '';
-  document.getElementById('sumType').textContent =
-    (state.colorMode === 'bw' ? 'B&W' : 'Color') + ' Print' + bigLbl + (dupOn ? ' (Dual-Side)' : '');
+  const sizeName = (getBigSizeRate() > 0 && PAPER_SIZES[state.paperSize])
+    ? PAPER_SIZES[state.paperSize].label : '';
+  // Separate pieces instead of one joined line: "Color Print — Legal size
+  // (Dual-Side)" would reach the translation as a single unknown sentence.
+  const sumType = document.getElementById('sumType');
+  sumType.replaceChildren();
+  [state.colorMode === 'bw' ? 'B&W Print' : 'Color Print', sizeName, dupOn ? '(Dual-Side)' : '']
+    .filter(Boolean).forEach((text, i) => {
+      if (i) sumType.append(i === 1 ? ' — ' : ' ');
+      const part = document.createElement('span');
+      part.textContent = text;
+      sumType.append(part);
+    });
   document.getElementById('sumPerPage').textContent = '₹' + money(pricePerPage) + '/page';
-  document.getElementById('sumPages').textContent = printPages + ' page' + (printPages>1?'s':'') + ' × ' + state.copies + ' cop' + (state.copies>1?'ies':'y');
+  document.getElementById('sumPages').textContent = pagesTimesCopies(printPages, state.copies);
   document.getElementById('sumPagesAmt').textContent = '₹' + money(total);
   document.getElementById('sumTotal').textContent = '₹' + money(total);
 }

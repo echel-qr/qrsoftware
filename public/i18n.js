@@ -199,10 +199,19 @@
   // "Earn <em>lifetime</em> by becoming an agent" is three text nodes. Each
   // piece translated on its own gives the wrong word order, because Manipuri
   // puts the verb last. An element marked data-i18n-sentence is therefore
-  // looked up by its whole text, and — when a translation exists — its
-  // content is replaced by that one sentence (the emphasis is dropped in
-  // Manipuri only). Its original English nodes are kept and put back when the
-  // visitor switches to English.
+  // looked up as one sentence:
+  //
+  //   1. Each child element becomes {1}, {2}... in the key:
+  //        "Earn {1} by becoming an agent"
+  //      The translation places the markers where Manipuri needs them, and
+  //      the elements themselves — links, emphasis, a live number — are moved
+  //      there unchanged; their own text is translated as usual.
+  //   2. Without such an entry the whole text is looked up, and the content
+  //      is replaced by that one sentence (the emphasis is then dropped in
+  //      Manipuri only).
+  //
+  // The original English nodes are kept and put back when the visitor
+  // switches to English.
   var SENTENCE = '[data-i18n-sentence]';
   var origKids = new WeakMap();     // sentence element -> its original child nodes
   var ownText  = new WeakSet();     // text nodes the engine wrote for a sentence
@@ -211,6 +220,54 @@
     var s = '';
     for (var i = 0; i < nodes.length; i++) s += nodes[i].textContent;
     return normWs(s);
+  }
+
+  // "To confirm, type <b>DELETE</b> below" -> "To confirm, type {1} below"
+  function markedKey(nodes) {
+    var s = '', n = 0;
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].nodeType === 1) s += '{' + (++n) + '}';
+      else if (nodes[i].nodeType === 3) s += nodes[i].nodeValue;
+    }
+    return n ? normWs(s) : '';
+  }
+
+  // The translation cut into text and the original elements, in its order.
+  // Every element has to appear exactly once, or the entry is not used.
+  function markedParts(tpl, nodes) {
+    var els = [], i;
+    for (i = 0; i < nodes.length; i++) if (nodes[i].nodeType === 1) els.push(nodes[i]);
+    var parts = [], used = [], re = /\{(\d+)\}/g, last = 0, m;
+    while ((m = re.exec(tpl))) {
+      var k = +m[1] - 1;
+      if (!els[k] || used[k]) return null;
+      if (m.index > last) parts.push(tpl.slice(last, m.index));
+      parts.push(els[k]);
+      used[k] = true;
+      last = re.lastIndex;
+    }
+    if (last < tpl.length) parts.push(tpl.slice(last));
+    for (i = 0; i < els.length; i++) if (!used[i]) return null;
+    return parts;
+  }
+
+  var CONTROLS = 'a,button,input,select,textarea,label';
+  function hasControls(nodes) {
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (n.nodeType === 1 && ((n.matches && n.matches(CONTROLS)) || (n.querySelector && n.querySelector(CONTROLS)))) return true;
+    }
+    return false;
+  }
+
+  // Is the element still showing what the engine put there?
+  function stillOurs(el, kids) {
+    for (var c = el.firstChild; c; c = c.nextSibling) {
+      if (ownText.has(c)) continue;
+      if (c.nodeType === 1 && kids.indexOf(c) >= 0) continue;
+      return false;
+    }
+    return true;
   }
 
   function restoreSentence(el) {
@@ -225,18 +282,30 @@
     if (skip({ parentNode: el })) return;
     var kids = origKids.get(el);
     // A script replaced the content since it was translated: start over.
-    if (kids && !(el.childNodes.length === 1 && ownText.has(el.firstChild))) {
+    if (kids && !stillOurs(el, kids)) {
       origKids.delete(el);
       kids = null;
     }
     var english = kids || Array.prototype.slice.call(el.childNodes);
-    var hit = lookup(sentenceKey(english));
-    if (!hit) { restoreSentence(el); return; }
+    var parts = null, marked = markedKey(english);
+    if (marked) {
+      var tpl = lookup(marked);
+      if (tpl) parts = markedParts(tpl, english);
+    }
+    if (!parts) {
+      // Replacing the content with one text would remove a link or a button:
+      // without a {1} entry such a sentence is translated piece by piece.
+      var hit = !hasControls(english) && lookup(sentenceKey(english));
+      if (!hit) { restoreSentence(el); return; }
+      parts = [hit];
+    }
     if (!kids) origKids.set(el, english);
-    var t = d.createTextNode(hit);
-    ownText.add(t);
     el.textContent = '';
-    el.appendChild(t);
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (typeof p === 'string') { p = d.createTextNode(p); ownText.add(p); }
+      el.appendChild(p);
+    }
   }
 
   function translateText(node) {
@@ -321,9 +390,10 @@
         try {
           for (var i = 0; i < muts.length; i++) {
             var m = muts[i];
-            // A change inside a whole-sentence element: look the sentence up again.
+            // A change inside a whole-sentence element: look the sentence up
+            // again, and translate the text inside its child elements.
             var host = (m.type !== 'attributes') && sentenceOf(m.target);
-            if (host) { translateSentence(host); continue; }
+            if (host) { walk(host); continue; }
             if (m.type === 'childList') {
               for (var j = 0; j < m.addedNodes.length; j++) {
                 var nd = m.addedNodes[j];

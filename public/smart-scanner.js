@@ -920,8 +920,9 @@
         if (st === 'denied') return camBlockedPanel();
         showBar(false);
         panel('<h3>Camera access is needed</h3>' +
-              '<p>Tap the button below, and in the popup on your phone choose ' +
-              '<b>Allow</b>. The photo is created only on your phone.</p>' +
+              // "Allow" is the browser's own button, shown in English on the phone.
+              '<p data-i18n-sentence>Tap the button below, and in the popup on your phone choose ' +
+              '<b data-no-i18n>Allow</b>. The photo is created only on your phone.</p>' +
               '<div class="row">' +
               '<button class="ssBtn ssPri" id="ssRetry">📷 Allow Camera</button>' +
               '<button class="ssBtn ssSec" id="ssQuit">Close</button></div>');
@@ -949,19 +950,21 @@
   function camBlockedPanel() {
     showBar(false);
     panel('<h3>Camera is turned off</h3>' +
+          // Each line is one sentence, so Manipuri can put the verb last.
+          // Block, Permissions, Camera and Allow are the browser's own words.
           '<p style="text-align:left;line-height:1.85;">' +
-          'For this site the camera is already set to <b>Block</b>, so ' +
-          'the permission popup will not appear on its own anymore. It takes 10 seconds:' +
+          '<span data-i18n-sentence>For this site the camera is already set to <b data-no-i18n>Block</b>, so ' +
+          'the permission popup will not appear on its own anymore. It takes 10 seconds:</span>' +
           '<br><br>' +
-          '<b>1.</b> In the address bar above, tap the ' +
-          '<b>\uD83D\uDD12 / \u2139\uFE0F</b> icon just before the website name<br>' +
-          '<b>2.</b> Choose <b>Permissions</b> \u2192 <b>Camera</b> \u2192 <b>Allow</b><br>' +
-          '<b>3.</b> Tap <b>Reload Page</b> below' +
+          '<span data-i18n-sentence><b>1.</b> In the address bar above, tap the ' +
+          '<b>\uD83D\uDD12 / \u2139\uFE0F</b> icon just before the website name</span><br>' +
+          '<span data-i18n-sentence><b>2.</b> Choose <b data-no-i18n>Permissions</b> \u2192 <b data-no-i18n>Camera</b> \u2192 <b data-no-i18n>Allow</b></span><br>' +
+          '<span data-i18n-sentence><b>3.</b> Tap <b>Reload Page</b> below</span>' +
           '</p>' +
           '<div class="row">' +
           '<button class="ssBtn ssPri" id="ssReload">🔄 Reload Page</button>' +
           '<button class="ssBtn ssSec" id="ssQuit">Close</button></div>' +
-          '<p style="font-size:12px;opacity:.75;margin-top:12px;">' +
+          '<p style="font-size:12px;opacity:.75;margin-top:12px;" data-i18n-sentence>' +
           'If you would rather not allow the camera, no problem — tap "Close" and ' +
           'send the file with <b>Upload Document</b>.</p>');
     el('ssReload').onclick = function () { location.reload(); };
@@ -1154,11 +1157,9 @@
     panel(
       '<h3>' + (n === 1 ? 'Front side done' : 'Back side done') + '</h3>' +
       '<img id="ssPrev" src="' + prev + '" alt="scan preview">' +
-      '<p style="margin-top:16px">' +
-        (n === 1
-          ? 'If that\'s all, tap <b>Print</b>. To print the back side as well, add it below.'
-          : 'If that\'s all, tap <b>Print</b>, or add one more page.') +
-      '</p>' +
+      (n === 1
+        ? '<p style="margin-top:16px" data-i18n-sentence>If that\'s all, tap <b>Print</b>. To print the back side as well, add it below.</p>'
+        : '<p style="margin-top:16px" data-i18n-sentence>If that\'s all, tap <b>Print</b>, or add one more page.</p>') +
       // A machine cannot tell the correct orientation just by looking at the photo —
       // that would require reading the text. So there is a one-tap button: each tap
       // turns 90°. If it came out upside down, tap twice.

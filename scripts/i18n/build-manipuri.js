@@ -17,6 +17,8 @@
  *   - the JSON parses and every value is a non-empty string
  *   - %s / %d placeholders match between the English and the Manipuri text,
  *     otherwise a name or a number would land in the wrong place
+ *   - the {1}, {2}... markers of a whole sentence (its links and bold words)
+ *     each appear exactly once, otherwise public/i18n.js ignores the entry
  *   - entries that are still pure English are reported (not an error: "PDF",
  *     "₹10", "GST" and such stay as they are)
  */
@@ -31,6 +33,7 @@ const OUT  = path.join(ROOT, 'public', 'i18n', 'mni-mtei.js');
 const MAYEK = /[\u{ABC0}-\u{ABFF}]/u;          // the Meitei Mayek block
 
 function slots(s) { return (String(s).match(/%[sd]/g) || []).join(''); }
+function markers(s) { return (String(s).match(/\{\d+\}/g) || []).sort().join(''); }
 
 function build() {
   const raw = fs.readFileSync(SRC, 'utf8');
@@ -45,6 +48,10 @@ function build() {
     if (typeof mni !== 'string' || !mni.trim()) { problems.push('empty translation: ' + JSON.stringify(en)); continue; }
     if (slots(en) !== slots(mni)) {
       problems.push('placeholders differ: ' + JSON.stringify(en) + ' -> ' + JSON.stringify(mni));
+      continue;
+    }
+    if (markers(en) !== markers(mni)) {
+      problems.push('sentence markers differ: ' + JSON.stringify(en) + ' -> ' + JSON.stringify(mni));
       continue;
     }
     if (!MAYEK.test(mni)) plain.push(en);

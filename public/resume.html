@@ -736,7 +736,7 @@ textarea.fi{resize:vertical;min-height:65px}
 
 <!-- Footer -->
 <div class="footer">
-  <p>⚡ Powered by <b style="color:#ff4d1c">Echel</b></p>
+  <p data-i18n-sentence>⚡ Powered by <b style="color:#ff4d1c">Echel</b></p>
   <p>© 2026 Echel · All Rights Reserved</p>
   <p>Smart printing. Simply connected.</p>
   </p>
@@ -828,6 +828,8 @@ async function init() {
       // The resume's own rates (set by the owner in the Advance tab) — otherwise the page rates
       shopData.price_bw    = parseInt(shopData.price_resume_bw)    > 0 ? shopData.price_resume_bw    : shopData.price_bw;
       shopData.price_color = parseInt(shopData.price_resume_color) > 0 ? shopData.price_resume_color : shopData.price_color;
+      // The shop's own name is never translated; the fallback title is.
+      if (shopData.name) document.getElementById('shopName').setAttribute('data-no-i18n', '');
       document.getElementById('shopName').textContent  = shopData.name  || 'Echel Resume Maker';
       document.getElementById('shopAddr').textContent  = '📍 ' + (shopData.address || '');
       document.getElementById('shopPhone').textContent = '📞 ' + (shopData.phone || '—');
