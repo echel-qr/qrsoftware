@@ -44,7 +44,9 @@ const SKIP_RE = [
 
 function repoFiles() {
   try {
-    return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+    // --others --exclude-standard adds files that are not committed yet.
+    // Without them a brand new page could ship with text nobody scanned.
+    return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' })
       .split('\n').map(s => s.trim()).filter(Boolean);
   } catch (e) {
     const out = [];

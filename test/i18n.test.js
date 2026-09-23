@@ -88,3 +88,29 @@ test('a sentence entry that loses a link marker is not used', async () => {
   assert.ok(p.querySelector('a'), 'the link must never disappear');
   dom.window.close();
 });
+
+// Superadmin -> Languages writes into the database; /api/i18n/dict hands those
+// rows to the page. The bundled file and those rows arrive in whichever order
+// the network decides, so the correction has to win either way — otherwise a
+// line corrected in the panel silently goes back to the shipped translation.
+test('a Superadmin correction wins whichever arrives first, the file or the correction', async () => {
+  for (const fileFirst of [false, true]) {
+    const dom = new JSDOM('<!doctype html><body><p id="c">Shop is open</p></body>', { url: 'http://localhost/', runScripts: 'outside-only' });
+    const w = dom.window, asked = [];
+    w.fetch = url => { asked.push(url); return Promise.resolve({ ok: true, json: () => Promise.resolve({ lang: 'mni-mtei', dict: { 'Shop is open': 'CORRECTED' } }) }); };
+    w.eval(fs.readFileSync(require.resolve('../public/i18n.js'), 'utf8'));
+    if (fileFirst) { w.QSPi18n.addDict({ 'Shop is open': 'SHIPPED', Orders: 'ꯑꯣꯔꯗꯔ' }, 'mni-mtei'); await tick(); }
+    w.QSPi18n.setLang('mni-mtei');
+    await tick();
+    if (!fileFirst) { w.QSPi18n.addDict({ 'Shop is open': 'SHIPPED', Orders: 'ꯑꯣꯔꯗꯔ' }, 'mni-mtei'); await tick(); }
+    assert.equal(asked.filter(u => String(u).startsWith('/api/i18n/dict')).length, 1, 'the corrections are fetched once');
+    assert.equal(w.document.getElementById('c').textContent, 'CORRECTED', 'file first: ' + fileFirst);
+    // Lines nobody corrected still come from the shipped file.
+    w.document.getElementById('c').textContent = 'Orders';
+    await tick();
+    assert.equal(w.document.getElementById('c').textContent, 'ꯑꯣꯔꯗꯔ');
+    w.QSPi18n.setLang('en');
+    assert.equal(w.document.getElementById('c').textContent, 'Orders');
+    dom.window.close();
+  }
+});

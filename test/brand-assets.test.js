@@ -104,6 +104,38 @@ test('the owner workspace and the desktop panel wear the light Echel colours', (
     assert.doesNotMatch(css, /#(354b36|222a28|e9ede3|33432e|283f30)\b/i, name + ' uses an off-brand green');
 });
 
+/* The design this product grew out of was violet. Naming the shades one by one
+   never held — a slightly different violet always slipped back in. So every
+   colour that ships is measured on the colour wheel instead, and purple simply
+   has no place in a brand made of red, black, white and silver. */
+test('no page ships a purple', () => {
+  const instagram = '#8a3ab9';        // Instagram's own gradient, on its icon
+  const wheel = (r, g, b) => {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    if (mx === mn) return null;
+    const d = mx - mn, s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    let h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return { h: Math.round(h * 60), s: Math.round(s * 100) };
+  };
+  const purple = v => v && v.h >= 235 && v.h <= 310 && v.s >= 25;
+  const files = [...fs.readdirSync(pub).filter(f => /\.(html|css|js)$/.test(f)).map(f => 'public/' + f), 'agent_panel.html'];
+  const found = [];
+  for (const file of files) {
+    const text = read(file);
+    for (const hex of text.match(/#[0-9a-fA-F]{6}\b/g) || []) {
+      if (hex.toLowerCase() === instagram) continue;
+      if (purple(wheel(parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16))))
+        found.push(file + ' ' + hex);
+    }
+    for (const colour of text.match(/rgba?\([^)]*\)/g) || []) {
+      const n = colour.match(/[\d.]+/g) || [];
+      if (n.length >= 3 && purple(wheel(+n[0], +n[1], +n[2]))) found.push(file + ' ' + colour.replace(/\s+/g, ''));
+    }
+  }
+  assert.deepEqual([...new Set(found)], [], 'these colours are purple');
+});
+
 test('downloads from the owner workspace carry the Echel name', () => {
   const admin = read('public/admin.html');
   assert.match(admin, /download = 'Echel-Poster\.png'/);

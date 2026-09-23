@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>White Label — Sell Under Your Own Brand | Echel</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="description" content="Take the Echel white label licence — your brand, your logo, your price and your own Razorpay. Every rupee your shops pay goes straight to your account. echel.in">
+<link rel="canonical" href="https://echel.in/whitelabel">
+<!-- Link preview (WhatsApp, Facebook, X) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Echel">
+<meta property="og:url" content="https://echel.in/whitelabel">
+<meta property="og:title" content="White Label — Sell Under Your Own Brand | Echel">
+<meta property="og:description" content="Your brand, your logo, your price, your own payment account. A one-time licence and every shop you sign up is yours.">
+<meta property="og:image" content="https://echel.in/img/echel-share.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Echel — scan a QR, print automatically">
+<meta property="og:locale" content="en_IN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://echel.in/img/echel-share.png">
+<meta name="theme-color" content="#c81e28">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --red:#c81e28;--red-dark:#a8121b;--red-soft:#fdeeee;--red-line:#f2c8cb;
+  --ink:#16181b;--ink-2:#3b4148;--muted:#6b727a;
+  --line:#e3e6e9;--line-2:#d3d8dc;--bg:#f4f5f6;--silver:#eef0f2;--card:#fff;
+  --ok:#17663f;--ok-soft:#e9f7ef;--ok-line:#bfe5cf;
+  --warn:#8a5a12;--warn-soft:#fff6e5;--warn-line:#f1d9a6;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+body{
+  font-family:'Inter','Noto Sans Meetei Mayek',sans-serif;background:var(--bg);color:var(--ink);
+  line-height:1.6;-webkit-font-smoothing:antialiased;
+  padding-bottom:calc(40px + env(safe-area-inset-bottom));
+}
+body:before{content:'';position:fixed;left:0;right:0;top:0;height:3px;background:var(--red);z-index:40}
+.head{
+  position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+  padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.brand{display:flex;align-items:center;gap:9px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:17px;color:var(--ink);text-decoration:none}
+.brand img{width:32px;height:32px;border-radius:50%;background:var(--silver);box-shadow:0 0 0 1px var(--line)}
+.head-right{display:flex;align-items:center;gap:10px}
+.pill{background:#fff;border:1px solid var(--line-2);border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;color:var(--ink);text-decoration:none}
+.pill:hover{border-color:var(--red);color:var(--red)}
+select[data-i18n-select]{background:#fff;color:var(--ink);border:1px solid var(--line-2);border-radius:8px;font-size:12px;font-weight:600;padding:8px 10px;cursor:pointer}
+.wrap{max-width:680px;margin:0 auto;padding:26px 20px 40px}
+
+.hero{
+  position:relative;overflow:hidden;isolation:isolate;
+  background:linear-gradient(140deg,#16181b,#23262a 58%,#2e1114);
+  border-radius:22px;padding:34px 22px;text-align:center;color:#fff;
+  box-shadow:0 20px 48px -22px rgba(22,24,27,.6);margin-bottom:22px;
+}
+.hero::before{content:'';position:absolute;inset:0;z-index:-1;
+  background:radial-gradient(420px circle at 14% 0%,rgba(200,30,40,.34),transparent 62%),
+             radial-gradient(380px circle at 90% 100%,rgba(255,255,255,.10),transparent 60%)}
+.tag{display:inline-flex;align-items:center;gap:7px;background:rgba(200,30,40,.2);
+  border:1px solid rgba(240,164,170,.45);border-radius:999px;padding:6px 14px;
+  font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#f6b9bd;margin-bottom:15px}
+h1{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(25px,6.4vw,36px);line-height:1.15;margin-bottom:12px;letter-spacing:-.5px}
+h1 em{font-style:normal;color:#f6b9bd}
+.amt-wrap{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.amt{display:inline-block;background:#fff;color:var(--ink);
+  font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(28px,7.5vw,40px);
+  border-radius:13px;padding:8px 20px;margin:8px 0 6px;box-shadow:0 12px 28px rgba(0,0,0,.28)}
+.amt small{font-size:.4em;font-weight:700;display:block;margin-top:2px;color:var(--muted)}
+.amt-cut{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;
+  font-size:clamp(19px,4.6vw,26px);color:rgba(255,255,255,.42);text-decoration:line-through}
+.amt-off{display:inline-block;background:var(--red);color:#fff;border-radius:999px;
+  padding:5px 15px;font-size:12px;font-weight:800;letter-spacing:.4px;margin-top:2px}
+.hero-note{font-size:11px;opacity:.6;margin-top:7px}
+.sub{font-size:13.5px;color:#d5d8dc;line-height:1.8;max-width:480px;margin:11px auto 0}
+.sub b{color:#fff}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;
+  padding:22px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(22,24,27,.04),0 8px 24px -16px rgba(22,24,27,.14)}
+.card h2{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:18px;margin-bottom:15px;letter-spacing:-.3px}
+.feat{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+.feat:last-child{margin-bottom:0}
+.feat .ico{flex:none;width:38px;height:38px;border-radius:11px;background:var(--red-soft);
+  border:1px solid var(--red-line);display:flex;align-items:center;justify-content:center;font-size:17px}
+.feat b{display:block;font-size:14px;font-weight:800;margin-bottom:2px}
+.feat span{font-size:12.5px;color:var(--muted);line-height:1.65}
+
+.steps{counter-reset:s}
+.step{display:flex;gap:13px;align-items:flex-start;margin-bottom:15px}
+.step:last-child{margin-bottom:0}
+.step .n{flex:none;width:29px;height:29px;border-radius:9px;background:var(--red);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff}
+.step b{display:block;font-size:14px;font-weight:800;margin-bottom:2px}
+.step span{font-size:12.5px;color:var(--muted);line-height:1.65}
+
+.money div.row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.money div.row:last-of-type{border-bottom:none}
+.money span{font-size:13px;color:var(--ink-2)}
+.money b{font-size:13px;white-space:nowrap}
+
+label{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:0 0 5px}
+input{width:100%;padding:12px 13px;border:1px solid var(--line-2);border-radius:10px;
+  font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:12px;background:#fff;color:var(--ink)}
+input:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(200,30,40,.12)}
+.slug-row{display:flex;align-items:center;gap:0;margin-bottom:6px}
+.slug-row input{margin-bottom:0;border-radius:10px 0 0 10px;border-right:none}
+.slug-suffix{background:var(--silver);border:1px solid var(--line-2);border-left:none;
+  border-radius:0 10px 10px 0;padding:12px;font-size:12.5px;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.hint{font-size:11px;color:var(--muted);margin:-6px 0 12px;line-height:1.6}
+.msg{display:none;border-radius:10px;padding:11px 13px;font-size:12.5px;font-weight:600;margin-bottom:12px;line-height:1.6}
+.msg.err{background:var(--red-soft);border:1px solid var(--red-line);color:#8f151d}
+.btn{width:100%;border:none;cursor:pointer;font-family:inherit;font-weight:800;
+  font-size:15px;padding:15px;border-radius:12px;color:#fff;background:var(--red);
+  box-shadow:0 10px 24px -12px rgba(200,30,40,.8);transition:background .18s var(--ease)}
+.btn:hover{background:var(--red-dark)}
+.btn:disabled{opacity:.55;cursor:wait}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f0a4aa;outline-offset:3px}
+
+.cta-wrap{text-align:center;margin:6px 0 18px}
+.cta-big{display:inline-flex;align-items:center;gap:10px;background:var(--red);color:#fff;border:none;cursor:pointer;
+  font-family:inherit;font-weight:800;font-size:16px;padding:16px 32px;border-radius:999px;
+  box-shadow:0 14px 30px -14px rgba(200,30,40,.9);transition:background .18s var(--ease),transform .18s var(--ease)}
+.cta-big:hover{background:var(--red-dark);transform:translateY(-2px)}
+.cta-sub{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.6}
+#formCard{display:none}
+.done{display:none;background:var(--ok-soft);border:1px solid var(--ok-line);
+  border-radius:18px;padding:24px 20px;text-align:center}
+.done h2{color:var(--ok);margin-bottom:6px}
+.cred{background:#fff;border:1px solid var(--ok-line);border-radius:12px;padding:15px;margin:14px 0;text-align:left}
+.cred div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--ok-line);font-size:13px}
+.cred div:last-child{border-bottom:none}
+.cred b{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;letter-spacing:.4px;word-break:break-all}
+.warn{background:var(--warn-soft);border:1px solid var(--warn-line);color:var(--warn);border-radius:10px;
+  padding:11px 13px;font-size:12px;line-height:1.7;font-weight:600;margin-bottom:14px;text-align:left}
+.note{font-size:11.5px;color:var(--muted);line-height:1.8;text-align:center;margin-top:16px}
+.note a{color:var(--red);font-weight:700;text-decoration:none}
+@media(max-width:600px){.wrap{padding:20px 16px 36px}.card{padding:19px 16px}}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <a href="/" class="brand"><img src="/img/echel-logo.jpeg" alt="" width="32" height="32"> <span data-no-i18n>Echel</span></a>
+  <div class="head-right">
+    <select data-i18n-select aria-label="Language"><option value="en">English</option><option value="mni-mtei">ꯃꯤꯇꯩꯂꯣꯟ</option></select>
+    <a href="/wl-admin" class="pill">Partner sign in</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <span class="tag">White Label Partner</span>
+    <h1>Sell under <em>your own brand</em>,<br>keep every rupee</h1>
+    <div class="amt-wrap">
+      <span class="amt-cut" id="feeCut" style="display:none;">₹0</span>
+      <span class="amt">₹<span id="feeAmt">—</span><small>one time · lifetime licence</small></span>
+    </div>
+    <div class="amt-off" id="feeOff" style="display:none;">0% OFF</div>
+    <div class="hero-note">Plus ₹299 a year for maintenance, domain renewal and server cost</div>
+    <p class="sub" data-i18n-sentence>Your brand name, your logo, your price and <b>your own payment account</b>. What your shops pay to register lands straight in <b>your bank</b> — we take nothing from it.</p>
+  </div>
+
+  <div class="card">
+    <h2>What you get</h2>
+    <div class="feat"><div class="ico">🏷️</div><div><b>Your brand</b><span>Shop owners see your name and your logo everywhere — the "powered by" line is yours as well.</span></div></div>
+    <div class="feat"><div class="ico">💳</div><div><b>Your payment account</b><span>Every registration fee your shops pay goes straight to your bank. No commission.</span></div></div>
+    <div class="feat"><div class="ico">💰</div><div><b>Your price</b><span>Charge whatever you like above the base price. The whole margin is yours.</span></div></div>
+    <div class="feat"><div class="ico">📊</div><div><b>Your dashboard</b><span>How many shops, how many demos, what is still pending — all in one place.</span></div></div>
+    <div class="feat"><div class="ico">📢</div><div><b>Your announcements</b><span>Send a message to your shops only. It shows up inside their dashboard.</span></div></div>
+    <div class="feat"><div class="ico">🔗</div><div><b>Your own link</b><span>You get a link of your own. Whoever registers through it becomes your shop.</span></div></div>
+  </div>
+
+  <div class="card">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><div><b>Take the licence</b><span>One payment. Your Partner ID and password appear the moment it goes through.</span></div></div>
+      <div class="step"><div class="n">2</div><div><b>Connect your payment account</b><span>Put your own Razorpay or Cashfree keys into the panel, and your shops pay you directly.</span></div></div>
+      <div class="step"><div class="n">3</div><div><b>Set up your brand</b><span>Your name, your logo, the "powered by" line, your support email and phone number.</span></div></div>
+      <div class="step"><div class="n">4</div><div><b>Choose your price</b><span>Anything above the base price. Everything above it is your margin.</span></div></div>
+      <div class="step"><div class="n">5</div><div><b>Share your link</b><span>Whoever registers through your link becomes your shop, and the panel keeps showing you all of them.</span></div></div>
+    </div>
+  </div>
+
+  <div class="card money">
+    <h2>Where the money goes</h2>
+    <div class="row"><span>Your licence fee</span><b>one time → to us</b></div>
+    <div class="row"><span>What your shops pay to register</span><b style="color:var(--ok);">all of it → to you</b></div>
+    <div class="row"><span>What a shop's customer pays for a print</span><b>→ to that shop</b></div>
+    <p class="hint" style="margin:12px 0 0;">Once you hold the licence, every rupee a shop of yours brings in is yours. We do not take a share of it.</p>
+  </div>
+
+  <div class="cta-wrap">
+    <button class="cta-big" onclick="openForm()">Become a partner ›</button>
+    <p class="cta-sub">A two-minute form. Your ID and password arrive the moment the payment goes through.</p>
+  </div>
+
+  <div class="card" id="formCard">
+    <h2>Become a partner</h2>
+    <div class="msg err" id="errBox"></div>
+
+    <label for="fBrand">Brand name *</label>
+    <input id="fBrand" placeholder="For example — ABC Print Solutions" maxlength="120">
+
+    <label for="fSlug">Your own link *</label>
+    <div class="slug-row">
+      <input id="fSlug" placeholder="abcprint" maxlength="40" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <span class="slug-suffix" data-no-i18n>echel.in/?wl=</span>
+    </div>
+    <p class="hint">Small letters, numbers and dashes only. This cannot be changed later, so choose carefully.</p>
+
+    <label for="fOwner">Your name *</label>
+    <input id="fOwner" placeholder="Full name" maxlength="120">
+
+    <label for="fPhone">Mobile number *</label>
+    <input id="fPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digits">
+
+    <label for="fEmail">Email *</label>
+    <input id="fEmail" type="email" placeholder="you@example.com" maxlength="160">
+
+    <div class="warn" data-i18n-sentence>After the payment you receive a <b>Partner ID and password</b>. That is what you sign in with, and it is shown only once — write it down.</div>
+
+    <button class="btn" id="payBtn" onclick="startPay()">Pay ₹<span id="btnAmt">—</span> and become a partner</button>
+  </div>
+
+  <div class="done" id="doneCard">
+    <div style="font-size:42px;">🎉</div>
+    <h2>You are a partner</h2>
+    <p style="font-size:13px;color:var(--ok);">Write these down now — they are not shown again.</p>
+    <div class="cred">
+      <div><span>Partner ID</span><b id="cId" data-no-i18n>—</b></div>
+      <div><span>Password</span><b id="cPass" data-no-i18n>—</b></div>
+      <div><span>Your link</span><b id="cSlug" data-no-i18n style="font-size:13px;">—</b></div>
+    </div>
+    <div class="warn" data-i18n-sentence>Sign in and connect <b>your own payment account</b> first. Until that is done, nobody can register a shop through your link.</div>
+    <a href="/wl-admin" class="btn" style="display:block;text-decoration:none;text-align:center;">Sign in now ›</a>
+  </div>
+
+  <p class="note">Questions? <a href="/#disclaimer">Legal &amp; policies</a> · <a href="/" data-no-i18n>echel.in</a></p>
+</div>
+
+<script>
+let LICENSE_FEE = 0, WL_ID = '';
+const T = s => (window.QSPi18n ? window.QSPi18n.t(s) : s);
+
+function openForm() {
+  const f = document.getElementById('formCard');
+  f.style.display = 'block';
+  document.querySelector('.cta-wrap').style.display = 'none';
+  setTimeout(function () {
+    f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const first = document.getElementById('fBrand');
+    if (first) setTimeout(function () { first.focus(); }, 380);
+  }, 40);
+}
+
+function payLabel() {
+  return T('Pay ₹%s and become a partner').replace('%s', LICENSE_FEE.toLocaleString('en-IN'));
+}
+
+async function loadFee() {
+  try {
+    const r = await fetch('/api/whitelabel/license-fee');
+    const d = await r.json();
+    LICENSE_FEE = d.licenseFee || 0;
+    document.getElementById('feeAmt').textContent = LICENSE_FEE.toLocaleString('en-IN');
+    document.getElementById('btnAmt').textContent = LICENSE_FEE.toLocaleString('en-IN');
+    // The struck-out price only when there really is something struck out.
+    const actual = d.licenseActual || 0;
+    if (actual > LICENSE_FEE && LICENSE_FEE > 0) {
+      const cut = document.getElementById('feeCut');
+      const off = document.getElementById('feeOff');
+      cut.textContent = '₹' + actual.toLocaleString('en-IN');
+      cut.style.display = '';
+      off.textContent = Math.round(((actual - LICENSE_FEE) / actual) * 100) + '% OFF';
+      off.style.display = 'inline-block';
+    }
+  } catch (e) {}
+}
+loadFee();
+
+// Keep the link clean while it is typed.
+document.getElementById('fSlug').addEventListener('input', function () {
+  this.value = this.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+});
+
+function showErr(m) {
+  const e = document.getElementById('errBox');
+  e.textContent = '❌ ' + m;
+  e.style.display = 'block';
+  e.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function startPay() {
+  const btn = document.getElementById('payBtn');
+  document.getElementById('errBox').style.display = 'none';
+
+  const g = id => document.getElementById(id).value.trim();
+  const body = {
+    brand_name: g('fBrand'), slug: g('fSlug'), owner_name: g('fOwner'),
+    phone: g('fPhone'), email: g('fEmail')
+  };
+  if (body.brand_name.length < 2) return showErr(T('Enter the brand name'));
+  if (body.slug.length < 3) return showErr(T('The link must be at least 3 characters'));
+  if (!body.owner_name) return showErr(T('Enter your name'));
+  if (!/^\d{10}$/.test(body.phone)) return showErr(T('Enter a valid 10-digit mobile number'));
+  if (!/^\S+@\S+\.\S+$/.test(body.email)) return showErr(T('Enter a valid email'));
+
+  btn.disabled = true; btn.textContent = T('One moment…');
+  try {
+    // 1) Register — not paid yet
+    if (!WL_ID) {
+      const r = await fetch('/api/whitelabel/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (!r.ok || !d.success) throw new Error(d.error || T('Registration did not go through'));
+      WL_ID = d.wlId;
+    }
+
+    // 2) The licence order
+    const or = await fetch('/api/whitelabel/license/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wlId: WL_ID })
+    });
+    const od = await or.json();
+    if (!or.ok || !od.success) throw new Error(od.error || T('The payment order could not be created'));
+
+    // 3) Checkout
+    const rzp = new Razorpay({
+      key: od.keyId, amount: od.amount, currency: 'INR',
+      name: 'Echel', description: 'White Label Partner Licence',
+      order_id: od.orderId,
+      prefill: { name: body.owner_name, email: body.email, contact: body.phone },
+      theme: { color: '#c81e28' },
+      handler: async function (resp) {
+        try {
+          const vr = await fetch('/api/whitelabel/license/verify', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: resp.razorpay_order_id,
+              razorpay_payment_id: resp.razorpay_payment_id,
+              razorpay_signature: resp.razorpay_signature,
+              wlId: WL_ID
+            })
+          });
+          const vd = await vr.json();
+          if (!vr.ok || !vd.success) throw new Error(vd.error || T('The payment could not be verified'));
+          document.getElementById('cId').textContent = vd.wlId;
+          document.getElementById('cPass').textContent = vd.password || T('the one you already have');
+          document.getElementById('cSlug').textContent = location.origin + '/?wl=' + vd.slug;
+          document.getElementById('formCard').style.display = 'none';
+          document.getElementById('doneCard').style.display = 'block';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (e) { showErr(e.message); btn.disabled = false; btn.textContent = payLabel(); }
+      },
+      modal: {
+        ondismiss: function () { btn.disabled = false; btn.textContent = payLabel(); }
+      }
+    });
+    rzp.open();
+    btn.textContent = payLabel();
+  } catch (e) {
+    showErr(e.message);
+    btn.disabled = false;
+    btn.textContent = payLabel();
+  }
+}
+</script>
+
+<script src="/i18n.js" defer></script>
+</body>
+</html>

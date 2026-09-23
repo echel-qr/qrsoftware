@@ -24,7 +24,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:#f4f5f8;min-height:100vh}
+body{font-family:'Inter',sans-serif;background:#f4f5f5;min-height:100vh}
 nav{background:#111111;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
 .logo{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:#fff}
 .logo span{color:#c81e28}
@@ -151,7 +151,7 @@ select{padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-fami
    someone moving from here to there sees nothing unfamiliar. */
 .wl-hero{
   position:relative;overflow:hidden;border-radius:22px;padding:30px 20px 26px;
-  background:linear-gradient(155deg,#1a1520 0%,#2b1f35 45%,#3d1f38 100%);
+  background:linear-gradient(155deg,#181a1b 0%,#39181b 45%,#401c1f 100%);
   color:#fff;margin-bottom:16px;box-shadow:0 22px 48px rgba(17,17,20,.3);
 }
 .wl-hero-glow{
@@ -231,7 +231,7 @@ select{padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-fami
    what unlocking actually gives. */
 .ag-lock{
   position:relative;overflow:hidden;border-radius:20px;padding:26px 22px;
-  background:linear-gradient(150deg,#16161a 0%,#22202b 55%,#2d1f3d 100%);
+  background:linear-gradient(150deg,#16161a 0%,#242629 55%,#401c1f 100%);
   color:#fff;margin-bottom:14px;
   box-shadow:0 20px 44px rgba(17,17,20,.28);
 }
@@ -282,12 +282,12 @@ select{padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-fami
 .nav-it[data-nav="partner"]{position:relative;overflow:visible}
 .nav-it[data-nav="partner"]::before{
   content:"";position:absolute;inset:-1px;border-radius:inherit;
-  background:linear-gradient(120deg,transparent 30%,rgba(124,58,237,.22),transparent 70%);
+  background:linear-gradient(120deg,transparent 30%,rgba(227,68,76,.22),transparent 70%);
   background-size:220% 100%;animation:ppShine 3.4s ease-in-out infinite;pointer-events:none;
 }
 @keyframes ppShine{0%,60%{background-position:180% 0}100%{background-position:-40% 0}}
 .pp-hero{
-  background:linear-gradient(135deg,#b51c26,#4c1d95);color:#fff;
+  background:linear-gradient(135deg,#c81e28,#a8121b);color:#fff;
   border-radius:18px;padding:22px;margin-bottom:16px;position:relative;overflow:hidden;
 }
 .pp-hero::after{
@@ -303,7 +303,7 @@ select{padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-fami
 }
 .pp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:16px}
 .pp-card{background:#fff;border:1.5px solid #e2ddd6;border-radius:14px;padding:15px;transition:transform .25s ease,box-shadow .25s ease}
-.pp-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(124,58,237,.14)}
+.pp-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(227,68,76,.14)}
 .pp-card b{display:block;font-size:13.5px;margin-bottom:5px}
 .pp-card p{font-size:12.5px;color:#4b5563;line-height:1.7;margin:0}
 @media (prefers-reduced-motion:reduce){
@@ -357,7 +357,7 @@ select{padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-fami
 #loginScreen::before,#loginScreen::after{content:'';position:fixed;border-radius:50%;
   pointer-events:none;filter:blur(64px);opacity:.55}
 #loginScreen::before{width:340px;height:340px;background:#dbeafe;top:-96px;left:-96px}
-#loginScreen::after{width:320px;height:320px;background:#ede9fe;bottom:-96px;right:-96px}
+#loginScreen::after{width:320px;height:320px;background:#dfe3e6;bottom:-96px;right:-96px}
 
 #loginScreen .login-card{background:#fff !important;border:1px solid #eceef2 !important;
   border-radius:20px !important;
@@ -365,9 +365,9 @@ select{padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-fami
   padding:34px 28px 28px;width:100%;max-width:420px;position:relative}
 /* Violet logo tile — like the sidebar logo in the mockup */
 #loginScreen .login-card::before{content:'🖨️';position:absolute;top:-26px;left:50%;translate:-50% 0;
-  width:52px;height:52px;background:linear-gradient(135deg,#8b5cf6,#c81e28);border-radius:16px;
+  width:52px;height:52px;background:linear-gradient(135deg,#c81e28,#a8121b);border-radius:16px;
   display:flex;align-items:center;justify-content:center;font-size:24px;
-  box-shadow:0 8px 22px rgba(99,102,241,.35)}
+  box-shadow:0 8px 22px rgba(233,107,113,.35)}
 #loginScreen .login-card h1{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;
   font-size:23px;letter-spacing:-.5px;color:#101828;text-align:center;margin:16px 0 5px}
 #loginScreen .login-card p{font-family:'Inter',sans-serif;font-size:13px;color:#667085;
@@ -415,7 +415,7 @@ nav .logo span{color:#c81e28 !important}
    (#qsp-admin-redesign) handles them now. Because of !important the
    new design could not apply at all. .login-card still comes from here
    because the redesign does not cover it. */
-.login-card{border:1.5px solid #ecedf2 !important;border-radius:20px !important;
+.login-card{border:1.5px solid #eff0f1 !important;border-radius:20px !important;
   box-shadow:0 8px 30px rgba(17,17,17,.06) !important;background:#fff !important}
 .stat-val{font-family:'Plus Jakarta Sans',sans-serif !important}
 .stat:first-child .stat-val{background:linear-gradient(transparent 62%,#e4e7e9 62%);display:inline-block;padding:0 4px}
@@ -423,12 +423,12 @@ nav .logo span{color:#c81e28 !important}
   font-family:'Plus Jakarta Sans',sans-serif !important;font-weight:800 !important;
   box-shadow:0 8px 20px rgba(255,46,99,.3) !important;transition:.15s !important}
 .btn-primary:hover,.btn-save:hover{background:#a8121b !important;transform:translateY(-1px)}
-input,select,textarea{border:1.5px solid #e3e5ec !important;border-radius:12px !important;
+input,select,textarea{border:1.5px solid #e7e8e9 !important;border-radius:12px !important;
   font-family:'Inter',sans-serif !important;background:#fff !important}
 input:focus,select:focus,textarea:focus{border-color:#c81e28 !important;outline:none !important}
 table th{font-family:'Inter',sans-serif !important;font-weight:700 !important}
 .status-pill{border-radius:20px !important;font-weight:700 !important}
-.filter-tab{border-radius:20px !important;border:1.5px solid #e3e5ec !important;font-weight:700 !important}
+.filter-tab{border-radius:20px !important;border:1.5px solid #e7e8e9 !important;font-weight:700 !important}
 .filter-tab.active,.gateway-tab.active,.payment-opt.selected{border-color:#c81e28 !important;
   background:#fff5f7 !important;color:#c81e28 !important}
 ::selection{background:#e4e7e9}
@@ -437,19 +437,19 @@ table th{font-family:'Inter',sans-serif !important;font-weight:700 !important}
 <style id="qsp-sidebar">
 #adminPanel .app-shell{display:flex;min-height:100vh}
 .side{position:fixed;top:0;left:0;bottom:0;width:250px;z-index:120;
-  background:linear-gradient(180deg,#1a1030 0%,#2d1b52 100%);
+  background:linear-gradient(180deg,#2e1416 0%,#4b2024 100%);
   display:flex;flex-direction:column;padding:22px 16px;transition:transform .28s cubic-bezier(.4,0,.2,1)}
 .side-brand{display:flex;align-items:center;gap:10px;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;
   font-weight:800;font-size:17px;padding:0 6px 18px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
 .side-brand .bm{width:34px;height:34px;border-radius:10px;background:linear-gradient(120deg,#b51c26,#e0489f);
   display:flex;align-items:center;justify-content:center;font-size:17px}
 .side-shop{padding:0 6px 14px;font-size:11px;color:rgba(255,255,255,.5)}
-.side-shop b{color:#c9b8f0;font-size:13px;display:block;margin-top:2px}
+.side-shop b{color:#d0d4d7;font-size:13px;display:block;margin-top:2px}
 .nav-it{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;
   color:rgba(255,255,255,.72);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:4px;
   transition:.15s;border:none;background:none;width:100%;text-align:left;font-family:'Inter',sans-serif}
 .nav-it:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-it.active{background:linear-gradient(120deg,#b51c26,#e0489f);color:#fff;box-shadow:0 6px 18px rgba(124,58,237,.4)}
+.nav-it.active{background:linear-gradient(120deg,#b51c26,#e0489f);color:#fff;box-shadow:0 6px 18px rgba(227,68,76,.4)}
 .nav-it .ico{font-size:17px;width:22px;text-align:center}
 .side-foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
 
@@ -457,9 +457,9 @@ table th{font-family:'Inter',sans-serif !important;font-weight:700 !important}
    the select's own background/colour for it. The background used to be
    semi-transparent white, so the open list was white on white —
    nothing was readable. Now both places use a solid colour. */
-select[data-i18n-select]{background-color:#2a1c4d;color:#fff}
-select[data-i18n-select] option{background-color:#2a1c4d;color:#fff}
-select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
+select[data-i18n-select]{background-color:#4b2024;color:#fff}
+select[data-i18n-select] option{background-color:#4b2024;color:#fff}
+select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
 @media (forced-colors:active){
   select[data-i18n-select],select[data-i18n-select] option{
     background-color:Canvas;color:CanvasText}
@@ -468,9 +468,9 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
   font-weight:700;font-size:14px;cursor:pointer;background:rgba(255,80,100,.12);border:none;width:100%;font-family:'Inter',sans-serif}
 .app-main{flex:1;margin-left:250px;min-height:100vh}
 .app-topbar{position:sticky;top:0;z-index:90;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);
-  border-bottom:1.5px dashed #ece7f5;padding:14px 26px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.hamburger{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:#1a1030}
-.page-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:19px;color:#1a1030;margin-right:auto}
+  border-bottom:1.5px dashed #ecedef;padding:14px 26px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hamburger{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:#2e1416}
+.page-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:19px;color:#2e1416;margin-right:auto}
 .app-content{padding:24px 26px 60px;max-width:1100px;margin:0 auto}
 [data-sect]{display:none;animation:fadeUp .3s ease}
 [data-sect].show{display:block}
@@ -499,8 +499,8 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
    ═══════════════════════════════════════════════════════════════════ */
 
 #adminPanel{
-  --bg:#f6f7fb; --surface:#fff; --ink:#12131a; --ink2:#3f4150;
-  --muted:#8b8e9e; --line:#e9eaf0; --soft:#f8f9fc;
+  --bg:#f7f7f8; --surface:#fff; --ink:#161718; --ink2:#43474c;
+  --muted:#8b8e9e; --line:#ecedee; --soft:#f9fafa;
   --brand:#b51c26; --brand2:#e0489f;
   --radius:16px;
   --shadow:0 1px 2px rgba(18,19,26,.04), 0 8px 24px rgba(18,19,26,.05);
@@ -511,7 +511,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 /* ───────── SIDEBAR ───────── */
 #adminPanel .side{
   width:262px;padding:18px 14px;
-  background:linear-gradient(180deg,#1e1330 0%,#2a1c4d 55%,#241a44 100%);
+  background:linear-gradient(180deg,#2e1416 0%,#4b2024 55%,#401c1f 100%);
   overflow-y:auto;overscroll-behavior:contain;
 }
 #adminPanel .side::-webkit-scrollbar{width:6px}
@@ -522,7 +522,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 #adminPanel .side-brand .bm{
   width:38px;height:38px;border-radius:12px;
   background:linear-gradient(135deg,var(--brand),var(--brand2));
-  box-shadow:0 6px 18px rgba(124,58,237,.42);font-size:17px;
+  box-shadow:0 6px 18px rgba(227,68,76,.42);font-size:17px;
 }
 #adminPanel .side-brand small{
   display:block;font-size:10.5px;font-weight:700;color:rgba(255,255,255,.5);margin-top:2px;
@@ -544,7 +544,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 #adminPanel .nav-it:hover{background:rgba(255,255,255,.09);color:#fff}
 #adminPanel .nav-it.active{
   background:linear-gradient(135deg,var(--brand),var(--brand2));
-  color:#fff;font-weight:700;box-shadow:0 8px 22px rgba(124,58,237,.42);
+  color:#fff;font-weight:700;box-shadow:0 8px 22px rgba(227,68,76,.42);
 }
 #adminPanel .nav-it .ico{font-size:15.5px;width:22px}
 /* Delete Account — must stand apart */
@@ -623,7 +623,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
   content:attr(data-ico);
   width:42px;height:42px;border-radius:13px;margin-bottom:11px;
   display:flex;align-items:center;justify-content:center;font-size:18px;
-  background:var(--si-bg,#f3f0ff);
+  background:var(--si-bg,#f7f7f8);
 }
 #adminPanel .stat-lbl{
   order:3;font-size:11px;font-weight:700;color:var(--muted);
@@ -681,9 +681,9 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 #adminPanel .dl-row.info  {border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff,#fff)}
 #adminPanel .dl-row.info  .dl-ico{background:linear-gradient(135deg,#2563eb,#0ea5e9)}
 #adminPanel .dl-row.info  .dl-btn{background:#fff;color:#1d4ed8;border:1px solid #bfdbfe}
-#adminPanel .dl-row.plum  {border-color:#ddd6fe;background:linear-gradient(135deg,#faf5ff,#fff)}
-#adminPanel .dl-row.plum  .dl-ico{background:linear-gradient(135deg,#b51c26,#a855f7)}
-#adminPanel .dl-row.plum  .dl-btn{background:#fff;color:#6d28d9;border:1px solid #ddd6fe}
+#adminPanel .dl-row.plum  {border-color:#f2c8cb;background:linear-gradient(135deg,#fdeeee,#fff)}
+#adminPanel .dl-row.plum  .dl-ico{background:linear-gradient(135deg,#c81e28,#a8121b)}
+#adminPanel .dl-row.plum  .dl-btn{background:#fff;color:#a8121b;border:1px solid #f2c8cb}
 
 /* ───────── QR CARD ───────── */
 #adminPanel .qr-hero{
@@ -691,8 +691,8 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 }
 @media(max-width:820px){#adminPanel .qr-hero{grid-template-columns:1fr}}
 #adminPanel .qr-frame{
-  border:2px solid #ede9fe;border-radius:18px;padding:14px;background:#fff;
-  text-align:center;box-shadow:0 10px 30px rgba(124,58,237,.10);
+  border:2px solid #e3e6e9;border-radius:18px;padding:14px;background:#fff;
+  text-align:center;box-shadow:0 10px 30px rgba(227,68,76,.10);
 }
 #adminPanel .qr-frame img{width:190px;height:190px;display:block;margin:0 auto 12px;border-radius:8px}
 #adminPanel .qr-chip{
@@ -706,14 +706,14 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
   background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 6px;
   text-align:center;cursor:pointer;font-family:'Inter',sans-serif;transition:.15s;
 }
-#adminPanel .share-btn:hover{border-color:var(--brand);background:#faf5ff;transform:translateY(-2px)}
+#adminPanel .share-btn:hover{border-color:var(--brand);background:#f9fafa;transform:translateY(-2px)}
 #adminPanel .share-btn div{font-size:19px;margin-bottom:5px}
 #adminPanel .share-btn span{font-size:10.5px;font-weight:700;color:var(--ink2)}
 
 /* ───────── FORM CONTROLS ───────── */
 #adminPanel input:focus,#adminPanel select:focus,#adminPanel textarea:focus{
   outline:none;border-color:var(--brand) !important;
-  box-shadow:0 0 0 3px rgba(124,58,237,.10);
+  box-shadow:0 0 0 3px rgba(227,68,76,.10);
 }
 
 @media(max-width:899px){
@@ -821,7 +821,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <p>Read the guide or contact support</p>
       <a href="#" onclick="navTo('support',document.querySelector('[data-nav=support]'));return false;">🎧 Go to Support</a>
     </div>
-    <div class="side-foot"><select data-i18n-select aria-label="Language" style="width:100%;margin-bottom:8px;padding:9px 11px;border-radius:11px;border:1.5px solid rgba(255,255,255,.18);background:#2a1c4d;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;"></select>
+    <div class="side-foot"><select data-i18n-select aria-label="Language" style="width:100%;margin-bottom:8px;padding:9px 11px;border-radius:11px;border:1.5px solid rgba(255,255,255,.18);background:#4b2024;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;"></select>
     <button class="side-lg" onclick="logout()"><span>🚪</span> Logout</button></div>
   </aside>
   <div class="app-main">
@@ -848,7 +848,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           <span style="font-size:22px;">💼</span>
           <div>
             <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:16px;letter-spacing:.3px;">AGENT DASHBOARD</div>
-            <div style="font-size:11.5px;color:#c9ccd6;" id="agentBannerCode">—</div>
+            <div style="font-size:11.5px;color:#cccfd1;" id="agentBannerCode">—</div>
           </div>
         </div>
         <button onclick="navTo('agent',document.getElementById('navAgent'))" style="background:#e4e7e9;color:#111114;border:none;border-radius:11px;padding:9px 15px;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap;">Open the Agent Tab ›</button>
@@ -936,7 +936,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <div style="padding:18px;">
         <label style="font-size:12px;font-weight:700;color:#3b4148;display:block;margin-bottom:6px;">🏪 Your Shop ID</label>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
-          <input id="demoSupShopId" readonly style="flex:1;padding:11px 14px;border:1.5px solid #e2ddd6;border-radius:12px;font-family:monospace;font-weight:700;font-size:14px;background:#f7f7f9;">
+          <input id="demoSupShopId" readonly style="flex:1;padding:11px 14px;border:1.5px solid #e2ddd6;border-radius:12px;font-family:monospace;font-weight:700;font-size:14px;background:#f7f7f8;">
           <button onclick="copyDemoShopId()" style="background:#f4f5f6;border:1.5px solid #d3d8dc;border-radius:12px;padding:11px 14px;cursor:pointer;font-size:16px;">📋</button>
         </div>
         <label style="font-size:12px;font-weight:700;color:#3b4148;display:block;margin-bottom:6px;">✍️ Write your problem</label>
@@ -960,12 +960,12 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
         </div>
         <button id="pauseBtn" onclick="togglePause()" style="border:none;border-radius:12px;padding:11px 20px;font-weight:800;font-size:13px;cursor:pointer;background:#fee2e2;color:#c22;">Close shop</button>
       </div>
-      <div style="border-top:1.5px dashed #ece7f5;padding-top:12px;">
+      <div style="border-top:1.5px dashed #ecedef;padding-top:12px;">
         <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Printer supplies <span style="font-weight:500;color:#6b6870;">(shown to customers)</span></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="supply-btn" data-w="" onclick="setSupply('')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">All good</button>
-          <button class="supply-btn" data-w="low_ink" onclick="setSupply('low_ink')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">Low ink</button>
-          <button class="supply-btn" data-w="no_paper" onclick="setSupply('no_paper')" style="border:1.5px solid #e3e5ec;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">Out of paper</button>
+          <button class="supply-btn" data-w="" onclick="setSupply('')" style="border:1.5px solid #e7e8e9;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">All good</button>
+          <button class="supply-btn" data-w="low_ink" onclick="setSupply('low_ink')" style="border:1.5px solid #e7e8e9;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">Low ink</button>
+          <button class="supply-btn" data-w="no_paper" onclick="setSupply('no_paper')" style="border:1.5px solid #e7e8e9;background:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;">Out of paper</button>
         </div>
       </div>
     </div>
@@ -975,7 +975,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
     <!-- data-ico + --si-bg = coloured icon circle. The JS fills stat-trend. -->
     <div class="stats">
-      <div class="stat" data-ico="🖨️" style="--si-bg:#f3f0ff;">
+      <div class="stat" data-ico="🖨️" style="--si-bg:#f7f7f8;">
         <div class="stat-lbl">Today's Prints</div>
         <div class="stat-val orange" id="todayPrints">0</div>
         <div class="stat-trend flat" id="trendPrints"></div>
@@ -1002,7 +1002,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <input type="text" id="noticeInput" maxlength="200" placeholder='e.g. Black and white printing only today' style="width:100%;padding:12px;border:1.5px solid #e2ddd6;border-radius:12px;font-size:14px;box-sizing:border-box;">
       <div style="display:flex;gap:8px;margin-top:10px;">
         <button onclick="saveNotice()" style="flex:1;background:#f59e0b;color:#fff;border:none;border-radius:12px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;">Publish notice</button>
-        <button onclick="clearNotice()" style="background:#f4f5f8;color:#6b6870;border:none;border-radius:12px;padding:12px 16px;font-weight:700;font-size:13px;cursor:pointer;">Remove</button>
+        <button onclick="clearNotice()" style="background:#f4f5f5;color:#6b6870;border:none;border-radius:12px;padding:12px 16px;font-weight:700;font-size:13px;cursor:pointer;">Remove</button>
       </div>
       <div id="noticeMsg" style="font-size:12px;margin-top:8px;text-align:center;"></div>
     </div>
@@ -1018,21 +1018,21 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
     <div class="card" style="margin-top:20px;">
       <h2>Weekly performance</h2>
       <div style="display:flex;gap:12px;margin:10px 0 14px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:120px;background:#f3ecff;border-radius:12px;padding:12px;">
+        <div style="flex:1;min-width:120px;background:#f4f5f6;border-radius:12px;padding:12px;">
           <div style="font-size:11px;color:#b51c26;font-weight:700;">This Week <span id="weekTrend" style="font-size:11px;"></span></div>
           <div style="font-size:22px;font-weight:800;" id="bkThisWeek">₹0</div>
         </div>
-        <div style="flex:1;min-width:120px;background:#f4f5f8;border-radius:12px;padding:12px;">
+        <div style="flex:1;min-width:120px;background:#f4f5f5;border-radius:12px;padding:12px;">
           <div style="font-size:11px;color:#6b6870;font-weight:700;">Last Week</div>
           <div style="font-size:22px;font-weight:800;" id="bkLastWeek">₹0</div>
         </div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="text-align:left;color:#6b6870;">
-          <th style="padding:7px 6px;border-bottom:1px solid #ece7f5;">Day</th>
-          <th style="padding:7px 6px;border-bottom:1px solid #ece7f5;">Orders</th>
-          <th style="padding:7px 6px;border-bottom:1px solid #ece7f5;">Prints</th>
-          <th style="padding:7px 6px;border-bottom:1px solid #ece7f5;">Earnings</th>
+          <th style="padding:7px 6px;border-bottom:1px solid #ecedef;">Day</th>
+          <th style="padding:7px 6px;border-bottom:1px solid #ecedef;">Orders</th>
+          <th style="padding:7px 6px;border-bottom:1px solid #ecedef;">Prints</th>
+          <th style="padding:7px 6px;border-bottom:1px solid #ecedef;">Earnings</th>
         </tr></thead>
         <tbody id="bkRows"><tr><td colspan="4" style="padding:12px;text-align:center;color:#6b6870;">Loading...</td></tr></tbody>
       </table>
@@ -1245,7 +1245,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           <div style="border-top:1.5px dashed #e2ddd6;margin:14px 0 12px;"></div>
           <div id="agWdOk" style="display:none;background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:10px;padding:10px;font-size:12.5px;font-weight:700;margin-bottom:10px;"></div>
           <div id="agWdErr" style="display:none;background:#fee2e2;border:1.5px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px;font-size:12.5px;margin-bottom:10px;"></div>
-          <button id="agWdBtn" onclick="agentWithdraw()" style="width:100%;background:#b51c26;color:#fff;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 12px 28px rgba(124,58,237,.3);">💸 Withdraw</button>
+          <button id="agWdBtn" onclick="agentWithdraw()" style="width:100%;background:#b51c26;color:#fff;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 12px 28px rgba(227,68,76,.3);">💸 Withdraw</button>
           <p style="font-size:11px;color:#9b9690;margin-top:8px;line-height:1.6;text-align:center;">
             Minimum ₹500 to withdraw. Money is sent to your saved UPI.
           </p>
@@ -1272,7 +1272,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
             <b style="color:#166534;">flat ₹100</b> commission.
           </p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
-            <div style="background:#f7f7f9;border:1.5px solid #e2ddd6;border-radius:11px;padding:11px 13px;">
+            <div style="background:#f7f7f8;border:1.5px solid #e2ddd6;border-radius:11px;padding:11px 13px;">
               <div style="font-size:11px;font-weight:800;color:#6b6870;letter-spacing:.3px;">💎 PRO</div>
               <div style="font-size:19px;font-weight:800;margin-top:2px;">₹<span id="agBase">—</span></div>
             </div>
@@ -1289,7 +1289,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
             Any shop that registers through this link is added to <b>your list</b>, and as soon as it pays you get <b>₹100</b>.
           </p>
           <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <input id="agLink" readonly style="flex:1;padding:11px;border:1.5px solid #e2ddd6;border-radius:11px;font-size:12.5px;background:#f7f7f9;box-sizing:border-box;">
+            <input id="agLink" readonly style="flex:1;padding:11px;border:1.5px solid #e2ddd6;border-radius:11px;font-size:12.5px;background:#f7f7f8;box-sizing:border-box;">
             <button onclick="agentCopyLink()" style="background:#111114;color:#fff;border:none;border-radius:11px;padding:11px 15px;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap;">Copy</button>
           </div>
           <button onclick="agentShareWA()" style="width:100%;background:#22c55e;color:#fff;border:none;border-radius:11px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;">💬 Share on WhatsApp</button>
@@ -1419,13 +1419,13 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <button class="btn-save" onclick="saveSettings()">💾 Save Settings</button>
 
       <!-- One Shop ID runs on only ONE PC -->
-      <div style="margin-top:22px;padding-top:18px;border-top:1.5px solid #e8e6f0;">
+      <div style="margin-top:22px;padding-top:18px;border-top:1.5px solid #e9ebec;">
         <div style="font-size:14px;font-weight:800;margin-bottom:6px;">🖥️ Connected Computer</div>
         <p style="font-size:12.5px;color:#64748b;line-height:1.7;margin-bottom:12px;" data-i18n-sentence>
           Your Shop ID works on only <b>one computer</b>, to protect customer files from access through another computer using your Shop ID.<br>
           Before using another computer or reinstalling Windows, disconnect the old computer here. You can then enter your Shop ID on the new installation.
         </p>
-        <div id="agentPcBox" style="background:#f8f7fc;border:1px solid #e8e6f0;border-radius:11px;padding:13px;font-size:13px;margin-bottom:11px;">
+        <div id="agentPcBox" style="background:#f9fafa;border:1px solid #e9ebec;border-radius:11px;padding:13px;font-size:13px;margin-bottom:11px;">
           <span style="color:#64748b;">Loading…</span>
         </div>
         <button id="disconnectPcBtn" onclick="disconnectComputer()"
@@ -1475,7 +1475,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
     <div data-sect="advance">
     <div class="card" style="overflow:hidden;padding:0;">
-      <div style="background:linear-gradient(135deg,#4c1d95 0%,#b51c26 50%,#a855f7 100%);padding:26px 20px;text-align:center;color:#fff;position:relative;">
+      <div style="background:linear-gradient(135deg,#16181b 0%,#a8121b 55%,#c81e28 100%);padding:26px 20px;text-align:center;color:#fff;position:relative;">
         <div style="position:absolute;top:-25px;right:-25px;width:110px;height:110px;background:rgba(255,255,255,.08);border-radius:50%;"></div>
         <div style="position:absolute;bottom:-35px;left:-15px;width:90px;height:90px;background:rgba(255,255,255,.06);border-radius:50%;"></div>
         <div style="font-size:40px;position:relative;">⚡</div>
@@ -1559,8 +1559,8 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 
         <!-- ═══ ADVANCED PRINTING (locked) ═══ -->
         <div class="form-group full" style="margin-top:6px;">
-          <div id="advCard" style="position:relative;border:2px solid #e9d5ff;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#faf5ff,#fff);">
-            <div style="background:linear-gradient(135deg,#b51c26,#a855f7);padding:16px 18px;color:#fff;display:flex;align-items:center;gap:10px;">
+          <div id="advCard" style="position:relative;border:2px solid #e9ebec;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#f9fafa,#fff);">
+            <div style="background:linear-gradient(135deg,#c81e28,#a8121b);padding:16px 18px;color:#fff;display:flex;align-items:center;gap:10px;">
               <span style="font-size:24px;">⚡</span>
               <div>
                 <div style="font-weight:800;font-size:15px;">Advanced Printing Setting</div>
@@ -1580,8 +1580,8 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           </label>
         </div>
         <!-- A SEPARATE SWITCH FOR EACH MODULE — the customer page layout is built from these -->
-        <div id="advModRow" style="background:#faf5ff;border:1.5px solid #e9d5ff;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
-          <div style="font-weight:800;font-size:13.5px;color:#6b21a8;">🎛️ Which options should the customer see?</div>
+        <div id="advModRow" style="background:#f9fafa;border:1.5px solid #e9ebec;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-weight:800;font-size:13.5px;color:#ad1a21;">🎛️ Which options should the customer see?</div>
           <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:4px 0 12px;line-height:1.55;">
             Turn each option on or off separately. Only the options that are <b>ON</b> are shown on the customer page — the box layout adjusts itself, no empty space is left.
           </p>
@@ -1590,7 +1590,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
         </div>
         <style>
           .adv-mod{display:flex;align-items:center;justify-content:space-between;gap:12px;
-                   background:#fff;border:1.5px solid #ede9fe;border-radius:12px;
+                   background:#fff;border:1.5px solid #e3e6e9;border-radius:12px;
                    padding:11px 13px;margin-bottom:8px;transition:.15s;}
           .adv-mod:last-child{margin-bottom:0;}
           .adv-mod.on{border-color:#86efac;background:#f7fef9;}
@@ -1615,12 +1615,12 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 .advHero{
   position:relative;overflow:hidden;border-radius:20px;padding:26px 20px 22px;
   text-align:center;color:#fff;margin-bottom:16px;
-  background:linear-gradient(140deg,#1e1b4b 0%,#4c1d95 45%,#6d28d9 100%);
-  box-shadow:0 18px 40px rgba(76,29,149,.28);
+  background:linear-gradient(140deg,#16181b 0%,#23262a 50%,#2e1114 100%);
+  box-shadow:0 18px 40px rgba(155,23,30,.28);
 }
 .advHero-glow{
   position:absolute;top:-70px;right:-50px;width:220px;height:220px;border-radius:50%;
-  background:radial-gradient(circle,rgba(168,85,247,.55),transparent 70%);
+  background:radial-gradient(circle,rgba(232,100,107,.55),transparent 70%);
 }
 .advHero-badge{
   position:relative;display:inline-block;background:rgba(255,255,255,.14);
@@ -1642,29 +1642,29 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
 }
 .advHero-tag{
   position:relative;margin-top:10px;font-size:11.5px;font-weight:700;
-  color:#ddd6fe;letter-spacing:.2px;
+  color:#f6b9bd;letter-spacing:.2px;
 }
 
 .advFeatures{display:grid;gap:10px;margin-bottom:14px}
 .advFeat{
   display:flex;gap:13px;align-items:flex-start;
-  background:linear-gradient(180deg,#fdfcff,#faf5ff);
-  border:1.5px solid #e9d5ff;border-radius:16px;padding:14px 15px;
+  background:linear-gradient(180deg,#fcfcfd,#f9fafa);
+  border:1.5px solid #e9ebec;border-radius:16px;padding:14px 15px;
   transition:border-color .18s,box-shadow .18s,transform .18s;
 }
-.advFeat:hover{border-color:#c4b5fd;box-shadow:0 6px 18px rgba(124,58,237,.10);transform:translateY(-1px)}
+.advFeat:hover{border-color:#d6d9dc;box-shadow:0 6px 18px rgba(227,68,76,.10);transform:translateY(-1px)}
 .advFeat-ico{
   flex:none;width:42px;height:42px;border-radius:13px;display:flex;
   align-items:center;justify-content:center;font-size:21px;
-  background:linear-gradient(140deg,#ede9fe,#f5f3ff);border:1px solid #ddd6fe;
+  background:linear-gradient(140deg,#fdeeee,#fff5f5);border:1px solid #f2c8cb;
 }
 .advFeat-body{min-width:0}
 .advFeat-title{
   font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:800;
-  color:#3b0764;line-height:1.3;
+  color:#4b2024;line-height:1.3;
 }
 .advFeat-desc{font-size:12px;color:#6b6870;line-height:1.65;margin-top:3px}
-.advFeat-desc b{color:#6d28d9}
+.advFeat-desc b{color:#a8121b}
 .advFeat.is-new{border-color:#fcd34d;background:linear-gradient(180deg,#fffdf5,#fffbeb)}
 .advFeat.is-new .advFeat-ico{background:linear-gradient(140deg,#fef3c7,#fffbeb);border-color:#fcd34d}
 .advFeat-new{
@@ -1673,15 +1673,15 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
   vertical-align:middle;letter-spacing:.3px;
 }
 .advNote{
-  display:flex;gap:10px;align-items:flex-start;background:#f5f3ff;
-  border:1.5px solid #ddd6fe;border-radius:14px;padding:12px 14px;
-  font-size:12px;color:#4c1d95;line-height:1.7;margin-bottom:16px;
+  display:flex;gap:10px;align-items:flex-start;background:#fdeeee;
+  border:1.5px solid #f2c8cb;border-radius:14px;padding:12px 14px;
+  font-size:12px;color:#8f151d;line-height:1.7;margin-bottom:16px;
 }
 .advPayBtn{
-  width:100%;background:linear-gradient(135deg,#b51c26,#a855f7);color:#fff;
+  width:100%;background:linear-gradient(135deg,#c81e28,#a8121b);color:#fff;
   border:none;border-radius:16px;padding:17px;cursor:pointer;
   font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:800;
-  letter-spacing:-.2px;box-shadow:0 14px 30px rgba(124,58,237,.34);
+  letter-spacing:-.2px;box-shadow:0 14px 30px rgba(227,68,76,.34);
   transition:transform .18s;
 }
 .advPayBtn:hover{transform:translateY(-2px)}
@@ -1721,8 +1721,8 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           </select>
           <p style="font-size:11px;color:#c2410c;margin:4px 0 0;">⚠️ Duplex needs Print Agent v10+ — update the agent first, then enable this.</p>
         </div>
-        <div class="form-group full" id="duplexExtraRow" style="display:none;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:12px;padding:12px;margin-top:4px;">
-          <label style="color:#6d28d9;">🖨️ Which printer handles duplex?</label>
+        <div class="form-group full" id="duplexExtraRow" style="display:none;background:#f4f5f6;border:1.5px solid #dfe3e6;border-radius:12px;padding:12px;margin-top:4px;">
+          <label style="color:#3b4148;">🖨️ Which printer handles duplex?</label>
           <select id="setPrinterDuplex">
             <option value="">— Use the standard B&amp;W / colour printer —</option>
           </select>
@@ -1730,7 +1730,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
             Usually only <b>one printer</b> handles two-sided printing. Select that printer here to route duplex orders to it. <b>Leave it blank</b> to route duplex jobs to the standard B&amp;W or colour printer. Photo and large-format jobs keep their dedicated printer settings.
           </p>
 
-          <label style="color:#6d28d9;">Which prints should offer duplex?</label>
+          <label style="color:#3b4148;">Which prints should offer duplex?</label>
           <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:4px 0 10px;line-height:1.55;">
             Turn a mode <b>OFF</b> and the Two-Sided option <b>is hidden</b> from customers in that mode.
           </p>
@@ -1756,7 +1756,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           </div>
           <div id="duplexSwitchNote" style="font-size:11.5px;font-weight:700;margin-top:10px;"></div>
         </div>
-        <div class="form-group full" id="duplexPricesRow" style="display:none;background:#faf5ff;border:1.5px solid #e9d5ff;border-radius:12px;padding:12px;margin-top:4px;">
+        <div class="form-group full" id="duplexPricesRow" style="display:none;background:#f9fafa;border:1.5px solid #e9ebec;border-radius:12px;padding:12px;margin-top:4px;">
           <label style="color:#b51c26;">💰 Duplex Prices (per page — both sides together)</label>
           <p style="font-size:11px;color:#6b6870;margin:0 0 8px;">Leave blank or enter 0 to use the normal B&amp;W/Color rate. Set a separate duplex rate here if you want one.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -1806,9 +1806,9 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
           <p id="bigPriceHint" style="font-size:11px;font-weight:700;margin:10px 0 0;"></p>
         </div>
 
-        <div class="form-group full" style="margin-top:10px;background:#fdf4ff;border:1.5px solid #f0abfc;border-radius:14px;padding:14px;">
-          <label style="font-weight:800;font-size:13px;color:#86198f;">📷 4×6 PHOTO SHEET PRICING (₹ per sheet)</label>
-          <p style="font-size:11px;color:#a21caf;margin:4px 0 10px;">How many photos on one 4×6 sheet — rate accordingly</p>
+        <div class="form-group full" style="margin-top:10px;background:#f9fafa;border:1.5px solid #d0d4d7;border-radius:14px;padding:14px;">
+          <label style="font-weight:800;font-size:13px;color:#92161c;">📷 4×6 PHOTO SHEET PRICING (₹ per sheet)</label>
+          <p style="font-size:11px;color:#b11b22;margin:4px 0 10px;">How many photos on one 4×6 sheet — rate accordingly</p>
           <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
             <div>
               <label style="font-size:11px;">Sheet with 4 photos (₹)</label>
@@ -2013,7 +2013,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <div style="padding:22px;">
         <label style="font-size:12px;font-weight:700;color:#3b4148;display:block;margin-bottom:6px;">🏪 Your Shop ID (automatic)</label>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
-          <input id="supShopId" readonly style="flex:1;padding:12px 14px;border:1.5px solid #e2ddd6;border-radius:12px;font-family:monospace;font-weight:700;font-size:14px;background:#f7f7f9;">
+          <input id="supShopId" readonly style="flex:1;padding:12px 14px;border:1.5px solid #e2ddd6;border-radius:12px;font-family:monospace;font-weight:700;font-size:14px;background:#f7f7f8;">
           <button onclick="copySupShopId()" style="background:#f4f5f6;border:1.5px solid #d3d8dc;border-radius:12px;padding:12px 14px;cursor:pointer;font-size:16px;">📋</button>
         </div>
 
@@ -2105,7 +2105,7 @@ select[data-i18n-select] option:checked{background-color:#3b2a66;color:#fff}
       <button onclick="closeWhatsNew()" aria-label="Turn off"
               style="background:none;border:none;font-size:24px;line-height:1;color:#9b9690;cursor:pointer;padding:0 4px;font-family:'Inter',sans-serif;">×</button>
     </div>
-    <div id="wiuBody" style="padding:16px 20px;font-size:13.5px;line-height:1.75;color:#3d3d4e;overflow-y:auto;flex:1 1 auto;"></div>
+    <div id="wiuBody" style="padding:16px 20px;font-size:13.5px;line-height:1.75;color:#414549;overflow-y:auto;flex:1 1 auto;"></div>
     <div style="padding:0 20px 20px;flex:none;">
       <button onclick="closeWhatsNew();downloadEasyInstaller();"
               style="width:100%;background:#16a34a;color:#fff;border:none;border-radius:12px;padding:13px;font-weight:800;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;">⬇️ Download &amp; Install</button>
@@ -2211,10 +2211,10 @@ async function loadBreakdown(){
       const dt = new Date(x.day);
       const dn = dt.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
       return `<tr>
-        <td style="padding:7px 6px;border-bottom:1px solid #f4f5f8;">${dn}</td>
-        <td style="padding:7px 6px;border-bottom:1px solid #f4f5f8;">${x.orders}</td>
-        <td style="padding:7px 6px;border-bottom:1px solid #f4f5f8;">${x.prints}</td>
-        <td style="padding:7px 6px;border-bottom:1px solid #f4f5f8;font-weight:700;">₹${x.earnings}</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #f4f5f5;">${dn}</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #f4f5f5;">${x.orders}</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #f4f5f5;">${x.prints}</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #f4f5f5;font-weight:700;">₹${x.earnings}</td>
       </tr>`;
     }).join('');
     document.getElementById('bkRows').innerHTML = rows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:#6b6870;">No paid orders this week</td></tr>';
@@ -3612,7 +3612,7 @@ function renderAgentPayouts() {
   const box = document.getElementById('agPayouts');
   if (!box || !_ag) return;
   const avail = _ag.available || 0, wd = _ag.withdrawn || 0;
-  box.innerHTML = `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#6b6870;background:#f7f7f9;border-radius:11px;padding:10px 13px;">
+  box.innerHTML = `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#6b6870;background:#f7f7f8;border-radius:11px;padding:10px 13px;">
     <span>Withdrawn so far: <b style="color:#111114;">₹${wd}</b></span>
     <span>${avail >= 500 ? '<b style="color:#166534;">You can withdraw ✅</b>' : `₹${Math.max(0, 500 - avail)} more needed`}</span>
   </div>`;
@@ -4606,7 +4606,7 @@ function logout() {
   font-family:'Inter',system-ui,sans-serif;
   font-size:12.5px; font-weight:700; line-height:1.55;
   padding:11px 14px; border-radius:14px; text-align:center;
-  box-shadow:0 12px 30px rgba(2,6,23,.28);
+  box-shadow:0 12px 30px rgba(22,24,27,.28);
   opacity:0; transform:translateY(8px) scale(.9);
   transition:opacity .4s ease, transform .4s cubic-bezier(.2,.9,.3,1.4);
 }

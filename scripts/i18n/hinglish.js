@@ -82,6 +82,7 @@ halat laata pahunchta bechta humein shahar bhejne tarjuma dhoondo badhiya nikaal
 ise kholta kheencho bharosemand bachta patli dekhta jodne chunte poore paata rahengi chhoda kisiko chaaho daalne padti hazaron baithi rokne aadmi
 hataye shak daayre pada banda khole soorat chaura jaal dard kahin laga mila kis deewar shikayat farak vaakya tukdon niyam faisla darwaza chheda
 bacha bache bachi bachey bachenge bachna dena lena mana gina chuno rakkha likhna sunna dikhna milna banna
+saal saalon hafta hafte shabd shabdon bani bane
 ghumao ghumaiye ghumaye palten bhario likhiye dekhiye suniye boliye chaliye ruiye ghumaao ghoomao kul kulmila mili milaa shaamil saamil aakhri akhri hissa hisse bika biki bikta jaiye jaaiye jaiyega bhaiya bhaiyya didi
 `;
 

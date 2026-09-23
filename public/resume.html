@@ -30,16 +30,16 @@
   /* Palette from customer.html — the old variable names are kept and
      only the values changed, so the whole page matches from one place
      and the rest of the CSS does not need to be touched. */
-  --bg:#f4f4f8;--white:#fff;--border:#e8e6f0;
-  --text:#15151f;--ink-2:#3d3d4e;--muted:#7a7a8c;
-  --primary:#b51c26;--primary-d:#6d28d9;--primary-l:#ede9fe;
+  --bg:#f4f5f5;--white:#fff;--border:#e9ebec;
+  --text:#181a1b;--ink-2:#414549;--muted:#7a7a8c;
+  --primary:#b51c26;--primary-d:#de212b;--primary-l:#f1f2f3;
   --pink:#c81e28;--pink-2:#d81b60;
   --grad:linear-gradient(135deg,#b51c26,#c81e28);
   --green:#16a34a;--green-l:#f0fdf4;
   --amber:#f59e0b;--amber-l:#fffbeb;
   --r:16px;--rl:22px;
-  --shadow:0 1px 2px rgba(20,20,40,.04),0 8px 28px rgba(20,20,40,.07);
-  --shadow-sm:0 1px 2px rgba(20,20,40,.04),0 3px 10px rgba(20,20,40,.05);
+  --shadow:0 1px 2px rgba(22,24,27,.04),0 8px 28px rgba(22,24,27,.07);
+  --shadow-sm:0 1px 2px rgba(22,24,27,.04),0 3px 10px rgba(22,24,27,.05);
 }
 body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   background:var(--bg);color:var(--text);min-height:100vh;
@@ -48,11 +48,11 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI'
 
 /* Header — customer page ka dark shop card */
 .hdr{display:flex;align-items:center;gap:12px;
-  background:linear-gradient(145deg,#181822,#101018 60%,#14141e);
+  background:linear-gradient(145deg,#1a1c1e,#131416 60%,#181a1b);
   border-radius:var(--rl);padding:14px;margin-bottom:16px;
-  position:relative;overflow:hidden;box-shadow:0 10px 34px rgba(16,16,28,.26)}
+  position:relative;overflow:hidden;box-shadow:0 10px 34px rgba(22,24,27,.26)}
 .hdr::after{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;
-  background:radial-gradient(circle,rgba(124,58,237,.24),transparent 70%);pointer-events:none}
+  background:radial-gradient(circle,rgba(227,68,76,.24),transparent 70%);pointer-events:none}
 .h-ic{width:62px;height:62px;flex:0 0 62px;border-radius:16px;background:#fff;
   display:grid;place-items:center;font-size:30px;overflow:hidden;
   box-shadow:0 6px 18px rgba(0,0,0,.28)}
@@ -69,9 +69,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI'
 .step.done:not(:last-child)::after{background:var(--primary)}
 .dot{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
   font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;
-  background:#e9e7f2;color:#9997ab;transition:.25s;position:relative;z-index:1}
+  background:#ecedef;color:#9997ab;transition:.25s;position:relative;z-index:1}
 .step.active .dot{background:var(--grad);color:#fff;
-  box-shadow:0 0 0 5px rgba(124,58,237,.15),0 6px 18px rgba(124,58,237,.34)}
+  box-shadow:0 0 0 5px rgba(227,68,76,.15),0 6px 18px rgba(227,68,76,.34)}
 /* A ✓ instead of the number on a completed step — exactly like the customer page.
    Done in CSS so the JS step logic stays unchanged. */
 .step.done .dot{background:var(--primary);color:#fff;font-size:0}
@@ -104,18 +104,18 @@ textarea.fi{resize:vertical;min-height:65px}
 
 /* Template Grid */
 .tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.tpl-card{border-radius:14px;cursor:pointer;border:2px solid var(--border);transition:all .2s;overflow:hidden;background:var(--white);position:relative;-webkit-tap-highlight-color:rgba(124,58,237,.2);touch-action:manipulation;user-select:none}
-.tpl-card:hover{border-color:#c4b5fd;transform:translateY(-1px)}
-.tpl-card.sel{border-color:var(--primary);box-shadow:0 0 0 3px rgba(124,58,237,.14)}
+.tpl-card{border-radius:14px;cursor:pointer;border:2px solid var(--border);transition:all .2s;overflow:hidden;background:var(--white);position:relative;-webkit-tap-highlight-color:rgba(227,68,76,.2);touch-action:manipulation;user-select:none}
+.tpl-card:hover{border-color:#d6d9dc;transform:translateY(-1px)}
+.tpl-card.sel{border-color:var(--primary);box-shadow:0 0 0 3px rgba(227,68,76,.14)}
 .tpl-card.sel::after{content:'✓';position:absolute;top:6px;right:6px;width:18px;height:18px;background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
 .tpl-prev{height:140px;overflow:hidden;position:relative}
 .tpl-name{font-size:11px;font-weight:700;padding:6px 8px 1px;color:var(--text)}
 .tpl-badge{font-size:9px;color:var(--muted);padding:0 8px 6px}
 
 /* Education block */
-.edu-block{background:#faf9fc;border-radius:9px;padding:12px;margin-bottom:9px;border:1px solid var(--border)}
+.edu-block{background:#f9fafa;border-radius:9px;padding:12px;margin-bottom:9px;border:1px solid var(--border)}
 .edu-title{font-size:11px;font-weight:700;color:var(--primary);margin-bottom:9px}
-.extra-item{background:#faf9fc;border:1px solid var(--border);border-radius:9px;padding:11px;margin-bottom:7px;position:relative}
+.extra-item{background:#f9fafa;border:1px solid var(--border);border-radius:9px;padding:11px;margin-bottom:7px;position:relative}
 .rm-btn{position:absolute;top:7px;right:7px;background:#fee2e2;border:none;color:#dc2626;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:11px;font-weight:700}
 .add-btn{width:100%;padding:9px;border-radius:9px;border:1.5px dashed var(--primary);background:var(--primary-l);color:var(--primary);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-top:4px}
 
@@ -125,14 +125,14 @@ textarea.fi{resize:vertical;min-height:65px}
 .chip:hover,.chip.on{background:var(--primary);color:#fff;border-color:var(--primary)}
 
 /* Photo */
-.photo-zone{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;background:#faf9fc;position:relative}
+.photo-zone{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;background:#f9fafa;position:relative}
 .photo-zone:hover{border-color:var(--primary);background:var(--primary-l)}
 .photo-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .photo-prev{width:64px;height:80px;border-radius:7px;object-fit:cover;margin:0 auto 7px;display:none;border:2px solid var(--primary)}
 
 /* Buttons */
 .btn{width:100%;padding:12px;border-radius:11px;border:none;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;transition:.2s;display:flex;align-items:center;justify-content:center;gap:7px}
-.btn-p{background:var(--grad);color:#fff;margin-bottom:8px;box-shadow:0 6px 18px rgba(124,58,237,.3)}
+.btn-p{background:var(--grad);color:#fff;margin-bottom:8px;box-shadow:0 6px 18px rgba(227,68,76,.3)}
 .btn-p:hover{opacity:.92;transform:translateY(-1px)}
 .btn-b{background:var(--bg);color:var(--muted);font-size:12px;padding:10px}
 .btn-s{background:var(--primary-l);color:var(--primary);margin-bottom:8px}
@@ -147,7 +147,7 @@ textarea.fi{resize:vertical;min-height:65px}
 /* Color opts */
 .color-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .co{background:var(--white);border-radius:12px;padding:13px;cursor:pointer;border:2px solid var(--border);text-align:center;transition:.2s}
-.co:hover{border-color:#c4b5fd}
+.co:hover{border-color:#d6d9dc}
 .co.sel{border-color:var(--primary);background:var(--primary-l)}
 .co-icon{font-size:24px;margin-bottom:5px}
 .co-name{font-size:12px;font-weight:700;margin-bottom:2px}
@@ -155,7 +155,7 @@ textarea.fi{resize:vertical;min-height:65px}
 .co-sub{font-size:9px;color:var(--muted);margin-top:2px}
 
 /* Price card */
-.price-card{background:linear-gradient(145deg,#181822,#101018 60%,#14141e);border-radius:var(--rl);padding:18px;color:#fff;margin-bottom:12px;box-shadow:0 10px 34px rgba(16,16,28,.26)}
+.price-card{background:linear-gradient(145deg,#1a1c1e,#131416 60%,#181a1b);border-radius:var(--rl);padding:18px;color:#fff;margin-bottom:12px;box-shadow:0 10px 34px rgba(22,24,27,.26)}
 .price-card h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;margin-bottom:10px}
 .pl{display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.45);margin-bottom:6px}
 .pl.total{color:#fff;font-weight:700;font-size:18px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);margin-top:6px}
@@ -179,12 +179,12 @@ textarea.fi{resize:vertical;min-height:65px}
 .s-box.online h4{color:var(--green)}
 .s-box.counter h4{color:var(--amber)}
 .s-box p{font-size:11px;color:#555;line-height:1.6}
-.amt-box{background:#15151f;border-radius:11px;padding:11px 14px;display:flex;justify-content:space-between;align-items:center;color:#fff}
+.amt-box{background:#181a1b;border-radius:11px;padding:11px 14px;display:flex;justify-content:space-between;align-items:center;color:#fff}
 .amt-box span{font-size:11px;color:rgba(255,255,255,.45)}
 .amt-box strong{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:#4ade80}
 
 /* Toast */
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);background:#15151f;color:#fff;padding:10px 20px;border-radius:10px;font-size:12px;font-weight:600;z-index:300;transition:.3s cubic-bezier(.175,.885,.32,1.275);max-width:90vw;text-align:center}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);background:#181a1b;color:#fff;padding:10px 20px;border-radius:10px;font-size:12px;font-weight:600;z-index:300;transition:.3s cubic-bezier(.175,.885,.32,1.275);max-width:90vw;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0)}
 
 /* Loading */
@@ -629,7 +629,7 @@ textarea.fi{resize:vertical;min-height:65px}
     <div style="position:relative;margin-bottom:12px">
       <input type="file" id="photoInDirect" accept="image/*" onchange="handleDirect(this)"
         style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:2">
-      <div id="photoZoneBox" style="border:2px dashed var(--border);border-radius:13px;padding:22px 14px;text-align:center;background:#faf9fc;cursor:pointer">
+      <div id="photoZoneBox" style="border:2px dashed var(--border);border-radius:13px;padding:22px 14px;text-align:center;background:#f9fafa;cursor:pointer">
         <div style="font-size:30px;margin-bottom:6px">🪪</div>
         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Upload Passport Photo</div>
         <div style="font-size:11px;color:var(--muted)">JPG / PNG — 35×45mm size best</div>
@@ -657,7 +657,7 @@ textarea.fi{resize:vertical;min-height:65px}
     <!-- Hidden canvas -->
     <canvas id="photoCanvas" style="display:none"></canvas>
     <div style="height:10px"></div>
-    <div style="background:#faf9fc;border-radius:10px;padding:13px;border:1px solid var(--border);margin-bottom:12px">
+    <div style="background:#f9fafa;border-radius:10px;padding:13px;border:1px solid var(--border);margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">✍️ Declaration Details</div>
       <div class="fg">
         <div class="fl">📅 Date</div>

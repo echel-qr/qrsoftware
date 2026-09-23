@@ -40,6 +40,7 @@
   var HTML_LANG = { en: 'en', 'mni-mtei': 'mni-Mtei' };
 
   var DICTS   = {};                 // lang -> { english: translation }
+  var OVERRIDES = {};               // lang -> Superadmin's corrections
   var loading = {};                 // lang -> true while its file is loading
 
   var dict     = {};                // the dictionary currently applied
@@ -491,8 +492,20 @@
     } catch (e) { loading[l] = false; done(false); }
   }
 
+  // The corrections always win: the bundled file and the panel's rows arrive in
+  // whichever order the network decides, so they are kept apart and the
+  // corrections are laid on top every time either of them changes.
+  function merged(l) {
+    var base = DICTS[l] || {}, over = OVERRIDES[l];
+    if (!over) return base;
+    var out = {}, k;
+    for (k in base) if (base.hasOwnProperty(k)) out[k] = base[k];
+    for (k in over) if (over.hasOwnProperty(k)) out[k] = over[k];
+    return out;
+  }
+
   function applyDict(l) {
-    dict = (l === SRC_LANG) ? {} : (DICTS[l] || {});
+    dict = (l === SRC_LANG) ? {} : merged(l);
     resetIndexes();
     if (l === SRC_LANG && !touched) return;   // nothing was ever translated
     touched = true;
@@ -575,11 +588,10 @@
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (res) {
           if (!res || !res.dict) return;
-          var target = DICTS[l] || (DICTS[l] = {});
+          var target = OVERRIDES[l] || (OVERRIDES[l] = {});
           var n = 0;
           for (var k in res.dict) if (res.dict.hasOwnProperty(k)) { target[k] = res.dict[k]; n++; }
           if (!n) return;
-          resetIndexes();
           if (lang === l) applyDict(l);
         })
         .catch(function () {});

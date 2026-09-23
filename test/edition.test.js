@@ -1,7 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {retiredRoute}=require('../echel-edition');
 test('retired products and other language bundles are unavailable',()=>{
-  for(const route of ['/whitelabel','/whitelabel.html','/wl-admin','/migrate','/partner','/api/whitelabel/branding','/api/superadmin/whitelabels','/api/superadmin/migrate-db','/i18n/bn.js','/i18n/ta.js'])assert.equal(retiredRoute(route),true,route);
+  for(const route of ['/migrate','/migrate.html','/api/superadmin/migrate-db','/api/whatsapp-interest','/i18n/bn.js','/i18n/ta.js'])assert.equal(retiredRoute(route),true,route);
+  // The White Label programme is part of this edition again: the partner page,
+  // the partner's dashboard and every endpoint behind them have to answer.
+  for(const route of ['/whitelabel','/whitelabel.html','/wl-admin','/partner','/api/whitelabel/branding','/api/whitelabel/license-fee','/api/superadmin/whitelabels'])assert.equal(retiredRoute(route),false,route);
   for(const route of ['/','/about','/setup-guide','/api/homepage-config','/i18n/mni-mtei.js'])assert.equal(retiredRoute(route),false,route);
 });
 test('every public page loads the language engine, and nothing else',()=>{

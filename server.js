@@ -1,6 +1,7 @@
 const { CYCLES, billingCycle, subscriptionActive, validatePlanPrices, validatePricingUpdate, MONTHS_SQL, CYCLE_SQL } = require('./billing');
 require('dotenv').config();
 const { deploymentConfig, databaseOptions, UPLOAD_PREFIX, BRAND_PREFIX, isJobAsset, protectAppTables, APP_TABLES } = require('./deployment');
+const migration = require('./migration');
 const deployment = deploymentConfig();
 const express = require('express');
 const cors = require('cors');
@@ -509,6 +510,9 @@ app.use((req, res, next) => {
 // JSON body 50mb -> 2mb. File uploads go through MULTER (which has its own
 // separate 50mb limit) — so uploads are unaffected. Previously anyone could
 // keep sending a 50mb JSON and fill Render's 512MB of RAM.
+// A whole database arrives on the restore route, so it is read first with a
+// limit of its own. Every other request keeps the small one below.
+app.post('/api/superadmin/migration/import', express.json({ limit: '256mb' }));
 app.use(express.json({ limit: '2mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 // HTML pages are ALWAYS fresh — without this, Chrome on phones shows old HTML
@@ -1061,6 +1065,35 @@ app.get('/api/i18n', (req, res) => {
   res.json({ langs: I18N_LANGS, source: 'en' });
 });
 
+// The product's own translation — the file the website ships with.
+// Superadmin's corrections are stored in `translations` and applied on top of
+// it, so the panel has to show both: every English line the website can say,
+// the translation it ships with, and the correction when one was made.
+const BUNDLED_DICTS = { 'mni-mtei': path.join(__dirname, 'i18n', 'manipuri.json') };
+const _bundledCache = {};
+function bundledDict(lang) {
+  const file = BUNDLED_DICTS[lang];
+  if (!file) return {};
+  try {
+    const at = fs.statSync(file).mtimeMs;
+    const hit = _bundledCache[lang];
+    if (hit && hit.at === at) return hit.dict;
+    const dict = JSON.parse(fs.readFileSync(file, 'utf8'));
+    _bundledCache[lang] = { at, dict };
+    return dict;
+  } catch (e) {
+    console.error('Bundled dictionary could not be read:', e.message);
+    return (_bundledCache[lang] && _bundledCache[lang].dict) || {};
+  }
+}
+
+// A line is looked up by the text as the page shows it, with runs of spaces and
+// line breaks collapsed (public/i18n.js does the same). Pasted text therefore
+// still finds its line even when it carries a stray newline or double space.
+function normSource(s) {
+  return String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+}
+
 // The dictionary for public pages. i18n.js merges it ON TOP OF the
 // bundled dictionary.
 app.get('/api/i18n/dict', async (req, res) => {
@@ -1071,7 +1104,8 @@ app.get('/api/i18n/dict', async (req, res) => {
     const r = await pool.query('SELECT source, text FROM translations WHERE lang=$1', [lang]);
     const dict = {};
     r.rows.forEach(x => { if (x.text) dict[x.source] = x.text; });
-    res.set('Cache-Control', 'public, max-age=300');
+    // A correction made in the panel reaches the website within a minute.
+    res.set('Cache-Control', 'public, max-age=60');
     res.json({ lang, dict });
   } catch (e) {
     // Never return a 500 here — the website page depends on this
@@ -1080,23 +1114,38 @@ app.get('/api/i18n/dict', async (req, res) => {
   }
 });
 
-// Superadmin: the full list of one language + the count for each language
+// Superadmin: every line of one language — the translation the website ships
+// with, plus the correction when one was made. Listing only the corrections
+// meant an empty page on the first visit and the English text had to be typed
+// out by hand, which only matches when it is typed exactly right.
 app.get('/api/superadmin/translations', verifySuperAdmin, async (req, res) => {
   try {
-    const lang = String(req.query.lang || 'en').slice(0, 8);
+    const lang = String(req.query.lang || 'mni-mtei').slice(0, 8);
     if (!isKnownLang(lang)) return res.status(400).json({ error: 'Unknown language' });
-    const r = await pool.query(
-      'SELECT id, source, text FROM translations WHERE lang=$1 ORDER BY updated_at DESC, id DESC',
-      [lang]);
+    const base = bundledDict(lang);
+    const r = await pool.query('SELECT source, text FROM translations WHERE lang=$1', [lang]);
+    const edits = new Map();
+    r.rows.forEach(x => { edits.set(x.source, x.text); });
+    const rows = [];
+    Object.keys(base).forEach(src => {
+      const edited = edits.has(src);
+      rows.push({ source: src, base: base[src], text: edited ? edits.get(src) : base[src], edited });
+    });
+    // Corrections for text that is built at runtime have no bundled line.
+    edits.forEach((text, src) => {
+      if (!Object.prototype.hasOwnProperty.call(base, src))
+        rows.push({ source: src, base: '', text, edited: true });
+    });
     const c = await pool.query('SELECT lang, COUNT(*)::int AS n FROM translations GROUP BY lang');
     const counts = {};
     c.rows.forEach(x => { counts[x.lang] = x.n; });
-    res.json({ lang, rows: r.rows, counts, langs: I18N_LANGS });
+    res.json({ lang, rows, counts, langs: I18N_LANGS, bundled: Object.keys(base).length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Superadmin: save the whole list at once. Empty text = remove that line
-// (when it is missing the source text shows, so nothing breaks).
+// Superadmin: save the lines that were changed. A line typed back to the
+// translation the website ships with — or emptied — is stored no more, so the
+// table holds corrections only and never a copy of the whole dictionary.
 app.put('/api/superadmin/translations', verifySuperAdmin, async (req, res) => {
   try {
     const b = req.body || {};
@@ -1106,12 +1155,13 @@ app.put('/api/superadmin/translations', verifySuperAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Choose the language to translate into (Manipuri / Meitei Mayek)' });
 
     const items = Array.isArray(b.items) ? b.items.slice(0, 5000) : [];
+    const base = bundledDict(lang);
     let saved = 0, removed = 0;
     for (const it of items) {
-      const src = String((it && it.source) || '').trim();
+      const src = normSource(it && it.source);
       const txt = String((it && it.text) || '').trim();
       if (!src) continue;
-      if (!txt) {
+      if (!txt || txt === base[src]) {
         const d = await pool.query(
           'DELETE FROM translations WHERE lang=$1 AND md5(source)=md5($2)', [lang, src]);
         removed += d.rowCount || 0;
@@ -3119,7 +3169,12 @@ app.post('/api/superadmin/shop/:shopId/reset-password', verifySuperAdmin, async 
 // JSON file — press it once a week and keep it on your phone/PC.
 app.get('/api/superadmin/backup', verifySuperAdmin, async (req, res) => {
   try {
-    const dump = { taken_at: new Date().toISOString(), tables: {} };
+    const dump = {
+      version: migration.DUMP_VERSION,
+      taken_at: new Date().toISOString(),
+      from: BASE_URL,
+      tables: {}
+    };
     for (const table of APP_TABLES) {
       try {
         const r = await pool.query(`SELECT * FROM ${table}`);
@@ -3145,6 +3200,121 @@ app.get('/api/superadmin/db-counts', verifySuperAdmin, async (req, res) => {
     }
     res.json(counts);
   } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// ══════════════ MIGRATION ══════════════
+// Echel is an ordinary Node + PostgreSQL application, so it runs on any host
+// that offers both — a Hostinger VPS, another cloud, or a machine of your own.
+// Moving it has three steps and Superadmin → Database has a button for each:
+//
+//   1. this report          what the new host still needs
+//   2. Download backup      every row of every table, in one file
+//   3. Restore from a file  that file into the new server's empty database
+//
+// Uploaded documents are not in the file. They stay in Cloudinary and serve
+// from the new host the moment the same Cloudinary keys are set there.
+// MIGRATION.md walks through the whole thing.
+app.get('/api/superadmin/migration/report', verifySuperAdmin, async (req, res) => {
+  try {
+    const tables = {};
+    let totalRows = 0;
+    for (const table of APP_TABLES) {
+      try {
+        const r = await pool.query(`SELECT COUNT(*)::int AS n FROM "${table}"`);
+        tables[table] = r.rows[0].n;
+        totalRows += r.rows[0].n;
+      } catch (e) { tables[table] = -1; }     // -1 = this table is not here
+    }
+    let host = '', name = '';
+    try {
+      const u = new URL(process.env.DATABASE_URL || '');
+      host = u.hostname; name = u.pathname.replace(/^\//, '');
+    } catch (e) { /* no database address configured */ }
+    res.json({
+      server: {
+        baseUrl: BASE_URL,
+        node: process.version,
+        platform: process.platform,
+        uptimeSeconds: Math.round(process.uptime())
+      },
+      database: { host, name, tables, totalRows },
+      storage: { cloudName: process.env.CLOUDINARY_CLOUD_NAME || '' },
+      // Names and explanations only — a value is never read or sent.
+      settings: migration.envReport(process.env),
+      missing: migration.missingRequired(process.env)
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Write a backup file into THIS server's database.
+// `dryRun` reports what would happen and writes nothing.
+app.post('/api/superadmin/migration/import', verifySuperAdmin, async (req, res) => {
+  const body = req.body || {};
+  const dryRun = body.dryRun === true;
+  if (!dryRun && body.confirm !== 'RESTORE')
+    return res.status(400).json({ error: 'Type RESTORE to confirm.' });
+
+  let plan;
+  const columnsByTable = {};
+  try {
+    for (const table of APP_TABLES) {
+      const r = await pool.query(
+        'SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2',
+        ['public', table]);
+      columnsByTable[table] = new Set(r.rows.map(x => x.column_name));
+    }
+    plan = migration.planRestore(body.dump, columnsByTable);
+  } catch (e) { return res.status(400).json({ error: e.message }); }
+
+  let shopsHere = 0;
+  try {
+    shopsHere = (await pool.query('SELECT COUNT(*)::int AS n FROM shops')).rows[0].n;
+  } catch (e) { /* a brand new database has no shops table filled in yet */ }
+
+  if (dryRun) return res.json({ dryRun: true, shopsHere, ...plan });
+
+  // A database that already holds shops is somebody's live service. Replacing
+  // it is only ever right when it was asked for in so many words.
+  if (shopsHere > 0 && body.mode !== 'replace')
+    return res.status(409).json({
+      error: `This database already holds ${shopsHere} shops, and a restore would replace them. Send mode "replace" if that is really what you want.`,
+      shopsHere
+    });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const item of plan.plan) await client.query(`DELETE FROM "${item.table}"`);
+    const written = {};
+    for (const item of plan.plan) {
+      const rows = req.body.dump.tables[item.table];
+      if (!item.columns.length || !rows.length) { written[item.table] = 0; continue; }
+      let n = 0;
+      for (let i = 0; i < rows.length; i += 200) {
+        const { text, values } = migration.insertBatch(item.table, item.columns, rows.slice(i, i + 200));
+        n += (await client.query(text, values)).rowCount || 0;
+      }
+      written[item.table] = n;
+    }
+    // A table that numbers its own rows has to carry on after the highest id
+    // restored, or the very next insert collides with a row we just wrote.
+    // Asking about a column a table does not have is an error, not a null, so
+    // the tables without an id (system_settings) are stepped over.
+    for (const item of plan.plan) {
+      if (!columnsByTable[item.table].has('id')) continue;
+      const seq = await client.query("SELECT pg_get_serial_sequence($1,'id') AS s", [item.table]);
+      if (seq.rows[0] && seq.rows[0].s)
+        await client.query('SELECT setval($1, COALESCE((SELECT MAX(id) FROM "' + item.table + '"),0)+1, false)', [seq.rows[0].s]);
+    }
+    await client.query('COMMIT');
+    console.log(`Migration restore: ${Object.values(written).reduce((a, b) => a + b, 0)} rows written`);
+    res.json({ success: true, written, skippedTables: plan.skippedTables, takenAt: plan.takenAt, from: plan.from });
+  } catch (err) {
+    // One failure and nothing is written — the database is left as it was.
+    try { await client.query('ROLLBACK'); } catch (e) {}
+    console.error('Migration restore failed:', err.message);
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
 });
 
 app.get('/api/superadmin/cloudinary-status', verifySuperAdmin, async (req, res) => {
@@ -4581,8 +4751,6 @@ function cleanSlug(s) {
 
 // Find the reseller — from ?wl=slug, or from the subdomain (abc.echel.in)
 async function resolveWhitelabel(req) {
-  return null; // This client edition has one business identity.
-
   try {
     let slug = cleanSlug(req.query.wl || req.body?.wl || '');
     if (!slug) {
@@ -11317,6 +11485,10 @@ setInterval(backgroundMaintenance, 2 * 60 * 1000).unref();
 
 app.get('/print/:shopId', (req,res) => res.sendFile(path.join(__dirname,'public','customer.html')));
 app.get('/register',  (req,res) => res.sendFile(path.join(__dirname,'public','register.html')));
+// The White Label programme: the partner page, and the partner's own dashboard.
+app.get('/whitelabel', (req,res) => res.sendFile(path.join(__dirname,'public','whitelabel.html')));
+app.get('/partner',    (req,res) => res.redirect(301, '/whitelabel'));
+app.get('/wl-admin',   (req,res) => res.sendFile(path.join(__dirname,'public','wl-admin.html')));
 app.get('/agent',     (req,res) => res.sendFile(path.join(__dirname,'public','agent.html')));
 app.get('/dashboard', (req,res) => res.sendFile(path.join(__dirname,'public','dashboard.html')));
 app.get('/admin', (req,res) => res.sendFile(path.join(__dirname,'public','admin.html')));

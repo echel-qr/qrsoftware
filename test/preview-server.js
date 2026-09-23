@@ -7,7 +7,8 @@ const { retiredRoute }=require('../echel-edition');
 const previewPlans={starter:{fee:599,actual:2999,billingCycle:'lifetime'},pro:{fee:899,actual:2999,billingCycle:'lifetime'},premium:{fee:999,actual:2999,billingCycle:'lifetime'}};
 const root=path.resolve(__dirname,'..');
 const publicRoot=path.join(root,'public');
-const homeRoutes=['/','/about','/contact','/features','/setup-guide','/partner','/terms','/privacy','/refund','/disclaimer'];
+const homeRoutes=['/','/about','/contact','/features','/setup-guide','/terms','/privacy','/refund','/disclaimer'];
+const previewWl={id:'WL_1A2B3C4D',slug:'abcprint',brandName:'ABC Print Solutions',ownerName:'Preview Partner',phone:'9000000000',email:'partner@example.com',logoUrl:'',poweredBy:'ABC Print Solutions',supportEmail:'support@abcprint.example',supportPhone:'9000000000',broadcast:'',shopPrice:1299,basePrice:999,razorpayKeyId:'rzp_live_preview',razorpayReady:true,cashfreeAppId:'',cashfreeReady:false,gateway:'razorpay',hpTitle:'',hpSubtitle:'',hpTagline:'',madeIn:'Imphal, Manipur',socialInstagram:'',socialYoutube:'',socialFacebook:'',buttons:{},monthlyPrice:399,minMonthlyPrice:399,buttonKeys:['demo','pricing','agent'],notifyEmail:'partner@example.com',blocked:false,licenseFee:9999,paidAt:'2026-01-09T10:00:00.000Z',stats:{paid:9,pending:1,demo:2,total:12},collected:11691,shareLink:'http://localhost:3100/?wl=abcprint',subdomainLink:'https://abcprint.echel.in'};
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpeg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.mp3':'audio/mpeg'};
 http.createServer((req,res)=>{
   const u=new URL(req.url,'http://localhost');
@@ -16,6 +17,13 @@ http.createServer((req,res)=>{
   if(req.method!=='GET')return send({error:'Read-only design preview. Live accounts and payments are disabled.'},405);
   if(u.pathname.startsWith('/api/')){
     if(u.pathname==='/api/homepage-config'||u.pathname==='/api/superadmin/homepage-config')return send(withBrandDefaults());
+    if(u.pathname==='/api/whitelabel/license-fee')return send({licenseFee:9999,licenseActual:24999,basePrice:999});
+    if(u.pathname==='/api/whitelabel/me')return send(previewWl);
+    if(u.pathname==='/api/whitelabel/shops')return send({shops:[{id:'SHOP_PRV001',name:'Sharma Cyber Cafe',phone:'9000000001',address:'Main Road',demo:false,setup_paid:true,setup_amount:1299,plan_type:'onetime',created_at:'2026-02-01T09:00:00.000Z'},{id:'SHOP_PRV002',name:'City Xerox Point',phone:'9000000002',address:'Bazar Lane',demo:false,setup_paid:false,setup_amount:1299,plan_type:'onetime',created_at:'2026-03-04T09:00:00.000Z'}]});
+    if(u.pathname==='/api/whitelabel/analytics')return send({slug:'abcprint',days:30,daily:[],totals:{visits:240,shops:12,paid:9},top:[]});
+    if(u.pathname==='/api/captcha')return send({enabled:false});
+    if(u.pathname==='/api/superadmin/migration/report')return send({server:{baseUrl:'http://localhost:3100',node:process.version,platform:process.platform,uptimeSeconds:120},database:{host:'db.example.internal',name:'echel',tables:{shops:12,print_jobs:340},totalRows:352},storage:{cloudName:'echel'},settings:require('../migration').envReport({DATABASE_URL:'postgresql://localhost/echel',JWT_SECRET:'x'.repeat(40),SUPER_ADMIN_ID:'admin',SUPER_ADMIN_PASSWORD:'secret',BASE_URL:'http://localhost:3100',CLOUDINARY_CLOUD_NAME:'echel',CLOUDINARY_API_KEY:'k',CLOUDINARY_API_SECRET:'s'}),missing:[]});
+    if(u.pathname==='/api/superadmin/db-counts')return send({shops:12,print_jobs:340,translations:8});
     if(u.pathname==='/api/shop/SHOP_PREVIEW')return send({id:'SHOP_PREVIEW',name:'Preview Print Shop',setup_paid:true,active:true,price_bw:2,price_color:10,price_4x6_4:30,price_4x6_6:40,plan:'premium',advanced_enabled:true,payment_mode:'counter',online:true});
     if(u.pathname==='/api/whitelabel/branding')return send({isWhitelabel:false});
     if(u.pathname==='/api/captcha')return send({enabled:false});
@@ -30,6 +38,8 @@ http.createServer((req,res)=>{
   }
   let name=homeRoutes.includes(u.pathname)?'index.html':u.pathname.slice(1);
   if(u.pathname==='/preview/superadmin')name='superadmin.html';
+  if(u.pathname==='/whitelabel'||u.pathname==='/partner')name='whitelabel.html';
+  if(u.pathname==='/wl-admin'||u.pathname==='/preview/partner')name='wl-admin.html';
   if(u.pathname==='/preview/owner')name='admin.html';
   if(u.pathname.startsWith('/print/'))name='customer.html';
   if(!path.extname(name))name+='.html';
@@ -43,6 +53,9 @@ http.createServer((req,res)=>{
     let preview='';
     if(u.pathname==='/preview/superadmin')preview='<script>document.addEventListener("DOMContentLoaded",()=>{document.getElementById("loginScreen").classList.add("hidden");document.getElementById("panel").classList.remove("hidden");organizeSections();navTo("homepage");loadHomepageConfig();});</script>';
     if(u.pathname==='/preview/owner')preview='<script>document.addEventListener("DOMContentLoaded",()=>{document.getElementById("loginScreen").classList.add("hidden");document.getElementById("adminPanel").classList.remove("hidden");navTo(new URLSearchParams(location.search).get("sect")||"overview");});</script>';
+    // The partner dashboard normally needs a signed-in partner; here the panel is
+    // simply opened against the sample partner above.
+    if(u.pathname==='/preview/partner')preview='<script>document.addEventListener("DOMContentLoaded",()=>{TOKEN="preview";boot();setTimeout(()=>navTo(new URLSearchParams(location.search).get("sect")||"overview"),120);});</script>';
     data=Buffer.from(html.replace('</body>',banner+preview+'</body>'));
   }
   res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(data);

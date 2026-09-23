@@ -1469,19 +1469,19 @@
     var inner = '';
     if (id === 'idcard') {
       // both cards on top, side by side
-      inner = '<rect x="4.5" y="6" width="12.6" height="8" rx="1" fill="#7c3aed"/>' +
-              '<rect x="19" y="6" width="12.6" height="8" rx="1" fill="#a78bfa"/>';
+      inner = '<rect x="4.5" y="6" width="12.6" height="8" rx="1" fill="#e3454d"/>' +
+              '<rect x="19" y="6" width="12.6" height="8" rx="1" fill="#bdc3c7"/>';
     } else if (id === 'a4full') {
       // the whole page filled
-      inner = '<rect x="5" y="5" width="26" height="41" rx="1.5" fill="#7c3aed"/>';
+      inner = '<rect x="5" y="5" width="26" height="41" rx="1.5" fill="#e3454d"/>';
     } else if (id === 'half') {
       // top half + bottom half
-      inner = '<rect x="4.5" y="4.5" width="27" height="19.5" rx="1.5" fill="#7c3aed"/>' +
-              '<rect x="4.5" y="27" width="27" height="19.5" rx="1.5" fill="#a78bfa"/>';
+      inner = '<rect x="4.5" y="4.5" width="27" height="19.5" rx="1.5" fill="#e3454d"/>' +
+              '<rect x="4.5" y="27" width="27" height="19.5" rx="1.5" fill="#bdc3c7"/>';
     } else {
       inner = '<rect x="7" y="12" width="22" height="27" rx="1.5" fill="none" ' +
-              'stroke="#7c3aed" stroke-width="1.6" stroke-dasharray="3 2.4"/>' +
-              '<text x="18" y="30" font-size="11" font-weight="700" fill="#7c3aed" ' +
+              'stroke="#e3454d" stroke-width="1.6" stroke-dasharray="3 2.4"/>' +
+              '<text x="18" y="30" font-size="11" font-weight="700" fill="#e3454d" ' +
               'text-anchor="middle" font-family="sans-serif">?</text>';
     }
     return '<span class="ssTplThumb"><svg viewBox="0 0 36 51" width="36" height="51" ' +

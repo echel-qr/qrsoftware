@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Partner Dashboard — Echel</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#c81e28">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --ink:#16181b;--ink-2:#3b4148;--muted:#6b727a;--yellow:#eef0f2;--pink:#c81e28;
+  --red-dark:#a8121b;--red-soft:#fdeeee;--red-line:#f2c8cb;
+  --paper:#f4f5f6;--tint:#eef0f2;--line:#e3e6e9;--line-2:#d3d8dc;--silver:#eef0f2;--card:#fff;
+  --ok:#17663f;--ok-soft:#e9f7ef;--ok-line:#bfe5cf;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+body{font-family:'Inter','Noto Sans Meetei Mayek',sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
+body:before{content:'';position:fixed;left:0;right:0;top:0;height:3px;background:var(--pink);z-index:200}
+
+/* ── Shell ── */
+.app-shell{display:flex;min-height:100vh}
+.side{position:fixed;top:0;left:0;bottom:0;width:248px;z-index:120;
+  background:#fff;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:25px 15px;transition:transform .28s var(--ease)}
+.side-brand{display:flex;align-items:center;gap:10px;color:var(--ink);
+  font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:15.5px;
+  padding:0 6px 13px;border-bottom:1px solid var(--line);margin-bottom:11px}
+.side-brand .bm{width:34px;height:34px;border-radius:50%;flex:none;
+  background:var(--silver);color:var(--ink);box-shadow:0 0 0 1px var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden}
+.side-brand .bm img{width:100%;height:100%;object-fit:cover}
+.side-role{padding:0 6px 13px;font-size:10.5px;color:var(--muted);line-height:1.5}
+.side-role b{color:var(--pink);display:block;font-size:11.5px;margin-top:2px;letter-spacing:.3px;word-break:break-all}
+.nav-it{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:10px;
+  color:var(--ink-2);font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:3px;
+  transition:.15s;border:1px solid transparent;background:none;width:100%;text-align:left;font-family:inherit}
+.nav-it:hover{background:var(--silver);color:var(--ink)}
+.nav-it.active{background:var(--red-soft);color:var(--pink);border-color:var(--red-line)}
+.nav-it .ico{font-size:15.5px;width:20px;text-align:center;flex:none}
+.nav-it .dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#ef4444;
+  animation:dotPulse 1.8s ease-in-out infinite;display:none;flex:none}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}60%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
+.side-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.side-lg{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:10px;color:var(--pink);
+  font-weight:700;font-size:13.5px;cursor:pointer;background:var(--red-soft);border:1px solid var(--red-line);width:100%;font-family:inherit}
+.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:110}
+.side-overlay.show{display:block}
+
+.app-main{flex:1;margin-left:248px;min-height:100vh}
+.app-topbar{position:sticky;top:0;z-index:90;background:rgba(255,255,255,.9);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:14px}
+.hamburger{display:none;background:none;border:none;font-size:21px;cursor:pointer;color:var(--ink)}
+.page-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:18.5px}
+.app-content{padding:22px 24px 60px;max-width:860px;margin:0 auto}
+[data-sect]{display:none;animation:fadeUp .3s var(--ease)}
+[data-sect].show{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(max-width:899px){
+  .side{transform:translateX(-100%)}.side.open{transform:translateX(0)}
+  .app-main{margin-left:0}.hamburger{display:block}
+  .app-content{padding:18px 15px 50px}
+}
+@media (prefers-reduced-motion:reduce){
+  .nav-it .dot,[data-sect]{animation:none}
+}
+
+/* ── Cards & controls ── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px 18px;
+  margin-bottom:16px;box-shadow:0 1px 2px rgba(22,24,27,.04),0 8px 24px -16px rgba(22,24,27,.14)}
+.card h2{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:16.5px;margin-bottom:12px;
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+label{display:block;font-size:11px;font-weight:800;color:#6b6870;text-transform:uppercase;letter-spacing:.3px;margin:0 0 5px}
+input,textarea,select{width:100%;padding:11px 12px;border:1px solid var(--line-2);border-radius:10px;
+  font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:11px;background:#fff;color:var(--ink)}
+textarea{min-height:88px;resize:vertical}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(200,30,40,.12);background:#fff}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f0a4aa;outline-offset:3px}
+.btn{width:100%;border:none;cursor:pointer;font-family:inherit;font-weight:800;font-size:14.5px;
+  padding:13px;border-radius:11px;color:#fff;background:var(--ink);transition:background .18s var(--ease)}
+.btn:hover{background:#000}
+.btn.green,.btn.pink{background:var(--pink)}
+.btn.green:hover,.btn.pink:hover{background:var(--red-dark)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.msg{display:none;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:10px;line-height:1.6}
+.msg.err{background:var(--red-soft);border:1px solid var(--red-line);color:#8f151d}
+.msg.ok{background:var(--ok-soft);border:1px solid var(--ok-line);color:var(--ok)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:11px}
+.stat{border-radius:14px;padding:14px 15px}
+.stat b{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:23px;line-height:1.1}
+.stat span{font-size:10.5px;font-weight:700}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.65;margin-top:9px}
+.warnbox{background:var(--red-soft);border:1px solid var(--red-line);color:#8f151d;border-radius:14px;
+  padding:14px 16px;font-size:12.5px;line-height:1.7;font-weight:600;margin-bottom:16px}
+.warnbox button{margin-top:10px;background:#991b1b;color:#fff;border:none;border-radius:10px;
+  padding:9px 15px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.okbox{background:var(--ok-soft);border:1px solid var(--ok-line);color:var(--ok);border-radius:12px;
+  padding:11px 13px;font-size:12.5px;font-weight:700;margin-bottom:12px}
+.linkrow{display:flex;gap:8px;margin-bottom:9px}
+.linkrow input{margin-bottom:0;font-size:12.5px;background:var(--silver)}
+.linkrow button{flex:none;background:var(--ink);color:#fff;border:none;border-radius:10px;
+  padding:11px 15px;font-size:12.5px;font-weight:800;cursor:pointer}
+.shop{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:9px}
+.shop-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.badge{flex:none;font-size:10.5px;font-weight:800;border-radius:999px;padding:4px 10px;white-space:nowrap}
+
+/* ══════════════════════════════════════════════════════════════
+   The sign-in screen. Everything is scoped inside #login, so the panel's
+   own .card / .btn / input / .msg stay exactly as they are.
+
+   IMPORTANT: the script sets $('login').style.display to 'block' or 'none'
+   (in boot() and logout()), so #login itself cannot be the centring box —
+   an inline display:block would break it. The centring lives on the
+   .wl-login-wrap inside, which works whatever the display value is.
+   ══════════════════════════════════════════════════════════════ */
+#login{position:fixed;inset:0;z-index:500;background:var(--paper);overflow-y:auto;
+  max-width:none;margin:0;padding:0}
+#login .wl-login-wrap{min-height:100%;display:flex;align-items:center;
+  justify-content:center;padding:24px}
+#login::before,#login::after{content:'';position:fixed;border-radius:50%;
+  pointer-events:none;filter:blur(64px);opacity:.55}
+#login::before{width:340px;height:340px;background:#f6d7d9;top:-96px;left:-96px}
+#login::after{width:320px;height:320px;background:#dfe3e6;bottom:-96px;right:-96px}
+
+#login .wl-login-card{position:relative;width:100%;max-width:420px;text-align:center;
+  background:#fff;border:1px solid var(--line);border-radius:20px;margin:0;
+  box-shadow:0 1px 2px rgba(22,24,27,.04),0 12px 32px rgba(22,24,27,.08);
+  padding:40px 28px 28px}
+#login .wl-logo{position:absolute;top:-26px;left:50%;translate:-50% 0;
+  width:56px;height:56px;border-radius:50%;background:#fff;object-fit:cover;
+  box-shadow:0 0 0 1px var(--line),0 8px 22px -10px rgba(22,24,27,.5)}
+#login .wl-login-card h2{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;
+  font-size:23px;letter-spacing:-.5px;color:var(--ink);justify-content:center;margin:16px 0 5px}
+#login .wl-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+#login input{padding:12px 14px;border:1px solid var(--line-2);border-radius:10px;
+  font-size:14.5px;background:#fff;color:var(--ink);text-align:center;margin-bottom:12px;
+  transition:border-color .15s,box-shadow .15s}
+#login input::placeholder{color:#9aa1a8;font-weight:400}
+#login input:focus{outline:none;border-color:var(--pink);background:#fff;
+  box-shadow:0 0 0 3px rgba(200,30,40,.12)}
+#login #lgId{font-weight:700}
+/* display:none is already on .msg in the base rules — show() is what makes
+   it visible, so display is deliberately not touched here. */
+#login .msg.err{background:var(--red-soft);border:1px solid var(--red-line);color:#8f151d;border-radius:10px}
+#login .wl-login-btn{width:100%;background:var(--pink);color:#fff;border:none;border-radius:10px;
+  padding:13px;font-weight:700;font-size:15px;cursor:pointer;margin-top:4px;
+  box-shadow:0 8px 20px -10px rgba(200,30,40,.9);transition:.15s}
+#login .wl-login-btn:hover{background:var(--red-dark)}
+#login .wl-login-btn:focus-visible{outline:3px solid #f0a4aa;outline-offset:3px}
+#login .hint{font-size:12.5px;color:var(--muted);margin-top:14px}
+#login .hint a{color:var(--pink);font-weight:600;text-decoration:none}
+#login .wl-home{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:16px;
+  padding:11px;border:1px solid var(--line-2);border-radius:10px;color:var(--ink-2);font-size:13.5px;
+  font-weight:600;text-decoration:none;transition:background .15s,border-color .15s}
+#login .wl-home:hover{background:var(--silver);border-color:var(--pink)}
+#panel{display:none}
+.hp-btn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:6px 0 14px;}
+.hp-btn-item{display:flex;align-items:center;gap:6px;background:var(--silver);border:1px solid var(--line);
+  border-radius:10px;padding:9px 11px;font-size:13.5px;font-weight:600;cursor:pointer;margin:0;}
+.hp-btn-item input{width:auto;margin:0;}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="login">
+  <div class="wl-login-wrap">
+    <div class="card wl-login-card">
+      <img class="wl-logo" src="/img/echel-logo.jpeg" alt="" width="56" height="56">
+      <h2>Partner sign in</h2>
+      <p class="wl-sub">Your White Label dashboard</p>
+      <div class="msg err" id="loginErr"></div>
+      <input id="lgId" placeholder="Partner ID (WL_XXXXXXXX)" autocapitalize="characters" autocomplete="username">
+      <input id="lgPass" type="password" placeholder="Password">
+      <div id="capRow" style="display:none;margin-bottom:10px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <img id="capImg" alt="Captcha" width="160" height="52"
+               style="height:52px;width:160px;flex:none;border:1px solid #e5e7eb;border-radius:9px;background:#f4f6fb;">
+          <button type="button" onclick="loadCaptcha()" title="New captcha"
+                  style="height:52px;width:44px;flex:none;border:1px solid #e5e7eb;background:#fff;
+                         border-radius:9px;font-size:18px;cursor:pointer;line-height:1;">&#8635;</button>
+          <input id="capAns" type="text" maxlength="8" autocomplete="off" spellcheck="false"
+                 autocapitalize="characters" placeholder="Type the characters"
+                 onkeydown="if(event.key==='Enter')doLogin()" style="flex:1;min-width:0;margin:0;">
+        </div>
+      </div>
+      <button class="btn wl-login-btn" onclick="doLogin()">Sign in</button>
+      <p class="hint" data-i18n-sentence>Not a partner yet? <a href="/whitelabel">Register here ›</a></p>
+      <a href="/" class="wl-home">🏠 Home page</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PANEL ═══ -->
+<div id="panel">
+<div class="app-shell">
+
+  <aside class="side" id="sideNav">
+    <div class="side-brand"><span class="bm" id="sideLogo">🏷️</span><span id="hBrand" data-no-i18n>Partner</span></div>
+    <div class="side-role">Partner dashboard<b id="hSub" data-no-i18n>—</b></div>
+
+    <button class="nav-it active" data-nav="overview"  onclick="navTo('overview',this)"><span class="ico">📊</span> Overview</button>
+    <button class="nav-it"        data-nav="shops"     onclick="navTo('shops',this)"><span class="ico">🏪</span> My shops</button>
+    <button class="nav-it"        data-nav="payment"   onclick="navTo('payment',this)"><span class="ico">💳</span> Payment &amp; price<span class="dot" id="payDot"></span></button>
+    <button class="nav-it"        data-nav="onboard"   onclick="navTo('onboard',this)"><span class="ico">➕</span> Add a shop</button>
+    <button class="nav-it"        data-nav="analytics" onclick="navTo('analytics',this)"><span class="ico">📈</span> Analytics</button>
+    <button class="nav-it"        data-nav="branding"  onclick="navTo('branding',this)"><span class="ico">🎨</span> Branding</button>
+    <button class="nav-it"        data-nav="broadcast" onclick="navTo('broadcast',this)"><span class="ico">📢</span> Broadcast</button>
+    <button class="nav-it"        data-nav="account"   onclick="navTo('account',this)"><span class="ico">🔐</span> Account</button>
+
+    <div class="side-foot">
+      <select data-i18n-select aria-label="Language" style="width:100%;margin-bottom:8px;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:#fff;color:var(--ink);font-size:12.5px;font-weight:700;cursor:pointer;"></select>
+      <button class="side-lg" onclick="logout()"><span>🚪</span> Logout</button>
+    </div>
+  </aside>
+  <div class="side-overlay" id="sideOverlay" onclick="closeSide()"></div>
+
+  <main class="app-main">
+    <div class="app-topbar">
+      <button class="hamburger" onclick="openSide()">☰</button>
+      <div class="page-title" id="pageTitle">Overview</div>
+    </div>
+
+    <div class="app-content">
+
+      <!-- ═══ OVERVIEW ═══ -->
+      <div data-sect="overview" class="show">
+        <div id="rzpWarn" class="warnbox" style="display:none;">
+          <span data-i18n-sentence>⚠️ <b>Your payment account is not set up yet.</b> Until you add your own Razorpay or Cashfree, nobody can register a shop through your link — the money would have nowhere to go.</span>
+          <br><button onclick="navTo('payment',document.querySelector('[data-nav=payment]'))">💳 Set it up now ›</button>
+        </div>
+
+        <div class="card">
+          <h2>📊 Overview</h2>
+          <div class="stats" id="statsBox"></div>
+          <p class="hint">Total collected is what your paid shops paid, sent straight to your own payment account.</p>
+        </div>
+
+        <div class="card">
+          <h2>🔗 Your link</h2>
+          <p class="hint" style="margin:0 0 10px;" data-i18n-sentence>Whoever registers through this link becomes <b>your shop</b> and sees your price.</p>
+          <div class="linkrow">
+            <input id="shareLink" readonly>
+            <button onclick="copyLink()">Copy</button>
+          </div>
+          <button class="btn green" onclick="shareWA()">💬 Share on WhatsApp</button>
+          <p class="hint" id="subNote"></p>
+        </div>
+      </div>
+
+      <!-- ═══ SHOPS ═══ -->
+      <div data-sect="shops">
+        <div class="card">
+          <h2>🏪 My shops
+            <span style="display:flex;gap:7px;">
+              <button onclick="exportCsv()" style="background:#166534;color:#fff;border:none;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;">⬇️ CSV</button>
+              <button onclick="loadShops()" style="background:#f3f4f6;color:#4b5563;border:none;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;">↻ Refresh</button>
+            </span>
+          </h2>
+          <div id="shopsBox" style="font-size:13px;color:var(--muted);">Loading…</div>
+        </div>
+      </div>
+
+      <!-- ═══ PAYMENT & PRICE ═══ -->
+      <div data-sect="payment">
+        <div class="card">
+          <h2>💳 Your Razorpay</h2>
+          <div id="rzpOkBox" class="okbox" style="display:none;">✅ Razorpay is set up. Shop payments go straight into your account.</div>
+          <p class="hint" style="margin:0 0 12px;">
+            <span data-i18n-sentence>What your shops pay to register goes <b>straight into your own Razorpay account</b>.</span>
+            <span data-i18n-sentence>The keys are at <b data-no-i18n>razorpay.com → Settings → API Keys</b>.</span>
+          </p>
+          <div class="msg err" id="rzpErr"></div>
+          <div class="msg ok" id="rzpOk"></div>
+          <label>Key ID</label>
+          <input id="rKey" placeholder="rzp_live_xxxxxxxx">
+          <label>Key Secret</label>
+          <input id="rSec" type="password" placeholder="Secret key">
+          <button class="btn green" onclick="saveRzp()">💾 Save Razorpay</button>
+        </div>
+
+        <div class="card">
+          <h2>💰 Your Cashfree <span class="hint">(instead of Razorpay)</span></h2>
+          <p class="hint" style="margin:0 0 12px;">
+            <span data-i18n-sentence>Razorpay or Cashfree — the active one is used. You may fill in both, but shops pay through <b>the one you choose below</b>.</span>
+          </p>
+          <div class="msg err" id="cfErr"></div>
+          <div class="msg ok" id="cfOk"></div>
+          <label>Cashfree App ID (x-client-id)</label>
+          <input id="cfApp" maxlength="120" placeholder="1234567abcdef...">
+          <label>Cashfree Secret Key (x-secret-key)</label>
+          <input id="cfSec" maxlength="200" placeholder="cfsk_ma_prod_...">
+          <p class="hint" style="margin:6px 0 10px;">The secret is never shown again — fill it only when you want to change it.</p>
+          <button class="btn green" onclick="saveCashfree()">💾 Save Cashfree</button>
+        </div>
+
+        <div class="card">
+          <h2>🔀 Which gateway to use</h2>
+          <div class="msg err" id="gwErr"></div>
+          <div class="msg ok" id="gwOk"></div>
+          <label>Payment gateway</label>
+          <select id="gwSel">
+            <option value="razorpay">Razorpay</option>
+            <option value="cashfree">Cashfree</option>
+          </select>
+          <p class="hint" id="gwHint" style="margin:8px 0 10px;"></p>
+          <button class="btn green" onclick="saveGateway()">💾 Save gateway</button>
+        </div>
+
+        <div class="card">
+          <h2>🏷️ What a shop pays to register</h2>
+          <p class="hint" style="margin:0 0 12px;">
+            <span data-i18n-sentence>The base price is <b>₹<span id="pBase">—</span></b>. Set anything <b>above</b> it and the whole difference is your margin. You cannot go below the base price.</span>
+          </p>
+          <div class="msg err" id="prErr"></div>
+          <div class="msg ok" id="prOk"></div>
+          <input id="pPrice" type="number" inputmode="numeric" style="font-size:18px;font-weight:800;">
+          <div id="marginNote" style="font-size:12.5px;font-weight:700;color:#166534;margin-bottom:11px;"></div>
+          <button class="btn" onclick="savePrice()">Save price</button>
+        </div>
+      </div>
+
+      <!-- ═══ BRANDING ═══ -->
+      <div data-sect="branding">
+        <div class="card">
+          <h2>🎨 Branding</h2>
+          <p class="hint" style="margin:0 0 12px;">This is what your shops and their customers see. Our name never appears.</p>
+          <div class="msg err" id="brErr"></div>
+          <div class="msg ok" id="brOk"></div>
+          <label>Brand name</label>
+          <input id="bBrand" maxlength="120">
+          <label>What the "powered by" line says</label>
+          <input id="bPowered" maxlength="160" placeholder="e.g. ABC Print Solutions">
+          <label>Logo (PNG or JPG, under 40 KB)</label>
+          <div class="msg err" id="lgErr"></div>
+          <div class="msg ok" id="lgOk"></div>
+          <div id="lgPrevBox" style="display:none;align-items:center;gap:12px;margin:4px 0 10px;">
+            <img id="lgPrev" alt="logo" style="width:56px;height:56px;object-fit:contain;
+                 border:1px solid #e6e6ef;border-radius:12px;background:#fafbfb;padding:5px;">
+            <button class="btn" style="background:#fee2e2;color:#991b1b;margin:0;width:auto;padding:8px 14px;"
+                    onclick="removeLogo()">🗑️ Remove logo</button>
+          </div>
+          <input type="file" id="bLogoFile" accept="image/png,image/jpeg">
+          <p class="hint" style="margin:6px 0 10px;">A square logo (for example 256×256) looks best.</p>
+          <button class="btn" style="background:var(--silver);color:var(--ink);" onclick="uploadLogo()">⬆️ Upload logo</button>
+          <button class="btn green" onclick="saveBranding()">💾 Save branding</button>
+        </div>
+
+        <div class="card">
+          <h2>🏠 Your homepage</h2>
+          <p class="hint" style="margin:0 0 12px;">
+            <span data-i18n-sentence>All of this appears on <b>your own homepage</b>. Leave a field empty to keep the default.</span>
+          </p>
+          <div class="msg err" id="hpErr"></div>
+          <div class="msg ok" id="hpOk"></div>
+
+          <label>Homepage title (the main heading)</label>
+          <input id="hpTitle" maxlength="160" placeholder="Print Documents from">
+          <label>The second line of the title</label>
+          <input id="hpSub" maxlength="200" placeholder="Your Phone. Instantly.">
+
+          <label>Footer tagline</label>
+          <input id="hpTag" maxlength="200" placeholder="Automated cyber cafe printing network">
+
+          <label>What the "Made in" line says</label>
+          <input id="hpMade" maxlength="120" placeholder="Dhanbad, Jharkhand">
+
+          <label>Monthly plan price (₹)</label>
+          <input id="hpMonthlyP" type="number" min="399" step="1" placeholder="399">
+          <p class="hint" id="hpMonthlyHint" style="margin:6px 0 10px;">Minimum ₹399 — you cannot set it lower.</p>
+
+          <label>Instagram link</label>
+          <input id="hpIg" maxlength="300" placeholder="https://instagram.com/...">
+          <label>YouTube link</label>
+          <input id="hpYt" maxlength="300" placeholder="https://youtube.com/@...">
+          <label>Facebook link</label>
+          <input id="hpFb" maxlength="300" placeholder="https://facebook.com/...">
+
+          <label style="margin-top:14px;">Which homepage buttons to show</label>
+          <p class="hint" style="margin:0 0 8px;">Untick a box to hide that button or section on your homepage.</p>
+          <div id="hpBtns" class="hp-btn-grid"></div>
+
+          <button class="btn green" onclick="saveHomepage()">💾 Save homepage</button>
+        </div>
+
+        <div class="card">
+          <h2>📞 Support contact</h2>
+          <p class="hint" style="margin:0 0 12px;">
+            <span data-i18n-sentence>This appears under <b>Support</b> in your shops' dashboard, so their WhatsApp and email reach <b>you</b> and not us.</span>
+          </p>
+          <div class="msg err" id="scErr"></div>
+          <div class="msg ok" id="scOk"></div>
+          <label>Support email</label>
+          <input id="bEmail" type="email" maxlength="160" placeholder="support@yourbrand.com">
+          <label>Support mobile / WhatsApp</label>
+          <input id="bPhone" type="tel" maxlength="10" placeholder="10 digits">
+          <button class="btn green" onclick="saveContact()">💾 Save contact</button>
+        </div>
+
+        <div class="card">
+          <h2>🔔 New shop alert</h2>
+          <p class="hint" style="margin:0 0 12px;">
+            <span data-i18n-sentence>When a new shop registers through your link, or a payment arrives, you get an <b>email</b> straight away.</span>
+            <br>Nothing to set up — just enter your email.
+          </p>
+          <div class="msg err" id="ntErr"></div>
+          <div class="msg ok" id="ntOk"></div>
+          <label>Which email the alert goes to</label>
+          <input id="ntTo" type="email" maxlength="160" placeholder="you@email.com">
+          <div style="display:flex;gap:9px;">
+            <button class="btn green" style="flex:2;" onclick="saveNotify()">💾 Save</button>
+            <button class="btn" style="flex:1;" onclick="testNotify()">📤 Test</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SHOP ONBOARD ═══ -->
+      <div data-sect="onboard">
+        <div class="card">
+          <h2>🎁 Create a demo account</h2>
+          <p class="hint" style="margin:0 0 12px;">
+            Demo accounts are created only from here; the homepage has no demo button.
+            Give the shop the ID and the password, which is their mobile number.
+          </p>
+          <div class="msg err" id="dmErr"></div>
+          <div class="msg ok" id="dmOk"></div>
+          <label>Shop name</label>
+          <input id="dmName" maxlength="100" placeholder="e.g. Sharma Cyber Cafe">
+          <label>Mobile number (this is also the password)</label>
+          <input id="dmPhone" maxlength="10" inputmode="numeric" placeholder="10 digits">
+          <label>How many minutes it stays active</label>
+          <input id="dmMin" type="number" min="10" max="43200" placeholder="60">
+          <button class="btn green" onclick="createDemo()">🎁 Create Demo</button>
+          <div id="dmOut" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card">
+          <h2>➕ Add a shop yourself</h2>
+          <p class="hint" style="margin:0 0 12px;">
+            <span data-i18n-sentence>Register a shop yourself and its Shop ID and password are created at once. Pay online or take cash, then open <b>My shops</b> and activate it.</span>
+          </p>
+          <div class="msg err" id="obErr"></div>
+          <div id="obOk" style="display:none;background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:12px;padding:14px;font-size:13px;line-height:1.9;margin-bottom:12px;"></div>
+          <label>Shop name *</label>
+          <input id="obName" maxlength="200">
+          <label>Mobile number *</label>
+          <input id="obPhone" type="tel" maxlength="10" placeholder="10 digits">
+          <label>Address</label>
+          <input id="obAddr" maxlength="300">
+          <label>Printer model</label>
+          <input id="obPrinter" maxlength="120" placeholder="e.g. HP LaserJet 1020">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">
+            <div><label>B&amp;W rate (₹)</label><input id="obBw" type="number" value="5"></div>
+            <div><label>Color rate (₹)</label><input id="obColor" type="number" value="10"></div>
+          </div>
+          <label>Password (leave it empty and one is generated)</label>
+          <input id="obPass" maxlength="40">
+          <button class="btn pink" onclick="doOnboard()">Create the Shop ID</button>
+        </div>
+      </div>
+
+      <!-- ═══ ANALYTICS ═══ -->
+      <div data-sect="analytics">
+        <div class="card">
+          <h2>📈 How your link is doing
+            <select id="anRange" onchange="loadWlAnalytics()" style="border:1.5px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;">
+              <option value="7">7 days</option><option value="14">14 days</option>
+              <option value="30" selected>30 days</option><option value="90">90 days</option>
+            </select>
+          </h2>
+          <p class="hint" style="margin:-4px 0 14px;" data-i18n-sentence>Your link (<b id="anSlug" data-no-i18n>—</b>): how many people visited it and how many shops came out of it.</p>
+          <div class="stats" id="anStats"></div>
+          <div style="background:var(--silver);border:1px solid var(--line);border-radius:14px;padding:14px 10px 6px;margin-top:14px;">
+            <div style="display:flex;gap:14px;align-items:center;margin-bottom:8px;padding:0 8px;font-size:11px;font-weight:700;color:#6b6870;">
+              <span><i style="display:inline-block;width:9px;height:9px;background:#9aa1a8;border-radius:2px;margin-right:5px;"></i>Visits</span>
+              <span><i style="display:inline-block;width:9px;height:9px;background:#c81e28;border-radius:2px;margin-right:5px;"></i>Paid shops</span>
+            </div>
+            <div id="anChart" style="width:100%;overflow-x:auto;">Loading…</div>
+          <div id="anExtra" style="margin-top:16px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ ACCOUNT ═══ -->
+      <div data-sect="account">
+        <div class="card">
+          <h2>🔐 Change your password</h2>
+          <p class="hint" style="margin:0 0 12px;">Replace the password you were given at registration with one you will remember.</p>
+          <div class="msg err" id="pwErr"></div>
+          <div class="msg ok" id="pwOk"></div>
+          <label>Old password</label>
+          <input id="pwOld" type="password">
+          <label>New password (at least 6 characters)</label>
+          <input id="pwNew" type="password">
+          <label>Repeat new password</label>
+          <input id="pwNew2" type="password">
+          <button class="btn green" onclick="changePassword()">🔐 Change password</button>
+        </div>
+
+        <div class="card">
+          <h2>ℹ️ Account details</h2>
+          <div id="acctInfo" style="font-size:13px;color:#4a4f58;line-height:2;"></div>
+        </div>
+      </div>
+
+      <!-- ═══ BROADCAST ═══ -->
+      <div data-sect="broadcast">
+        <div class="card">
+          <h2>📢 Broadcast</h2>
+          <p class="hint" style="margin:0 0 12px;" data-i18n-sentence>This message is seen by <b>your shops only</b>, on their dashboard. Save it empty to take it down.</p>
+          <div class="msg ok" id="bcOk"></div>
+          <textarea id="bcMsg" maxlength="1000" placeholder="e.g. Diwali offer: 20% off from today"></textarea>
+          <button class="btn" onclick="saveBroadcast()">📢 Send</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+</div>
+
+<script>
+const PAGE_TITLES = { overview:'Overview', shops:'My shops', onboard:'Add a shop', analytics:'Analytics', payment:'Payment & price', branding:'Branding', broadcast:'Broadcast', account:'Account' };
+const T = s => (window.QSPi18n ? window.QSPi18n.t(s) : s);
+let TOKEN = localStorage.getItem('qrsp_wl_token') || '';
+let ME = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function navTo(sect, btn){
+  document.querySelectorAll('[data-sect]').forEach(el => el.classList.toggle('show', el.getAttribute('data-sect') === sect));
+  document.querySelectorAll('.nav-it[data-nav]').forEach(n => n.classList.toggle('active', n.getAttribute('data-nav') === sect));
+  const t = $('pageTitle'); if (t) t.textContent = T(PAGE_TITLES[sect] || '');
+  closeSide(); window.scrollTo(0,0);
+}
+function openSide(){ $('sideNav').classList.add('open'); $('sideOverlay').classList.add('show'); }
+function closeSide(){ $('sideNav').classList.remove('open'); $('sideOverlay').classList.remove('show'); }
+
+function show(id, msg, kind) {
+  const e = $(id); if (!e) return;
+  e.textContent = msg; e.className = 'msg ' + (kind || 'ok');
+  e.style.display = msg ? 'block' : 'none';
+  if (msg) setTimeout(() => { e.style.display = 'none'; }, 5000);
+}
+function api(path, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN }, opts.headers || {});
+  return fetch(path, opts).then(async r => {
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 401) { logout(); throw new Error('Session expired — please log in again'); }
+    if (!r.ok) throw new Error(d.error || T('Something went wrong'));
+    return d;
+  });
+}
+
+// ═══ CAPTCHA ═══  (server: GET /api/captcha)
+// The server never sends the answer — only a signed token and an image.
+// What was typed travels back with the sign-in and the server matches the two
+// there. When the captcha is switched off (CAPTCHA_OFF=1 or the database
+// setting) the server sends `enabled:false` and this whole box stays hidden.
+let capToken = '';
+async function loadCaptcha() {
+  const row = document.getElementById('capRow');
+  if (!row) return;
+  const img = document.getElementById('capImg');
+  const ans = document.getElementById('capAns');
+  try {
+    const r = await fetch('/api/captcha', { cache: 'no-store' });
+    const d = await r.json();
+    if (!d || !d.enabled) { row.style.display = 'none'; capToken = ''; return; }
+    capToken = d.token;
+    if (img) img.src = d.image;
+    if (ans) ans.value = '';
+    row.style.display = '';
+  } catch (e) {
+    // If the captcha cannot be fetched, do not lock the door — the real
+    // decision is the server's, and it refuses on its own when one is required.
+    row.style.display = 'none';
+    capToken = '';
+  }
+}
+function capAnswer() {
+  const el = document.getElementById('capAns');
+  return el ? el.value.trim() : '';
+}
+if (document.readyState === 'loading')
+  document.addEventListener('DOMContentLoaded', loadCaptcha);
+else loadCaptcha();
+
+async function doLogin() {
+  const id = $('lgId').value.trim(), pass = $('lgPass').value;
+  if (!id || !pass) return show('loginErr', '❌ ' + T('Enter both the ID and the password'), 'err');
+  try {
+    const r = await fetch('/api/whitelabel/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wlId: id, password: pass,
+                             captchaToken: capToken, captchaAnswer: capAnswer() })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.success) throw new Error(d.error || T('Could not sign in'));
+    TOKEN = d.token;
+    localStorage.setItem('qrsp_wl_token', TOKEN);
+    boot();
+  } catch (e) {
+    show('loginErr', '❌ ' + e.message, 'err');
+    loadCaptcha();            // a captcha is good for one attempt only
+  }
+}
+function logout() {
+  TOKEN = ''; localStorage.removeItem('qrsp_wl_token');
+  $('login').style.display = 'block'; $('panel').style.display = 'none';
+}
+
+async function boot() {
+  if (!TOKEN) { $('login').style.display = 'block'; $('panel').style.display = 'none'; return; }
+  try {
+    ME = await api('/api/whitelabel/me');
+    $('login').style.display = 'none';
+    $('panel').style.display = 'block';
+
+    $('hBrand').textContent = ME.brandName || 'Partner';
+    $('hSub').textContent = (ME.slug || '') + ' · ' + (ME.id || '');
+    if (ME.logoUrl) $('sideLogo').innerHTML = '<img src="' + esc(ME.logoUrl) + '" alt="">';
+
+    const s = ME.stats || {};
+    $('statsBox').innerHTML =
+      stat(s.paid || 0, 'Paid shops', ['#e9f7ef','#bfe5cf','#17663f']) +
+      stat(s.pending || 0, 'Payment pending', ['#fff6e5','#f1d9a6','#8a5a12']) +
+      stat(s.demo || 0, 'Demo', ['#f4f5f6','#dfe3e6','#3b4148']) +
+      stat('₹' + (ME.collected || 0).toLocaleString('en-IN'), 'Total collected', ['#fdeeee','#f2c8cb','#8f151d']);
+
+    const ready = !!ME.razorpayReady;
+    $('rzpWarn').style.display = ready ? 'none' : 'block';
+    $('rzpOkBox').style.display = ready ? 'block' : 'none';
+    $('payDot').style.display = ready ? 'none' : 'block';
+    $('rKey').value = ME.razorpayKeyId || '';
+
+    $('pBase').textContent = ME.basePrice || 0;
+    $('pPrice').value = ME.shopPrice || ME.basePrice || 0;
+    updateMargin();
+
+    $('shareLink').value = ME.shareLink || '';
+    $('subNote').innerHTML = 'Subdomain link: <b>' + esc(ME.subdomainLink || '') +
+      '</b> — this works only after the admin sets up DNS. Until then, use the link above.';
+
+    $('bBrand').value = ME.brandName || '';
+    $('bPowered').value = ME.poweredBy || '';
+    showLogoPreview(ME.logoUrl || '');
+    // ── Payment gateway ──
+    $('cfApp').value = ME.cashfreeAppId || '';
+    if ($('gwSel')) $('gwSel').value = (ME.gateway === 'cashfree') ? 'cashfree' : 'razorpay';
+    if ($('gwHint')) {
+      $('gwHint').innerHTML =
+        'Razorpay: ' + (ME.razorpayReady ? '<b style="color:#16a34a">ready ✅</b>' : '<b style="color:#dc2626">not set ❌</b>') +
+        ' &nbsp;·&nbsp; Cashfree: ' + (ME.cashfreeReady ? '<b style="color:#16a34a">ready ✅</b>' : '<b style="color:#dc2626">not set ❌</b>');
+    }
+
+    // ── Homepage customize ──
+    $('hpTitle').value    = ME.hpTitle || '';
+    $('hpSub').value      = ME.hpSubtitle || '';
+    $('hpTag').value      = ME.hpTagline || '';
+    $('hpMade').value     = ME.madeIn || '';
+    $('hpIg').value       = ME.socialInstagram || '';
+    $('hpYt').value       = ME.socialYoutube || '';
+    $('hpFb').value       = ME.socialFacebook || '';
+    var minM = ME.minMonthlyPrice || 399;
+    $('hpMonthlyP').min   = minM;
+    $('hpMonthlyP').value = ME.monthlyPrice || '';
+    $('hpMonthlyP').placeholder = String(minM);
+    $('hpMonthlyHint').textContent = 'Minimum \u20b9' + minM + ' \u2014 you cannot set it lower.';
+    renderHpButtons(ME.buttonKeys || [], ME.buttons || {});
+
+    $('bEmail').value = ME.supportEmail || '';
+    $('bPhone').value = ME.supportPhone || '';
+    $('bcMsg').value = ME.broadcast || '';
+    $('ntTo').value = ME.notifyEmail || '';
+
+    $('acctInfo').innerHTML =
+      `<div><b>Partner ID:</b> ${esc(ME.id)}</div>
+       <div><b>Slug:</b> ${esc(ME.slug)}</div>
+       <div><b>Owner:</b> ${esc(ME.ownerName || '-')}</div>
+       <div><b>Mobile:</b> ${esc(ME.phone || '-')}</div>
+       <div><b>Email:</b> ${esc(ME.email || '-')}</div>
+       <div><b>License fee:</b> ₹${(ME.licenseFee || 0).toLocaleString('en-IN')} <small style="opacity:.65;">(plus ₹299 a year for maintenance, domain renewal and server cost)</small></div>
+       <div><b>Partner since:</b> ${ME.paidAt ? new Date(ME.paidAt).toLocaleDateString('en-IN') : '-'}</div>`;
+
+    loadShops();
+    loadWlAnalytics();
+  } catch (e) {
+    $('login').style.display = 'block'; $('panel').style.display = 'none';
+    show('loginErr', '❌ ' + e.message, 'err');
+  }
+}
+function stat(v, l, c) {
+  return `<div class="stat" style="background:${c[0]};border:1px solid ${c[1]};">
+    <b style="color:${c[2]};">${v}</b><span style="color:${c[2]};">${l}</span></div>`;
+}
+function updateMargin() {
+  const el = $('marginNote'); if (!el || !ME) return;
+  const p = parseInt($('pPrice').value, 10) || 0;
+  const m = p - (ME.basePrice || 0);
+  el.textContent = m > 0 ? `Your margin per shop: ₹${m}` : 'Selling at base price — no extra margin';
+  el.style.color = m > 0 ? '#17663f' : '#8a5a12';
+}
+
+async function saveRzp() {
+  try {
+    await api('/api/whitelabel/razorpay', { method: 'PUT', body: JSON.stringify({
+      razorpay_key_id: $('rKey').value, razorpay_key_secret: $('rSec').value }) });
+    show('rzpOk', '✅ Razorpay saved — shops can now register through your link', 'ok');
+    $('rSec').value = '';
+    boot();
+  } catch (e) { show('rzpErr', '❌ ' + e.message, 'err'); }
+}
+async function savePrice() {
+  try {
+    const d = await api('/api/whitelabel/price', { method: 'PUT', body: JSON.stringify({ price: parseInt($('pPrice').value, 10) }) });
+    show('prOk', `✅ Price ₹${d.price} set — your margin is ₹${d.price - d.base} per shop`, 'ok');
+    if (ME) ME.shopPrice = d.price;
+    updateMargin();
+  } catch (e) { show('prErr', '❌ ' + e.message, 'err'); }
+}
+async function saveBranding() {
+  try {
+    await api('/api/whitelabel/branding', { method: 'PUT', body: JSON.stringify({
+      brand_name: $('bBrand').value, powered_by: $('bPowered').value }) });
+    show('brOk', '✅ Branding saved', 'ok');
+    boot();
+  } catch (e) { show('brErr', '❌ ' + e.message, 'err'); }
+}
+/* Homepage button toggles — build checkboxes */
+var HP_BTN_LABELS = {
+  contact: 'Contact', partner: 'Partner Program', agent: 'Agent Program',
+  features: 'Features', setupGuide: 'Setup Guide', pricing: 'Pricing',
+  reviews: 'Reviews', faq: 'FAQ', demo: 'Demo', register: 'Register',
+  shopLogin: 'Shop Login'
+};
+function renderHpButtons(keys, vals) {
+  var box = $('hpBtns');
+  if (!box) return;
+  if (!keys || !keys.length) keys = Object.keys(HP_BTN_LABELS);
+  box.innerHTML = '';
+  keys.forEach(function (k) {
+    if (k === 'demo') return; // demo button is not on the homepage at all
+    var on = (vals[k] === undefined) ? true : !!vals[k];
+    var lab = document.createElement('label');
+    lab.className = 'hp-btn-item';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = on; cb.dataset.k = k;
+    lab.appendChild(cb);
+    lab.appendChild(document.createTextNode(' ' + (HP_BTN_LABELS[k] || k)));
+    box.appendChild(lab);
+  });
+}
+async function saveHomepage() {
+  try {
+    var btns = {};
+    Array.prototype.slice.call(document.querySelectorAll('#hpBtns input[type=checkbox]'))
+      .forEach(function (c) { btns[c.dataset.k] = c.checked; });
+    var body = {
+      hp_title: $('hpTitle').value, hp_subtitle: $('hpSub').value,
+      hp_tagline: $('hpTag').value, made_in: $('hpMade').value,
+      social_instagram: $('hpIg').value, social_youtube: $('hpYt').value,
+      social_facebook: $('hpFb').value, buttons: btns
+    };
+    var mp = $('hpMonthlyP').value.trim();
+    if (mp !== '') body.monthly_price = mp;
+    await api('/api/whitelabel/homepage', { method: 'PUT', body: JSON.stringify(body) });
+    show('hpOk', '\u2705 Homepage saved \u2014 open your link to see it', 'ok');
+    boot();
+  } catch (e) { show('hpErr', '\u274c ' + e.message, 'err'); }
+}
+async function saveCashfree() {
+  try {
+    await api('/api/whitelabel/cashfree', { method: 'PUT', body: JSON.stringify({
+      cashfree_app_id: $('cfApp').value, cashfree_secret_key: $('cfSec').value }) });
+    $('cfSec').value = '';
+    show('cfOk', '\u2705 Cashfree saved', 'ok');
+    boot();
+  } catch (e) { show('cfErr', '\u274c ' + e.message, 'err'); }
+}
+async function saveGateway() {
+  try {
+    var r = await api('/api/whitelabel/gateway', { method: 'PUT',
+      body: JSON.stringify({ gateway: $('gwSel').value }) });
+    show('gwOk', '\u2705 ' + r.gateway + ' is now active', 'ok');
+    boot();
+  } catch (e) { show('gwErr', '\u274c ' + e.message, 'err'); }
+}
+async function createDemo() {
+  var out = $('dmOut');
+  try {
+    var body = { name: $('dmName').value, phone: $('dmPhone').value };
+    var m = $('dmMin').value.trim();
+    if (m !== '') body.minutes = m;
+    var r = await api('/api/whitelabel/demo/create', { method: 'POST', body: JSON.stringify(body) });
+    show('dmOk', '\u2705 Demo account created', 'ok');
+    out.innerHTML =
+      '<div class="card" style="background:#f6fff8;border:1px solid #bbf7d0;">' +
+      '<div><b>Shop ID:</b> ' + esc(r.shopId) + '</div>' +
+      '<div><b>Password:</b> ' + esc(r.password) + '</div>' +
+      '<div><b>Active for:</b> ' + esc(String(r.expiresInMinutes)) + ' minutes</div>' +
+      '<div style="margin-top:8px;"><b>QR link:</b> <a href="' + esc(r.qrUrl) + '" target="_blank" rel="noopener">' + esc(r.qrUrl) + '</a></div>' +
+      (r.qrCode ? '<img src="' + r.qrCode + '" alt="QR" style="width:170px;margin-top:10px;border-radius:10px;">' : '') +
+      '</div>';
+    $('dmName').value = ''; $('dmPhone').value = '';
+  } catch (e) { if (out) out.innerHTML = ''; show('dmErr', '\u274c ' + e.message, 'err'); }
+}
+function showLogoPreview(url) {
+  var box = $('lgPrevBox'), img = $('lgPrev');
+  if (!box || !img) return;
+  if (url) { img.src = url; box.style.display = 'flex'; }
+  else { img.removeAttribute('src'); box.style.display = 'none'; }
+}
+async function uploadLogo() {
+  var f = $('bLogoFile').files && $('bLogoFile').files[0];
+  if (!f) return show('lgErr', '\u274c Choose a file first', 'err');
+  var okType = (f.type === 'image/png' || f.type === 'image/jpeg' || f.type === 'image/jpg');
+  if (!okType) return show('lgErr', '\u274c Only PNG or JPG is allowed', 'err');
+  if (f.size > 40 * 1024)
+    return show('lgErr', '\u274c Logo must be under 40 KB (this one is ' + Math.round(f.size / 1024) + ' KB)', 'err');
+  try {
+    var fd = new FormData();
+    fd.append('logo', f);
+    // The browser sets Content-Type for FormData itself — so we don't use api()
+    var r = await fetch('/api/whitelabel/upload-logo', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN }, body: fd });
+    var dj = await r.json().catch(function () { return {}; });
+    if (r.status === 401) { logout(); return; }
+    if (!r.ok) throw new Error(dj.error || 'Upload failed');
+    showLogoPreview(dj.logoUrl);
+    $('bLogoFile').value = '';
+    show('lgOk', '\u2705 Logo updated (' + (dj.sizeKb || 0) + ' KB)', 'ok');
+    boot();
+  } catch (e) { show('lgErr', '\u274c ' + e.message, 'err'); }
+}
+async function removeLogo() {
+  try {
+    await api('/api/whitelabel/remove-logo', { method: 'POST' });
+    showLogoPreview('');
+    show('lgOk', '\u2705 Logo removed', 'ok');
+    boot();
+  } catch (e) { show('lgErr', '\u274c ' + e.message, 'err'); }
+}
+async function saveContact() {
+  try {
+    await api('/api/whitelabel/branding', { method: 'PUT', body: JSON.stringify({
+      support_email: $('bEmail').value, support_phone: $('bPhone').value }) });
+    show('scOk', '✅ Support contact saved — this is what your shops will see', 'ok');
+    boot();
+  } catch (e) { show('scErr', '❌ ' + e.message, 'err'); }
+}
+async function saveNotify() {
+  try {
+    await api('/api/whitelabel/notify', { method: 'PUT',
+      body: JSON.stringify({ notifyEmail: $('ntTo').value }) });
+    show('ntOk', '✅ Saved — now press Test', 'ok');
+    if (ME) ME.notifyEmail = $('ntTo').value;
+  } catch (e) { show('ntErr', '❌ ' + e.message, 'err'); }
+}
+async function testNotify() {
+  show('ntOk', '📤 Sending…', 'ok');
+  try {
+    const d = await api('/api/whitelabel/notify/test', { method: 'POST' });
+    show('ntOk', '✅ Sent — ' + (d.to || '') + ' and check it (including the spam folder)', 'ok');
+  } catch (e) { show('ntErr', '❌ ' + e.message, 'err'); }
+}
+
+async function saveBroadcast() {
+  try {
+    await api('/api/whitelabel/broadcast', { method: 'PUT', body: JSON.stringify({ message: $('bcMsg').value }) });
+    show('bcOk', $('bcMsg').value.trim() ? '✅ Your shops can see the message now' : '✅ Message removed', 'ok');
+  } catch (e) { show('bcOk', '❌ ' + e.message, 'err'); }
+}
+function copyLink() {
+  const el = $('shareLink'); el.select();
+  try { document.execCommand('copy'); alert('✅ Link copied'); } catch (e) {}
+}
+function shareWA() {
+  if (!ME) return;
+  const price = ME.shopPrice || ME.basePrice || 0;
+  const brand = ME.brandName || 'Print Software';
+  // The message is written in English and TL() turns it into the language the
+  // partner is reading the panel in, line by line.
+  const msg = (window.TL || String)(
+    `🖨️ *${brand}* — automatic print software for cyber cafes\n\n` +
+    `Put a QR code up in the shop. The customer scans it with their phone, sends the file and pays, ` +
+    `and the print comes out of your printer on its own.\n\n` +
+    `✅ No commission — the money goes straight to your account\n✅ Unlimited printing\n✅ No files over WhatsApp, no pen drive viruses\n\n` +
+    `💰 Setup: ₹${price} (one time)\n\n👉 ${ME.shareLink}`);
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+}
+
+// ═══ SHOP ONBOARD ═══
+async function doOnboard() {
+  $('obErr').style.display = 'none';
+  $('obOk').style.display = 'none';
+  try {
+    const d = await api('/api/whitelabel/onboard', { method: 'POST', body: JSON.stringify({
+      name: $('obName').value, phone: $('obPhone').value, address: $('obAddr').value,
+      printer_model: $('obPrinter').value,
+      price_bw: parseInt($('obBw').value, 10), price_color: parseInt($('obColor').value, 10),
+      password: $('obPass').value
+    })});
+    $('obOk').innerHTML = `<b>✅ ${T('The shop is created')}</b><br>
+      <b>${T('Shop ID')}:</b> <span data-no-i18n>${esc(d.shopId)}</span><br><b>${T('Password')}:</b> <span data-no-i18n>${esc(d.password)}</span><br><b>${T('Amount')}:</b> ₹${d.amount}<br><br>
+      <span style="color:#8a5a12;">⚠️ ${T('Write this down now — it is not shown again.')}</span><br><br>
+      <a href="${esc(d.pay_url)}" target="_blank" style="display:inline-block;background:#c81e28;color:#fff;padding:11px 18px;border-radius:10px;font-weight:800;text-decoration:none;">💳 ${T('Pay now')} ›</a>
+      <span style="display:block;margin-top:8px;font-size:11.5px;color:#6b727a;">${T('If you took cash instead, open My shops and press Activate.')}</span>`;
+    $('obOk').style.display = 'block';
+    ['obName','obPhone','obAddr','obPrinter','obPass'].forEach(id => { $(id).value = ''; });
+    $('obBw').value = 5; $('obColor').value = 10;
+    loadShops(); boot();
+  } catch (e) { show('obErr', '❌ ' + e.message, 'err'); }
+}
+
+// ═══ SHOP ACTIONS ═══
+async function resetShopPass(id, name) {
+  if (!confirm(`"${name}" — reset this password?\nThe old password will stop working.`)) return;
+  try {
+    const d = await api(`/api/whitelabel/shop/${id}/reset-password`, { method: 'POST' });
+    alert(T('✅ The new password is:') + ' ' + d.tempPassword + '\n\n' + T('Send it to the shop owner. It will not be shown again.'));
+  } catch (e) { alert('❌ ' + e.message); }
+}
+async function activateShopWl(id, name, amount) {
+  const ref = prompt(`"${name}" — activate this shop?\n\nEnter the payment reference — if you took cash, type CASH.\n\n⚠️ Note: this shop is worth ₹${amount}. If you activate it without taking payment, the loss is yours.`);
+  if (!ref) return;
+  try {
+    await api(`/api/whitelabel/shop/${id}/activate`, { method: 'POST', body: JSON.stringify({ payment_ref: ref }) });
+    alert('✅ Shop activated — the QR and software are now available');
+    loadShops(); boot();
+  } catch (e) { alert('❌ ' + e.message); }
+}
+async function delShop(id, name) {
+  if (!confirm(`"${name}" — delete this shop?\nThis cannot be undone.`)) return;
+  try {
+    await api(`/api/whitelabel/shop/${id}`, { method: 'DELETE' });
+    loadShops(); boot();
+  } catch (e) { alert('❌ ' + e.message); }
+}
+
+// ═══ PRINTER PANEL ═══
+let _prnShopId = null;
+async function openPrn(id, name) {
+  _prnShopId = id;
+  $('prnShop').textContent = name + ' · ' + id;
+  $('prnBody').innerHTML = 'Loading…';
+  $('prnOverlay').style.display = 'flex';
+  try {
+    const d = await api(`/api/whitelabel/shop/${id}/printers`);
+    const s = d.shop || {}, list = d.available || [];
+    const online = s.agent_last_seen && (Date.now() - new Date(s.agent_last_seen).getTime()) < 120000;
+    const field = (fid, label, val, hint) => `<div style="margin-bottom:12px;">
+      <label style="margin-bottom:5px;">${label}</label>
+      <input id="${fid}" list="prnList" value="${esc(val || '')}" placeholder="— no printer selected —" style="margin-bottom:3px;">
+      ${hint ? `<div style="font-size:10.5px;color:var(--muted);">${hint}</div>` : ''}</div>`;
+    const box = list.length
+      ? `<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:11px;padding:11px 13px;margin-bottom:13px;">
+           <div style="font-size:11.5px;font-weight:800;color:#17663f;margin-bottom:5px;">✅ ${T('Printers on that computer')} (${list.length})</div>
+           <div style="font-size:12px;color:#166534;line-height:1.8;">${list.map(p => '• ' + esc(p)).join('<br>')}</div></div>`
+      : `<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:11px;padding:11px 13px;margin-bottom:13px;font-size:12px;color:#92400e;line-height:1.65;">
+           ⚠️ ${T('This shop\'s computer has not sent its printer list yet. It arrives within 30 minutes of the software starting; until then you can type the name yourself.')}</div>`;
+    $('prnBody').innerHTML = `<datalist id="prnList">${list.map(p => `<option value="${esc(p)}"></option>`).join('')}</datalist>
+      <div style="margin-bottom:12px;"><span style="font-size:11px;font-weight:800;background:${online?'#dcfce7':'#fee2e2'};color:${online?'#166534':'#991b1b'};border-radius:999px;padding:5px 11px;">${online?'🟢 Agent online':'🔴 Agent offline'}</span></div>
+      ${box}
+      ${field('prBw','⚫ Black & white printer', s.printer_name_bw, T('Everyday black and white printing comes out of this one'))}
+      ${field('prColor','🌈 Colour printer', s.printer_name_color, T('Leave it empty to use the black and white printer'))}
+      ${field('prA3','📄 A3 / large size', s.printer_name_a3, T('Only if there is a separate large printer'))}
+      ${field('pr4x6','🖼️ 4×6 photo', s.printer_name_4x6, T('If there is a separate printer for passport photos'))}`;
+  } catch (e) { $('prnBody').innerHTML = `<div style="color:#c22;font-size:13px;">❌ ${esc(e.message)}</div>`; }
+}
+function closePrn() { $('prnOverlay').style.display = 'none'; _prnShopId = null; }
+async function savePrn() {
+  if (!_prnShopId) return;
+  const b = $('prnSave'); b.disabled = true; b.textContent = 'Saving…';
+  try {
+    await api(`/api/whitelabel/shop/${_prnShopId}/printers`, { method: 'PUT', body: JSON.stringify({
+      printer_name_bw: $('prBw').value, printer_name_color: $('prColor').value,
+      printer_name_4x6: $('pr4x6').value, printer_name_a3: $('prA3').value })});
+    b.textContent = '✅ Saved';
+    setTimeout(() => { b.disabled = false; b.textContent = '💾 Save'; closePrn(); }, 800);
+  } catch (e) { alert('❌ ' + e.message); b.disabled = false; b.textContent = '💾 Save'; }
+}
+
+// ═══ PASSWORD ═══
+async function changePassword() {
+  $('pwErr').style.display = 'none'; $('pwOk').style.display = 'none';
+  const o = $('pwOld').value, n = $('pwNew').value, n2 = $('pwNew2').value;
+  if (n.length < 6) return show('pwErr', '❌ New password must be at least 6 characters', 'err');
+  if (n !== n2) return show('pwErr', '❌ The two new passwords do not match', 'err');
+  try {
+    await api('/api/whitelabel/password', { method: 'PUT', body: JSON.stringify({ old_password: o, new_password: n }) });
+    show('pwOk', '✅ Password changed — use it to log in next time', 'ok');
+    ['pwOld','pwNew','pwNew2'].forEach(id => { $(id).value = ''; });
+  } catch (e) { show('pwErr', '❌ ' + e.message, 'err'); }
+}
+
+// ═══ CSV EXPORT ═══
+let _shopsCache = [];
+function exportCsv() {
+  if (!_shopsCache.length) return alert(T('There are no shops yet'));
+  const head = ['Shop ID','Name','Mobile','Address','Status','Amount','Plan','Registered on'];
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = _shopsCache.map(s => [
+    s.id, s.name || '', s.phone || '', s.address || '',
+    s.demo ? 'Demo' : (s.setup_paid ? 'Paid' : 'Pending'),
+    s.setup_amount || 0, s.plan_type || '',
+    s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN') : ''
+  ].map(q).join(','));
+  const csv = '\ufeff' + [head.map(q).join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = 'my-shops-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ═══ ANALYTICS ═══
+async function loadWlAnalytics() {
+  const box = $('anChart'); if (!box) return;
+  box.innerHTML = 'Loading…';
+  try {
+    const days = parseInt($('anRange').value, 10) || 30;
+    const d = await api('/api/whitelabel/analytics?days=' + days);
+    $('anSlug').textContent = d.slug || '—';
+    const tot = k => (d.totals || []).find(t => t.event_type === k) || { cnt: 0, uniq: 0 };
+    const pv = tot('pageview'), reg = tot('register_click');
+    const paid = (d.shopsDaily || []).reduce((n, r) => n + (r.paid || 0), 0);
+    const pct = (a, b) => b > 0 ? Math.round((a / b) * 100) : 0;
+    $('anStats').innerHTML =
+      stat(pv.cnt, `Link visits (${pv.uniq} unique)`, ['#f4f5f6','#dfe3e6','#3b4148']) +
+      stat(reg.cnt, 'Clicks on Register', ['#f4f5f6','#dfe3e6','#3b4148']) +
+      stat(paid, 'Shops that paid', ['#e9f7ef','#bfe5cf','#17663f']) +
+      stat(pct(paid, pv.cnt) + '%', 'Visit → paid', ['#fdeeee','#f2c8cb','#8f151d']);
+
+    // ── The same detail the super admin sees — a business summary and top lists ──
+    (function () {
+      var ex = $('anExtra'); if (!ex) return;
+      var sm = d.summary || {};
+      var row = function (label, val) {
+        return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);">' +
+               '<span style="color:var(--muted);font-size:13px;">' + esc(label) + '</span>' +
+               '<b style="font-size:13px;">' + esc(String(val == null ? 0 : val)) + '</b></div>';
+      };
+      var list = function (title, rows, keyName) {
+        if (!rows || !rows.length) return '';
+        var h = '<div class="card" style="padding:14px;"><h2 style="font-size:15px;margin:0 0 8px;">' + esc(title) + '</h2>';
+        rows.forEach(function (r) { h += row(r[keyName], r.cnt); });
+        return h + '</div>';
+      };
+      ex.innerHTML =
+        '<div class="card" style="padding:14px;"><h2 style="font-size:15px;margin:0 0 8px;">📦 Business summary</h2>' +
+          row('Total paid shops', sm.shops_total) +
+          row('New shops in this range', sm.shops_new) +
+          row('Demo accounts', sm.demo_total) +
+          row('Total prints (all shops)', sm.prints_total) +
+          row('Prints in this range', sm.prints_range) +
+          row('Total earned (₹)', sm.earned_total) +
+        '</div>' +
+        list('🔗 Top pages', d.topPaths, 'path') +
+        list('↩️ Top referrers', d.topRefs, 'ref') +
+        list('📣 Top sources (utm)', d.topSources, 'source');
+    })();
+
+    const dates = [];
+    const today = new Date();
+    for (let i = days - 1; i >= 0; i--) { const t = new Date(today); t.setDate(t.getDate() - i); dates.push(t.toISOString().slice(0,10)); }
+    const vBy = {}, pBy = {};
+    (d.daily || []).forEach(r => { vBy[r.day] = r.cnt; });
+    (d.shopsDaily || []).forEach(r => { pBy[r.day] = r.paid; });
+    const v = dates.map(x => vBy[x] || 0), p = dates.map(x => pBy[x] || 0);
+    const mv = Math.max(1, ...v), mp = Math.max(1, ...p);
+    const colW = days > 45 ? 14 : days > 20 ? 22 : 34;
+    const W = dates.length * colW + 20, laneH = 76, gap = 8, pLane = 18, H = laneH + gap + pLane + 20;
+    const every = days > 45 ? 7 : days > 20 ? 3 : 1;
+    let bars = '';
+    dates.forEach((day, i) => {
+      const x = 10 + i * colW, bw = Math.max(4, colW - 6);
+      const vh = Math.round((v[i] / mv) * (laneH - 4)), ph = Math.round((p[i] / mp) * (pLane - 2));
+      bars += `<g><title>${day}: ${v[i]} visits, ${p[i]} paid</title>
+        <rect x="${x}" y="${laneH - vh}" width="${bw}" height="${Math.max(1,vh)}" rx="2" fill="#9aa1a8"></rect>
+        <rect x="${x}" y="${laneH+gap+pLane-ph}" width="${bw}" height="${Math.max(1,ph)}" rx="2" fill="#c81e28"></rect></g>`;
+      if (i % every === 0 || i === dates.length - 1)
+        bars += `<text x="${x + bw/2}" y="${H-4}" font-size="8.5" fill="#9b9690" text-anchor="middle">${day.slice(5).replace('-','/')}</text>`;
+    });
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;min-width:${W}px;">${bars}</svg>`;
+  } catch (e) { box.innerHTML = `<span style="color:#c22;font-size:12px;">❌ ${esc(e.message)}</span>`; }
+}
+
+async function loadShops() {
+  const box = $('shopsBox');
+  box.textContent = 'Loading…';
+  try {
+    const d = await api('/api/whitelabel/shops');
+    _shopsCache = d.shops || [];
+    if (!_shopsCache.length) {
+      box.innerHTML = '<p style="color:var(--muted);">No shops yet. Share your link, or create one from the <b>Add a shop</b> tab.</p>';
+      return;
+    }
+    const btn = (txt, fn, bg, fg) =>
+      `<button onclick="${fn}" style="background:${bg};color:${fg};border:none;border-radius:9px;padding:8px 11px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">${txt}</button>`;
+
+    box.innerHTML = _shopsCache.map(s => {
+      const st = s.demo ? ['🎯 Demo', '#eef0f2', '#3b4148']
+               : s.setup_paid ? ['✅ Paid', '#dcfce7', '#166534']
+               : ['⏳ Pending', '#fef3c7', '#92400e'];
+      const online = s.agent_last_seen && (Date.now() - new Date(s.agent_last_seen).getTime()) < 120000;
+      const nm = esc(s.name || '—').replace(/'/g, '');
+      const pending = !s.setup_paid && !s.demo;
+
+      let actions = '';
+      if (pending) {
+        actions += `<a href="/setup-payment/${esc(s.id)}" target="_blank" style="background:#16a34a;color:#fff;border-radius:9px;padding:8px 11px;font-size:11.5px;font-weight:700;text-decoration:none;white-space:nowrap;">💳 Pay ₹${s.setup_amount || 0}</a>`;
+        actions += btn('💰 Activate', `activateShopWl('${s.id}','${nm}',${s.setup_amount || 0})`, '#0f766e', '#fff');
+      }
+      actions += btn('🖨️ Printer', `openPrn('${s.id}','${nm}')`, '#111114', '#fff');
+      actions += btn('🔑 Reset Pass', `resetShopPass('${s.id}','${nm}')`, '#f3f4f6', '#4b5563');
+      if (pending) actions += btn('🗑️ Delete', `delShop('${s.id}','${nm}')`, '#fee2e2', '#dc2626');
+
+      return `<div class="shop" style="${pending ? 'border-color:#fde68a;' : ''}">
+        <div class="shop-top">
+          <div style="min-width:0;">
+            <b style="font-size:14px;">${esc(s.name || '—')}</b>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">${esc(s.id)} · 📱 ${esc(s.phone || '-')}</div>
+          </div>
+          <span class="badge" style="background:${st[1]};color:${st[2]};">${st[0]}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:12px;color:var(--muted);">
+          <span>₹${s.setup_amount || 0}</span>
+          <span>${online ? '🟢 Agent online' : '🔴 Agent offline'}</span>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;">${actions}</div>
+      </div>`;
+    }).join('');
+  } catch (e) { box.innerHTML = '<p style="color:#c22;">Could not load</p>'; }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const p = $('pPrice');
+  if (p) p.addEventListener('input', updateMargin);
+});
+boot();
+</script>
+
+<!-- ═══ PRINTER PANEL ═══ -->
+<div id="prnOverlay" onclick="if(event.target===this)closePrn()" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(20,18,16,.55);backdrop-filter:blur(3px);align-items:flex-start;justify-content:center;padding:20px 14px;overflow-y:auto;">
+  <div style="background:#fff;border-radius:18px;max-width:500px;width:100%;box-shadow:0 30px 70px rgba(0,0,0,.3);overflow:hidden;margin:auto;">
+    <div style="background:linear-gradient(135deg,#1a1a22,#3b1230);padding:17px 19px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <div>
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:16px;">🖨️ Printer Select</div>
+        <div id="prnShop" style="font-size:11.5px;opacity:.9;margin-top:2px;">—</div>
+      </div>
+      <button onclick="closePrn()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:9px;width:31px;height:31px;font-size:17px;cursor:pointer;flex:none;">×</button>
+    </div>
+    <div id="prnBody" style="padding:17px 19px;max-height:66vh;overflow-y:auto;">Loading…</div>
+    <div style="padding:13px 19px 17px;border-top:1.5px solid #f0ece6;display:flex;gap:10px;">
+      <button onclick="closePrn()" style="flex:1;background:#f3f4f6;color:#4b5563;border:none;border-radius:11px;padding:12px;font-weight:700;font-size:13px;cursor:pointer;">Close</button>
+      <button id="prnSave" onclick="savePrn()" style="flex:2;background:#16a34a;color:#fff;border:none;border-radius:11px;padding:12px;font-weight:800;font-size:13px;cursor:pointer;">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="/i18n.js" defer></script>
+</body>
+</html>

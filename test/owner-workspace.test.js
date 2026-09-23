@@ -32,7 +32,11 @@ test('owner redesign preserves the original form, status and data nodes', () => 
   assert.equal(doc.querySelector('.owner-metrics #todayPrints')?.id, 'todayPrints');
   assert.equal(doc.querySelector('.owner-rail #pauseBtn')?.id, 'pauseBtn');
   assert.equal(doc.querySelector('.owner-main-column #bkRows')?.id, 'bkRows');
-  assert.equal(doc.querySelectorAll('.owner-navigation [data-nav="advance"],.owner-navigation [data-nav="review"]').length, 0);
+  assert.equal(doc.querySelectorAll('.owner-navigation [data-nav="review"]').length, 0);
+  // The Advance Feature is part of this edition: every shop reaches the tab,
+  // whether it has unlocked the feature or not.
+  assert.equal(doc.querySelectorAll('.owner-navigation [data-nav="advance"]').length, 1);
+  assert.equal(doc.querySelectorAll('[data-sect="advance"]').length, 1);
   dom.window.close();
 });
 

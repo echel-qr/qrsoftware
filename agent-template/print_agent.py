@@ -110,11 +110,11 @@ LP_SECONDS = 30                # how long the server holds the line
 # the shop comes back the agent recovers by itself.
 SHOP_GONE_INTERVAL = 30 * 60
 LP_TIMEOUT = LP_SECONDS + 15   # the agent's own timeout — always longer
-VERSION            = 2            # Internal update build number.
+VERSION            = 3            # Internal update build number.
                                   # This only goes up (29 → 30 → 31...). Never turn it
                                   # into "2.0": old v27/v28/v29 agents compare it as an
                                   # integer, otherwise they would stop taking updates.
-VERSION_LABEL      = "2.0"        # Display version.
+VERSION_LABEL      = "2.1"        # Display version.
 REMOTE_VERSION_LABEL = None       # The server's latest label — filled in by the update check
 REMOTE_VERSION_INT = 0            # The server's internal build number (for the integer compare)
 SUPPORT_WA         = "917011482679"  # Offline fallback; online support follows website settings.
@@ -1470,17 +1470,27 @@ def check_printer():
 
 def list_all_printers():
     """List of all printers installed on this system — for the dashboard dropdown"""
+    names = []
     try:
         import win32print
         printers = win32print.EnumPrinters(
             win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
         )
-        return [p[2] for p in printers]  # index 2 = printer name
+        names = [p[2] for p in printers]  # index 2 = printer name
+        # A printer shared from another computer is sometimes missing from that
+        # enumeration while it still is the Windows default. Without this the
+        # dropdown came up empty on a machine that prints perfectly well.
+        try:
+            default = win32print.GetDefaultPrinter()
+            if default and default not in names:
+                names.append(default)
+        except Exception:
+            pass
     except ImportError:
         return []
     except Exception as e:
         log(f"⚠️  Printer list error: {e}", "WARN")
-        return []
+    return names
 
 def report_printers_to_server():
     """Send the printer list to the server so it appears in the dashboard dropdown"""
