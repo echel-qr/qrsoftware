@@ -546,6 +546,62 @@ app.use((req,res,next)=>{
   if (require('./echel-edition').retiredRoute(req.path)) return res.status(404).json({error:'Page not found'});
   next();
 });
+
+/*
+ * WEBSITE MAINTENANCE — Superadmin → 🚧 Website Maintenance.
+ *
+ * Turned on, every page shows a short notice instead of the site, whether a
+ * visitor typed the address or followed a link. Three things stay open on
+ * purpose:
+ *
+ *   • /superadmin and its API — otherwise the switch could never be turned
+ *     back off from anywhere;
+ *   • /healthz — the host watches it, and a failing check restarts the server;
+ *   • the desktop agents — a shop mid-print should not lose the job it is
+ *     already holding. Nothing new can arrive anyway, because the customer
+ *     page is behind the notice.
+ *
+ * The value is cached for a minute: this runs on every single request.
+ */
+let _maintenanceOn = false, _maintenanceAt = 0;
+async function maintenanceMode() {
+  if (Date.now() - _maintenanceAt < 60000) return _maintenanceOn;
+  try {
+    const r = await pool.query("SELECT value FROM system_settings WHERE key='maintenance_mode'");
+    _maintenanceOn = r.rows.length ? r.rows[0].value === '1' : false;
+  } catch (e) { /* on a database hiccup keep whatever we had */ }
+  _maintenanceAt = Date.now();
+  return _maintenanceOn;
+}
+function setMaintenanceCache(on) { _maintenanceOn = !!on; _maintenanceAt = Date.now(); }
+
+// What stays reachable while the notice is up.
+function maintenanceAllows(path) {
+  return /^\/superadmin(?:\.html)?\/?$/i.test(path)
+    || path.startsWith('/api/superadmin/')
+    || path === '/healthz'
+    || path === '/api/captcha'
+    || path.startsWith('/api/i18n')
+    || path.startsWith('/api/agent/')
+    || path.startsWith('/api/jobs/')
+    || path.startsWith('/i18n/')
+    || path.startsWith('/fonts/')
+    || path.startsWith('/img/')
+    || /\.(css|js|png|jpe?g|gif|ico|svg|webmanifest|woff2?|ttf|mp3)$/i.test(path);
+}
+
+app.use((req, res, next) => {
+  if (maintenanceAllows(req.path)) return next();
+  maintenanceMode().then(on => {
+    if (!on) return next();
+    res.set('Cache-Control', 'no-store');
+    // A browser asking for a page gets the notice; anything else gets an
+    // answer it can actually read.
+    if (String(req.headers.accept || '').includes('text/html'))
+      return res.status(503).sendFile(path.join(__dirname, 'public', 'maintenance.html'));
+    res.status(503).json({ error: 'Echel is being updated right now. Please try again in a little while.', maintenance: true });
+  }).catch(() => next());
+});
 app.use(express.static('public', {
   etag: true,
   lastModified: true,
@@ -772,8 +828,52 @@ function pardonUploadFailure(shopId) {
   uploadHits.set(shopId, e);
 }
 
+/*
+ * AUTOMATIC BLOCKING — a switch the super admin owns.
+ *
+ * On (the default) the server blocks an abusive shop or device by itself.
+ * Off, it blocks nothing and instead writes down what it would have blocked,
+ * so a person decides. The limits themselves do not change either way: an
+ * upload that goes over them is still refused, it just does not lead to a
+ * block that lasts.
+ *
+ * The value is cached for a minute — this is read on the upload path, and a
+ * database round trip per upload would be paid on every print.
+ */
+let _autoBlockOn = true, _autoBlockAt = 0;
+async function autoBlockEnabled() {
+  if (Date.now() - _autoBlockAt < 60000) return _autoBlockOn;
+  try {
+    const r = await pool.query("SELECT value FROM system_settings WHERE key='auto_block_enabled'");
+    _autoBlockOn = r.rows.length ? r.rows[0].value !== '0' : true;
+  } catch (e) { /* on a database hiccup keep whatever we had */ }
+  _autoBlockAt = Date.now();
+  return _autoBlockOn;
+}
+function autoBlockEnabledNow() { return _autoBlockOn; }
+function setAutoBlockCache(on) { _autoBlockOn = !!on; _autoBlockAt = Date.now(); }
+
+/** What the server would have blocked while automatic blocking is off. */
+const blockSuggestions = new Map();
+const SUGGESTION_TTL_MS = 24 * 3600 * 1000;
+function suggestBlock(key, reason) {
+  const now = Date.now();
+  const prev = blockSuggestions.get(key);
+  blockSuggestions.set(key, {
+    times: (prev && now - prev.lastAt < SUGGESTION_TTL_MS ? prev.times : 0) + 1,
+    reason, lastAt: now
+  });
+  // A handful of keys is all this is for; drop the oldest rather than grow.
+  if (blockSuggestions.size > 200) {
+    const oldest = [...blockSuggestions.entries()].sort((a, b) => a[1].lastAt - b[1].lastAt)[0];
+    if (oldest) blockSuggestions.delete(oldest[0]);
+  }
+  console.warn(`SECURITY SUGGESTION | ${key} | ${reason} (automatic blocking is off)`);
+}
+
 /** Temporary block — escalating, never permanent. */
 function blockFor(key, minutes, reason) {
+  if (!autoBlockEnabledNow()) return suggestBlock(key, reason);
   const until = Date.now() + minutes * 60 * 1000;
   const prev = abuseBlocks.get(key) || 0;
   abuseBlocks.set(key, Math.max(prev, until));
@@ -2512,6 +2612,8 @@ async function initDB() {
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('advanced_actual_price','0') ON CONFLICT DO NOTHING");
     // Festival Offer — a banner + countdown next to the homepage One-Time price.
     // OFF by default; the superadmin turns it ON from the Setup Fee page with a name/date/time.
+    await pool.query("INSERT INTO system_settings (key,value) VALUES ('auto_block_enabled','1') ON CONFLICT DO NOTHING");
+    await pool.query("INSERT INTO system_settings (key,value) VALUES ('maintenance_mode','0') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('festival_offer_enabled','0') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('festival_offer_name','') ON CONFLICT DO NOTHING");
     await pool.query("INSERT INTO system_settings (key,value) VALUES ('festival_offer_end','') ON CONFLICT DO NOTHING");
@@ -3816,6 +3918,43 @@ app.post('/api/demo/request', demoRateLimit, async (req, res) => {
 });
 
 // ─── SUPERADMIN: security events + live block state ───
+// The maintenance switch, and what it currently says.
+app.get('/api/superadmin/maintenance', verifySuperAdmin, async (req, res) => {
+  try {
+    const r = await pool.query("SELECT value, updated_at FROM system_settings WHERE key='maintenance_mode'");
+    res.json({ enabled: r.rows.length ? r.rows[0].value === '1' : false,
+               updatedAt: r.rows.length ? r.rows[0].updated_at : null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/superadmin/maintenance', verifySuperAdmin, async (req, res) => {
+  try {
+    const on = !!(req.body && (req.body.enabled === true || req.body.enabled === '1' || req.body.enabled === 1));
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('maintenance_mode', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [on ? '1' : '0']);
+    setMaintenanceCache(on);
+    console.log('Website maintenance is now ' + (on ? 'ON' : 'OFF'));
+    res.json({ success: true, enabled: on });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Turn automatic blocking on or off. Off, the server only suggests.
+app.put('/api/superadmin/auto-block', verifySuperAdmin, async (req, res) => {
+  try {
+    const on = !(req.body && (req.body.enabled === false || req.body.enabled === '0' || req.body.enabled === 0));
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('auto_block_enabled', $1, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [on ? '1' : '0']);
+    setAutoBlockCache(on);
+    // Turning it back on should not punish anyone for what happened while it
+    // was off, so the suggestions are cleared with the switch.
+    if (on) blockSuggestions.clear();
+    console.log('Automatic blocking is now ' + (on ? 'ON' : 'OFF'));
+    res.json({ success: true, enabled: on });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/superadmin/security-events', verifySuperAdmin, async (req, res) => {
   try {
     const limit = Math.min(200, Math.max(10, parseInt(req.query.limit, 10) || 50));
@@ -3823,7 +3962,8 @@ app.get('/api/superadmin/security-events', verifySuperAdmin, async (req, res) =>
       `SELECT id, created_at, ip, shop_id, endpoint, method, action, reason, upload_count, file_size
          FROM security_events ORDER BY created_at DESC LIMIT $1`, [limit]);
 
-    const since = new Date(Date.now() - 24 * 3600 * 1000);
+    // An ISO string rather than a Date object: every PostgreSQL driver reads it.
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
     const stats = await pool.query(
       `SELECT COUNT(*)::int AS total,
               COUNT(DISTINCT ip)::int AS ips,
@@ -3838,9 +3978,18 @@ app.get('/api/superadmin/security-events', verifySuperAdmin, async (req, res) =>
     for (const [k, until] of abuseBlocks) {
       if (until > now) active.push({ key: k, minutesLeft: Math.ceil((until - now) / 60000) });
     }
+    const autoOn = await autoBlockEnabled();
+    const suggestions = [];
+    for (const [key, v] of blockSuggestions) {
+      if (now - v.lastAt < SUGGESTION_TTL_MS)
+        suggestions.push({ key, reason: v.reason, times: v.times, minutesAgo: Math.round((now - v.lastAt) / 60000) });
+    }
+    suggestions.sort((a, b) => b.times - a.times);
     res.json({
       events: r.rows,
       last24h: stats.rows[0],
+      autoBlock: autoOn,
+      suggestions,
       activeBlocks: active,
       globalBrake: { tripped: globalWindow.tripped, count: globalWindow.count, limit: SEC.globalPerMin },
       config: {
@@ -4007,6 +4156,23 @@ app.post('/api/superadmin/customer-unban', verifySuperAdmin, async (req, res) =>
 });
 
 // A genuine customer blocked by mistake — the superadmin releases them immediately
+// Pause one of the suggestions by hand, while automatic blocking is off.
+// This is a deliberate decision by a person, so it goes straight into the same
+// temporary pause the automatic system uses — and clears itself the same way.
+app.post('/api/superadmin/security-block', verifySuperAdmin, async (req, res) => {
+  try {
+    let key = String((req.body && (req.body.key || req.body.shopId)) || '').trim().slice(0, 120);
+    if (!key) return res.status(400).json({ error: 'Nothing was chosen to pause' });
+    if (!key.includes(':')) key = 'shop:' + key;
+    const minutes = Math.min(1440, Math.max(1, parseInt(req.body && req.body.minutes, 10) || SEC.blockMin));
+    const until = Date.now() + minutes * 60 * 1000;
+    abuseBlocks.set(key, Math.max(abuseBlocks.get(key) || 0, until));
+    blockSuggestions.delete(key);
+    console.log(`SECURITY: ${key} paused for ${minutes} min by the super admin`);
+    res.json({ success: true, key, minutes });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/superadmin/security-unblock', verifySuperAdmin, async (req, res) => {
   try {
     // A Shop ID can also arrive as-is — "shop:" is added automatically,
@@ -7891,7 +8057,15 @@ app.get('/api/shop/:shopId', async (req, res) => {
       'SELECT id,name,address,printer_model,price_bw,price_color,price_bw_duplex,price_color_duplex,payment_mode,payment_gateway,razorpay_key_id,qr_code,setup_paid,paused,supply_warning,demo,demo_expires_at,duplex_mode,duplex_bw_enabled,duplex_color_enabled,plan_type,billing_cycle,paid_until,advanced_unlocked,price_4x6_4,price_4x6_6,price_4x6_8,price_4x6_10,price_4x6_12,price_resume_color,price_resume_bw,price_a3_bw,price_a3_color,price_a2_bw,price_a2_color,price_a1_bw,price_a1_color,shop_notice,advanced_active,shop_logo,adv_legal_active,adv_resume_active,adv_4x6_active,adv_a3_active,adv_mini_active,adv_scan_active,page_slabs,plan_type,owned_features,default_lang FROM shops WHERE id=$1',
       [req.params.shopId]
     );
-    if (!r.rows.length) return res.status(404).json({ error:'Shop not found' });
+    if (!r.rows.length) {
+      // A demo the super admin removed. Saying "not found" makes it look
+      // broken; the customer should simply know the demo is gone.
+      const wasDemo = /^DEMO_/i.test(String(req.params.shopId || ''));
+      return res.status(404).json({
+        error: wasDemo ? 'This demo account has been deleted.' : 'Shop not found',
+        demoDeleted: wasDemo
+      });
+    }
     if (!r.rows[0].setup_paid) {
       return res.status(403).json({ error: 'The shop setup is not complete yet. The shop owner must complete the setup fee payment.' });
     }
@@ -7947,6 +8121,9 @@ app.get('/api/shop/:shopId', async (req, res) => {
       }
     } catch(e) { /* if branding fails, the default stays */ }
     shopInfo.subscription_expired = !isSubscriptionActive(shopInfo);
+    // A demo whose time is up. The customer used to learn this only after
+    // choosing a file and trying to print.
+    shopInfo.demo_expired = !!(shopInfo.demo && isDemoExpired(shopInfo));
     delete shopInfo.paid_until; // do not show the customer the exact date
     res.json(shopInfo);
   } catch(err) { res.status(500).json({ error: err.message }); }
@@ -10999,6 +11176,11 @@ app.get('/api/superadmin/setup-fee', verifySuperAdmin, async (req, res) => {
       agentBasePrice: await getAgentBasePrice(),
       agentPremiumBasePrice: await getAgentPremiumBasePrice(),
       agentBasePriceIsSet: (await pool.query("SELECT value FROM system_settings WHERE key='agent_base_price'")).rows[0]?.value > 0,
+      // What a White Label partner pays us once, and the floor they may sell at.
+      wlLicenseFee: await getWlLicenseFee(),
+      wlLicenseActual: await getWlLicenseActual(),
+      wlBasePrice: (await pool.query("SELECT value FROM system_settings WHERE key='wl_base_price'")).rows[0]?.value | 0,
+      wlBasePriceEffective: await getWlBasePrice(),
       defaultOfferPrice: SETUP_FEE_AMOUNT,
       defaultActualPrice: SETUP_ACTUAL_PRICE,
       ...(await (async () => {
@@ -11015,7 +11197,8 @@ app.put('/api/superadmin/setup-fee', verifySuperAdmin, async (req,res)=>{
     const pricing=await getSetupPricing();
     const currentFees={offerPrice:pricing.offerPrice,actualPrice:pricing.actualPrice,monthlyFee:pricing.monthlyFee,
       advancedFee:await getAdvancedFee(),monthlyActualPrice:await getMonthlyActualFee(),advancedActualPrice:await getAdvancedActualFee(),
-      agentBasePrice:await getAgentBasePrice(),agentPremiumBasePrice:await getAgentPremiumBasePrice()};
+      agentBasePrice:await getAgentBasePrice(),agentPremiumBasePrice:await getAgentPremiumBasePrice(),
+      wlLicenseFee:await getWlLicenseFee(),wlLicenseActual:await getWlLicenseActual(),wlBasePrice:await getWlBasePrice()};
     let result;
     try {result=validatePricingUpdate(req.body||{},PLAN_DEFS,currentPlans,currentFees);}
     catch(e){return res.status(400).json({error:e.message});}
@@ -11690,6 +11873,11 @@ app.get('/healthz', async (req, res) => {
 });
 
 initDB().then(() => {
+  // Read the automatic-blocking switch once, so the upload path never has to
+  // wait on the database to know whether it may block. A failure here is not
+  // fatal: the switch simply stays at its safe default, which is on.
+  autoBlockEnabled().catch(() => {});
+  maintenanceMode().catch(() => {});
   app.listen(PORT, () => {
     console.log(`Echel - Port ${PORT}`);
     console.log(`${BASE_URL}`);

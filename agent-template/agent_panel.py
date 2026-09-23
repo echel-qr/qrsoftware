@@ -47,6 +47,48 @@ def _log(msg, level="INFO"):
         print(f"[panel] {msg}")
 
 
+def _plain(err, when_unsure="Something went wrong on this computer."):
+    """
+    Turn an exception into a sentence the shop owner can read, and repeat to
+    support. Python's own wording ("[WinError 2] The system cannot find the
+    file specified") tells them nothing, so the cause is named instead. The
+    short technical tail stays at the end on purpose: it is what makes a
+    report useful without making the message unreadable.
+    """
+    text = str(err or "").strip()
+    low = text.lower()
+    name = type(err).__name__ if isinstance(err, BaseException) else ""
+    if not text:
+        return when_unsure
+    if name in ("ConnectionError", "ConnectTimeout", "ReadTimeout", "Timeout") \
+            or "connection" in low or "timed out" in low or "timeout" in low \
+            or "getaddrinfo" in low or "name or service not known" in low:
+        return "This computer could not reach the internet. Check the connection and try again."
+    if name == "PermissionError" or "access is denied" in low or "permission denied" in low:
+        return "Windows refused permission. Close the Echel Agent and start it again as administrator."
+    if name == "FileNotFoundError" or "cannot find the file" in low:
+        return "A file this needs is missing from the computer. Reinstall the Echel Agent."
+    if "printer" in low or "spool" in low or "winerror 1801" in low or "winerror 1796" in low:
+        return "Windows could not talk to the printer. Check that it is on and shows as Ready in Windows."
+    if "ssl" in low or "certificate" in low:
+        return "The secure connection to the server failed. Check this computer's date and time."
+    if "disk" in low or "space" in low:
+        return "This computer has run out of free space."
+    short = text if len(text) <= 90 else text[:90] + "..."
+    return when_unsure + " (" + short + ")"
+
+def _server_said(status):
+    """The server refused, and said nothing useful — say what that means."""
+    if status == 401 or status == 403:
+        return "The shop is signed out. Press Sync now, or restart the Echel Agent."
+    if status == 404:
+        return "The server does not know this shop any more. Check the Shop ID."
+    if status == 413:
+        return "That is larger than the server accepts."
+    if status >= 500:
+        return "The server had a problem. Please try again in a few minutes."
+    return "The server refused this request (" + str(status) + ")."
+
 def _runtime_dir():
     """
     %APPDATA%\\EchelPrint\\runtime — at startup print_agent.py keeps a persistent copy
@@ -158,13 +200,13 @@ def _api(method, path, payload=None, retry_auth=True):
         except Exception:
             data = {}
         if r.status_code >= 400:
-            return {"ok": False, "error": data.get("error") or f"Server error ({r.status_code})"}
+            return {"ok": False, "error": data.get("error") or _server_said(r.status_code)}
         if isinstance(data, dict):
             data.setdefault("ok", True)
             return data
         return {"ok": True, "data": data}
     except Exception as e:
-        return {"ok": False, "error": f"Could not reach the server: {e}"}
+        return {"ok": False, "error": _plain(e, "Could not reach the server.")}
 
 
 class _SavedPrinters:
@@ -354,7 +396,7 @@ class PanelAPI:
                 "lastSync": time.strftime("%I:%M:%S %p"),
             }
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     def get_stats(self):
         """The dashboard numbers — the same endpoint the website uses."""
@@ -430,7 +472,7 @@ class PanelAPI:
                 self._printers_at = now
             return {"ok": True, "printers": self._printers_cache}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     def refresh_printers(self):
         # This only reads the LIST again. The shop's chosen printer
@@ -446,7 +488,7 @@ class PanelAPI:
             _AGENT.report_printers_to_server()
             return {"ok": True}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     def save_printers(self, bw, color):
         r = _api("PUT", "/api/admin/settings",
@@ -466,7 +508,7 @@ class PanelAPI:
                 return {"ok": True}
             return {"ok": False, "error": "Test print is not available in this version"}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     # ── shop controls ──
     #
@@ -509,7 +551,7 @@ class PanelAPI:
         try:
             connected = bool(_AGENT.ping_server())
         except Exception as e:
-            return {"ok": False, "error": f"Could not reach the server: {e}"}
+            return {"ok": False, "error": _plain(e, "Could not reach the server.")}
 
         _AGENT.agent_state["connection"] = "online" if connected else "offline"
 
@@ -539,7 +581,7 @@ class PanelAPI:
         try:
             connected = _AGENT.reconnect_to_server()
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
         printer = _AGENT.agent_state.get("printer") or ""
         if connected:
@@ -552,21 +594,21 @@ class PanelAPI:
             _AGENT.open_logs()
             return {"ok": True}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     def contact_admin(self, message=""):
         try:
             _AGENT.contact_admin()
             return {"ok": True}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     def change_shop_id(self):
         try:
             threading.Thread(target=_AGENT.change_shop_id, daemon=True).start()
             return {"ok": True}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     def check_update(self):
         try:
@@ -575,7 +617,7 @@ class PanelAPI:
             avail = bool(remote and remote > _AGENT.VERSION)
             return {"ok": True, "updateAvailable": avail, "latestVersion": label}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     def do_update(self):
         try:
@@ -585,7 +627,7 @@ class PanelAPI:
                 return {"ok": True}
             return {"ok": False, "error": "Update is not available in this build"}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     # ── QR & links ──
     def get_qr(self):
@@ -616,7 +658,7 @@ class PanelAPI:
                 pass
             return {"ok": True, "path": dest}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     def open_url(self, path=""):
         try:
@@ -624,7 +666,7 @@ class PanelAPI:
             webbrowser.open(url)
             return {"ok": True}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
     # ── DEMO → PAID CONVERSION ──
     def verify_paid_shop(self, paid_shop_id, password):
@@ -652,7 +694,7 @@ class PanelAPI:
             return {"ok": True, "shopId": d.get("shopId"), "shopName": d.get("shopName"),
                     "planType": d.get("planType"), "alreadyLinked": bool(d.get("alreadyLinked"))}
         except Exception as e:
-            return {"ok": False, "error": f"Could not reach the server: {e}"}
+            return {"ok": False, "error": _plain(e, "Could not reach the server.")}
 
     def convert_to_paid(self):
         """
@@ -695,7 +737,7 @@ class PanelAPI:
                 out["warning"] = warn
             return out
         except Exception as e:
-            return {"ok": False, "error": f"Could not reach the server: {e}"}
+            return {"ok": False, "error": _plain(e, "Could not reach the server.")}
 
     def open_upgrade(self):
         """Take the panel to the upgrade page."""
@@ -704,7 +746,7 @@ class PanelAPI:
                 self._window.evaluate_js("go('upgrade')")
             return {"ok": True}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": _plain(e)}
 
 
 API = PanelAPI()

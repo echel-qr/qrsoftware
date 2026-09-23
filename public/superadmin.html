@@ -673,6 +673,7 @@ input,select,textarea{border:1.5px solid #e7e8e9;border-radius:12px;
     <button class="nav-it" data-nav="langs" onclick="navTo('langs',this)"><span class="ico">🌐</span> Languages</button>
     <div style="font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45;margin:14px 0 5px 14px;">Tools</div>
     <button class="nav-it" data-nav="notify" onclick="navTo('notify',this)"><span class="ico">🔔</span> Email Alerts</button>
+    <button class="nav-it" data-nav="maintenance" onclick="navTo('maintenance',this)"><span class="ico">🚧</span> Website Maintenance</button>
 
 
 
@@ -857,6 +858,32 @@ input,select,textarea{border:1.5px solid #e7e8e9;border-radius:12px;
         <span style="font-size:16px;font-weight:800;color:#e8646a;" id="advancedPreviewOffer">₹0</span>
         <span id="advancedPreviewDiscount" style="background:#e8646a;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;">0% OFF</span>
       </div>
+
+      <div style="border-top:1.5px dashed #e2ddd6;margin-bottom:16px;"></div>
+
+      <!-- White Label licence -->
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:8px;">🏷️ White Label Licence</label>
+      <p style="font-size:11.5px;color:#6b6870;margin:0 0 10px;line-height:1.7;">
+        What a partner pays us once to sell under their own brand. The struck-out price is only for show — set it to 0 to hide it.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:10.5px;color:#6b6870;font-weight:600;text-transform:uppercase;display:block;margin-bottom:6px;">Actual (₹) <span style="font-weight:400;text-transform:none;">— 0 = hide</span></label>
+          <input type="number" id="wlLicenseActualInput" min="0" oninput="updatePreview()" style="width:100%;padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:16px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;">
+        </div>
+        <div>
+          <label style="font-size:10.5px;color:#6b6870;font-weight:600;text-transform:uppercase;display:block;margin-bottom:6px;">Licence fee (₹ one-time)</label>
+          <input type="number" id="wlLicenseFeeInput" min="1" oninput="updatePreview()" style="width:100%;padding:11px 13px;border:1.5px solid #e8646a;border-radius:10px;font-size:16px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;color:#e8646a;">
+        </div>
+      </div>
+      <div id="wlLicPreview" style="display:none;align-items:center;gap:10px;background:#f7f7f8;border-radius:10px;padding:9px 13px;margin-bottom:12px;">
+        <span style="font-size:13px;color:#9b9690;text-decoration:line-through;" id="wlLicCut">₹0</span>
+        <span style="font-size:16px;font-weight:800;color:#e8646a;" id="wlLicNow">₹0</span>
+        <span id="wlLicOff" style="background:#e8646a;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;">0% OFF</span>
+      </div>
+      <label style="font-size:10.5px;color:#6b6870;font-weight:600;text-transform:uppercase;display:block;margin-bottom:6px;">Partner's floor price per shop (₹)</label>
+      <input type="number" id="wlBasePriceInput" min="0" placeholder="0 = the Starter price" oninput="updatePreview()" style="width:100%;padding:11px 13px;border:1.5px solid #e2ddd6;border-radius:10px;font-size:16px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:6px;">
+      <div id="wlBaseNote" style="font-size:11.5px;color:#6b6870;margin-bottom:18px;"></div>
 
       <div style="border-top:1.5px dashed #e2ddd6;margin-bottom:16px;"></div>
 
@@ -1096,7 +1123,18 @@ input,select,textarea{border:1.5px solid #e7e8e9;border-radius:12px;
     <!-- SECURITY MONITOR -->
     <div class="card" style="margin-bottom:20px;">
       <h2><span>🛡️ Security Monitor <span id="secBrakeBadge" style="display:none;background:#c81e28;color:#fff;border-radius:999px;padding:2px 9px;font-size:11px;margin-left:6px;">BRAKE ON</span></span></h2>
-      <div id="secStats" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
+      <div style="background:#f7f7f8;border:1.5px solid #e2ddd6;border-radius:13px;padding:13px 15px;margin-top:12px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:800;">
+          <input type="checkbox" id="autoBlockToggle" onchange="setAutoBlock(this.checked)" style="width:18px;height:18px;cursor:pointer;">
+          <span>Block trouble automatically</span>
+        </label>
+        <p data-i18n-sentence style="font-size:11.5px;color:#6b6870;margin:8px 0 0;line-height:1.7;">
+          <b>On:</b> the server pauses a shop or a device by itself when it sees abuse. <b>Off:</b> nothing is paused automatically — the server only tells you what it would have paused, and you decide. Either way the limits still hold, so a flood of uploads is still refused.
+        </p>
+        <div id="autoBlockState" style="font-size:11.5px;font-weight:700;margin-top:8px;"></div>
+      </div>
+      <div id="secStats" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;"></div>
+      <div id="secSuggest" style="margin-top:12px;"></div>
       <div id="secBlocks" style="margin-top:12px;"></div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
         <button onclick="loadSecurity()" style="background:#fff;border:1.5px solid #dee1e3;color:#b51c26;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;">🔄 Refresh</button>
@@ -1293,6 +1331,28 @@ input,select,textarea{border:1.5px solid #e7e8e9;border-radius:12px;
         </div>
       </div>
     </div><!-- /wlshops -->
+
+    <div data-sect="maintenance">
+      <div class="card">
+        <h2><span>🚧 Website Maintenance</span></h2>
+        <p data-i18n-sentence style="font-size:11.5px;color:#9b9690;margin:-6px 0 14px;line-height:1.75;">
+          Turn this on while you are changing something, and every visitor sees a short <b>"we will be back shortly"</b> notice instead of the website — the homepage, the shop sign-in, the customer page, all of it, even when someone types the address straight into the browser.
+        </p>
+        <div style="background:#fffbfb;border:1.5px solid #fca5a5;border-radius:13px;padding:14px 16px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;font-weight:800;">
+            <input type="checkbox" id="maintToggle" onchange="setMaintenance(this.checked)" style="width:18px;height:18px;cursor:pointer;">
+            <span>Website under maintenance</span>
+          </label>
+          <div id="maintState" style="font-size:12px;font-weight:700;margin-top:10px;">Loading…</div>
+        </div>
+        <div style="font-size:11.5px;color:#6b6870;margin:14px 0 0;line-height:1.8;">
+          <p data-i18n-sentence style="margin-bottom:6px;"><b>This screen stays open.</b> Superadmin is never behind the notice, or you could not turn it off again.</p>
+          <p data-i18n-sentence style="margin-bottom:6px;"><b>Shops already printing keep printing.</b> The desktop software can still finish the jobs it is holding; nothing new can arrive, because the customer page is behind the notice.</p>
+          <p data-i18n-sentence><b>Remember to turn it off.</b> While it is on, nobody can register, sign in or send a print.</p>
+        </div>
+        <a href="/maintenance.html" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;background:#f3f4f6;color:#4b5563;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:700;text-decoration:none;">👁️ See what visitors will see</a>
+      </div>
+    </div>
 
     <div data-sect="langs">
       <div class="card">
@@ -1518,6 +1578,8 @@ input,select,textarea{border:1.5px solid #e7e8e9;border-radius:12px;
 
 <script>
 let authToken = localStorage.getItem('qrprint_superadmin_token');
+// The Starter price a partner's floor falls back to when none is set.
+let _wlBaseEffective = 0;
 let allShops = [];
 let currentFilter = 'all';
 // ── Shops table: search / sort / pagination ka state ──
@@ -2062,6 +2124,100 @@ async function unbanIp(ip){
   loadIpBans();
 }
 
+/* The server writes short codes; a person reading this screen should not have
+   to know them. Anything not listed falls back to the code itself. */
+const SECURITY_WORDS = {
+  ABUSE_HITS:          'Too many refused attempts in a row',
+  ALREADY_BOUND:       'That demo is already tied to another computer',
+  CUSTOMER_BANNED:     'This customer is on your blocked list',
+  CUSTOMER_BLOCKED:    'This customer was paused for a few minutes',
+  DEMO_UPLOAD_QUOTA:   'A demo shop sent more files than a demo allows',
+  IP_BANNED:           'This internet connection is on your blocked list',
+  IP_RATE_LIMIT:       'Too many tries from one internet connection',
+  PHONE_RETRY_BLOCKED: 'The same mobile number was tried too many times',
+  TEMP_BLOCKED:        'Already paused, so this try was refused',
+  UPLOAD_BURST:        'Files arrived one after another, too fast for a person',
+  UPLOAD_RATE:         'Too many files in one minute',
+  DEMO_CONVERT:        'Turning a demo into a paid shop',
+  DEMO_REQUEST:        'Asking for a free demo',
+  FILE_ACCESS:         'Opening a customer file',
+  GLOBAL_BRAKE:        'The whole site paused itself',
+  PDF_UPLOAD:          'Sending a document to print',
+  SHOP_CLAIM:          'Claiming a shop',
+  SHOP_REGISTER:       'Registering a new shop',
+  'upload burst':      'Files arrived one after another, too fast for a person',
+  'uploads per minute exceeded': 'Too many files in one minute',
+  'demo upload quota exceeded':  'A demo shop sent more files than a demo allows',
+  expired:             'The demo time had already run out',
+  limit:               'The demo had already used all its prints'
+};
+const securityWords = code => SECURITY_WORDS[String(code || '').trim()] || String(code || '-');
+
+/* A block key is "shop:SHOP_1234" or "cust:abcd". Say which it is. */
+function securityWho(key) {
+  const k = String(key || '');
+  if (k.startsWith('shop:')) return 'Shop ' + k.slice(5);
+  if (k.startsWith('cust:')) return 'Customer ' + k.slice(5);
+  if (k.startsWith('ip:')) return 'Connection ' + k.slice(3);
+  return k;
+}
+
+async function loadMaintenance(){
+  const state = document.getElementById('maintState');
+  if (!state) return;
+  try{
+    const r = await fetch('/api/superadmin/maintenance', { headers:{ 'Authorization':'Bearer '+authToken }});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Could not read the setting');
+    maintPaint(!!d.enabled);
+  }catch(e){ state.textContent = '\u274c ' + e.message; state.style.color = '#c81e28'; }
+}
+
+function maintPaint(on){
+  const toggle = document.getElementById('maintToggle');
+  const state = document.getElementById('maintState');
+  if (toggle) toggle.checked = on;
+  if (!state) return;
+  state.textContent = on
+    ? '\u26a0\ufe0f On \u2014 visitors see the maintenance notice right now'
+    : '\u2705 Off \u2014 the website is open to everyone';
+  state.style.color = on ? '#8f151d' : '#17663f';
+}
+
+async function setMaintenance(on){
+  if (on && !confirm('Put the whole website behind a maintenance notice?\n\nNobody will be able to register, sign in or send a print until you turn it off.')) {
+    maintPaint(false);
+    return;
+  }
+  const state = document.getElementById('maintState');
+  if (state) state.textContent = 'Saving\u2026';
+  try{
+    const r = await fetch('/api/superadmin/maintenance', {
+      method:'PUT', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+authToken },
+      body: JSON.stringify({ enabled: on }) });
+    const d = await r.json();
+    if(!r.ok || !d.success) throw new Error(d.error || 'Could not save');
+    maintPaint(!!d.enabled);
+  }catch(e){
+    if (state) { state.textContent = '\u274c ' + e.message; state.style.color = '#c81e28'; }
+  }
+}
+
+async function setAutoBlock(on){
+  const state = document.getElementById('autoBlockState');
+  if (state) state.textContent = 'Saving…';
+  try{
+    const r = await fetch('/api/superadmin/auto-block', {
+      method:'PUT', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+authToken },
+      body: JSON.stringify({ enabled: on }) });
+    const d = await r.json();
+    if(!r.ok || !d.success) throw new Error(d.error || 'Could not save');
+    loadSecurity();
+  }catch(e){
+    if (state) { state.textContent = '❌ ' + e.message; state.style.color = '#c81e28'; }
+  }
+}
+
 async function loadSecurity(){
   const statsEl = document.getElementById('secStats');
   const blocksEl = document.getElementById('secBlocks');
@@ -2084,6 +2240,37 @@ async function loadSecurity(){
     const brake = document.getElementById('secBrakeBadge');
     if(brake) brake.style.display = (d.globalBrake && d.globalBrake.tripped) ? 'inline-block' : 'none';
 
+    const autoOn = d.autoBlock !== false;
+    const toggle = document.getElementById('autoBlockToggle');
+    if (toggle) toggle.checked = autoOn;
+    const state = document.getElementById('autoBlockState');
+    if (state) {
+      state.textContent = autoOn
+        ? '✅ On — the server is pausing trouble by itself'
+        : '⏸️ Off — nothing is paused automatically; you decide from the list below';
+      state.style.color = autoOn ? '#17663f' : '#8a5a12';
+    }
+
+    // What the server would have paused while the switch is off.
+    const sugEl = document.getElementById('secSuggest');
+    const sug = d.suggestions || [];
+    if (sugEl) {
+      sugEl.innerHTML = (!autoOn && sug.length)
+        ? '<div style="font-size:12px;font-weight:700;margin-bottom:6px;">Suggested — the server would have paused these (' + sug.length + ')</div>'
+          + sug.map(function(x){
+              return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff6e5;border:1.5px solid #f1d9a6;'
+                + 'border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:12px;">'
+                + '<b>' + sanitize(securityWho(x.key)) + '</b>'
+                + '<span style="color:#6b6870;">' + sanitize(securityWords(x.reason)) + '</span>'
+                + '<span style="color:#8a5a12;">' + x.times + ' times · ' + x.minutesAgo + ' min ago</span>'
+                + '<button onclick="blockSuggested(\'' + x.key.replace(/'/g,'') + '\')" style="margin-left:auto;background:#c81e28;color:#fff;'
+                + 'border:none;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;">Pause this one</button></div>';
+            }).join('')
+        : (!autoOn
+            ? '<div style="font-size:12px;color:#17663f;font-weight:700;">✅ Nothing suggested — no abuse seen since the switch went off</div>'
+            : '');
+    }
+
     const blocks = d.activeBlocks || [];
     blocksEl.innerHTML = blocks.length
       ? '<div style="font-size:12px;font-weight:700;margin-bottom:6px;">Currently blocked ('+blocks.length+')</div>'
@@ -2105,17 +2292,34 @@ async function loadSecurity(){
           const t = new Date(e.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
           return '<div style="border-bottom:1px solid #f0eeec;padding:8px 0;font-size:12px;">'
             + '<span style="color:#9ca3af;">'+t+'</span> &nbsp;'
-            + '<b style="color:#c81e28;">'+sanitize(e.reason||'-')+'</b> &nbsp;'
-            + '<span style="color:#6b6870;">'+sanitize(e.action||'')+'</span><br>'
-            + '<span style="color:#6b6870;">IP '+sanitize(e.ip||'-')
-            + (e.shop_id ? ' &nbsp;|&nbsp; '+sanitize(e.shop_id) : '')
-            + (e.upload_count!=null ? ' &nbsp;|&nbsp; uploads '+e.upload_count : '')
-            + ' &nbsp;|&nbsp; '+sanitize(e.endpoint||'-')+'</span></div>';
+            + '<b style="color:#c81e28;">'+sanitize(securityWords(e.reason))+'</b><br>'
+            + '<span style="color:#6b6870;">'+sanitize(securityWords(e.action))
+            + ' &nbsp;|&nbsp; from ' + sanitize(e.ip||'unknown')
+            + (e.shop_id ? ' &nbsp;|&nbsp; shop ' + sanitize(e.shop_id) : '')
+            + (e.upload_count!=null ? ' &nbsp;|&nbsp; ' + (e.upload_count === 1 ? '1 file' : e.upload_count + ' files') : '')
+            + '</span>'
+            + '<details style="margin-top:3px;"><summary style="cursor:pointer;font-size:10.5px;color:#9ca3af;">technical detail</summary>'
+            + '<code style="font-size:10.5px;color:#6b6870;">'+sanitize(e.reason||'-')+' · '+sanitize(e.action||'-')+' · '+sanitize(e.endpoint||'-')+'</code></details>'
+            + '</div>';
         }).join('')
       : '<div style="padding:14px;text-align:center;color:#16a34a;font-size:13px;">✅ No security events — all normal</div>';
   }catch(e){
     evEl.innerHTML = '<div style="padding:14px;color:#c81e28;font-size:13px;">Could not load: '+sanitize(e.message)+'</div>';
   }
+}
+
+/* Pause one of the suggestions by hand. It uses the same temporary pause the
+   automatic system would have applied, so it clears itself like any other. */
+async function blockSuggested(key){
+  if(!confirm(securityWho(key) + ' — pause this one for a while?')) return;
+  try{
+    const r = await fetch('/api/superadmin/security-block', {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+authToken },
+      body: JSON.stringify({ key }) });
+    const d = await r.json();
+    if(!r.ok || !d.success) throw new Error(d.error || 'Could not pause it');
+    loadSecurity();
+  }catch(e){ alert('❌ ' + e.message); }
 }
 
 async function unblockShop(){
@@ -3870,8 +4074,11 @@ async function loadPanel() {
       document.getElementById('monthlyActualInput').value = feeData.monthlyActualPrice || 0;
       document.getElementById('advancedActualInput').value = feeData.advancedActualPrice || 0;
       document.getElementById('agentBasePriceInput').value = feeData.agentBasePriceIsSet ? feeData.agentBasePrice : 0;
-    document.getElementById('agentPremiumBaseInput').value = feeData.agentPremiumBasePrice || 0;
       document.getElementById('agentPremiumBaseInput').value = feeData.agentPremiumBasePrice || 0;
+      document.getElementById('wlLicenseFeeInput').value = feeData.wlLicenseFee || 0;
+      document.getElementById('wlLicenseActualInput').value = feeData.wlLicenseActual || 0;
+      document.getElementById('wlBasePriceInput').value = feeData.wlBasePrice || 0;
+      _wlBaseEffective = feeData.wlBasePriceEffective || 0;
       document.getElementById('festivalEnabledInput').checked = !!feeData.festivalOfferEnabled;
       document.getElementById('festivalNameInput').value = feeData.festivalOfferName || '';
       if (feeData.festivalOfferEnd) {
@@ -4079,6 +4286,15 @@ function updatePreview() {
   })();
   mini('advancedActualInput','advancedFeeInput','advancedPreviewLine','advancedPreviewActual','advancedPreviewOffer','advancedPreviewDiscount');
 
+  // A short explainer for the partner's floor price
+  const wlb = parseInt((document.getElementById('wlBasePriceInput') || {}).value, 10) || 0;
+  const wlNote = document.getElementById('wlBaseNote');
+  if (wlNote) {
+    wlNote.innerHTML = wlb > 0
+      ? `A partner cannot sell a shop below <b>₹${wlb.toLocaleString('en-IN')}</b>.`
+      : `Empty for now — the floor is the Starter price, <b>₹${(_wlBaseEffective || 0).toLocaleString('en-IN')}</b>.`;
+  }
+
   // A short explainer for the agent base price
   const abp = parseInt(document.getElementById('agentBasePriceInput').value) || 0;
   const abpNote = document.getElementById('agentBasePreviewLine');
@@ -4108,6 +4324,9 @@ async function updateSetupFee() {
         advancedActualPrice: document.getElementById('advancedActualInput').value,
         agentBasePrice: document.getElementById('agentBasePriceInput').value,
         agentPremiumBasePrice: document.getElementById('agentPremiumBaseInput').value,
+        wlLicenseFee: document.getElementById('wlLicenseFeeInput').value,
+        wlLicenseActual: document.getElementById('wlLicenseActualInput').value,
+        wlBasePrice: document.getElementById('wlBasePriceInput').value,
 
 
 
@@ -4625,7 +4844,7 @@ async function deletePendingShop(shopId, name){
 
 
 // ===== SIDEBAR NAV =====
-const PAGE_TITLES = {actions:'Action Center', overview:'Overview', shops:'Shops', demos:'Demo Accounts', security:'Security', agents:'Agents', withdrawals:'Withdrawals', agent:'Agent Software', pricing:'Setup Fee', analytics:'Analytics', whitelabel:'White Label', reviews:'Reviews', langs:'Languages', notify:'Email Alerts', wlshops:'White Label Shops', payments:'Payments', planfeatures:'Plan Features', homepage:'Brand & Website', broadcast:'Broadcast Message', qrtools:'QR Tools', database:'Database', advtool:'Advance Tool'};
+const PAGE_TITLES = {maintenance:'Website Maintenance', actions:'Action Center', overview:'Overview', shops:'Shops', demos:'Demo Accounts', security:'Security', agents:'Agents', withdrawals:'Withdrawals', agent:'Agent Software', pricing:'Setup Fee', analytics:'Analytics', whitelabel:'White Label', reviews:'Reviews', langs:'Languages', notify:'Email Alerts', wlshops:'White Label Shops', payments:'Payments', planfeatures:'Plan Features', homepage:'Brand & Website', broadcast:'Broadcast Message', qrtools:'QR Tools', database:'Database', advtool:'Advance Tool'};
 function navTo(sect, btn){
   document.querySelectorAll('[data-sect]').forEach(el=>el.classList.toggle('show', el.getAttribute('data-sect')===sect));
   document.querySelectorAll('.nav-it[data-nav]').forEach(n=>n.classList.toggle('active', n.getAttribute('data-nav')===sect));
@@ -4637,6 +4856,7 @@ function navTo(sect, btn){
 
   if (sect === 'payments') loadPayments();
   if (sect === 'database') loadMigration();
+  if (sect === 'maintenance') loadMaintenance();
   if (sect === 'whitelabel') loadWhitelabels();
   if (sect === 'wlshops') loadWlShops();
   if (sect === 'pricing' && !document.getElementById('planFee_starter')) fetch('/api/superadmin/setup-fee',{headers:{Authorization:'Bearer '+authToken}}).then(r=>r.json()).then(d=>renderPlanPrices(d.plans)).catch(()=>{});

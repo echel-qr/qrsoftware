@@ -1038,6 +1038,35 @@ function toast(msg) {
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 2200);
 }
+/* An error the customer can actually repeat to the shop owner.
+
+   "Failed to fetch", "NetworkError", "Unexpected token < in JSON" — none of
+   that tells the person holding the phone what went wrong or what to do, and
+   they cannot report it either. Each one is turned into what really happened.
+   A message the SERVER sent is already written for people, so it passes
+   through unchanged. */
+function plainError(e, whenUnsure) {
+  const raw = String((e && e.message) || e || '').trim();
+  const low = raw.toLowerCase();
+  if (!raw) return whenUnsure || 'Something went wrong. Please try again.';
+  if (low.indexOf('failed to fetch') >= 0 || low.indexOf('networkerror') >= 0 ||
+      low.indexOf('load failed') >= 0 || low.indexOf('network request failed') >= 0)
+    return 'The internet connection dropped. Check your network and try again.';
+  if (low.indexOf('timeout') >= 0 || low.indexOf('timed out') >= 0)
+    return 'The shop did not answer in time. Please try again in a moment.';
+  if (low.indexOf('abort') >= 0)
+    return 'It took too long and stopped. Please try again.';
+  if (low.indexOf('unexpected token') >= 0 || low.indexOf('json') >= 0 || low.indexOf('parse') >= 0)
+    return 'The shop server sent an answer this page could not read. Please tell the shop owner.';
+  if (low.indexOf('quota') >= 0 || low.indexOf('storage') >= 0)
+    return 'Your phone has no free space left. Clear a little and try again.';
+  if (low.indexOf('permission') >= 0 || low.indexOf('denied') >= 0)
+    return 'Permission was refused. Please allow it and try again.';
+  if (/^\d{3}$/.test(raw))
+    return 'The shop server refused this. Please tell the shop owner.';
+  return raw;
+}
+
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 function hide(id) { document.getElementById(id).classList.add('hidden'); }
 function setStep(n) {
@@ -1069,9 +1098,23 @@ async function init() {
       return;
     }
     if (shopRes.status === 404) {
-      document.body.innerHTML = `<div style="max-width:420px;margin:80px auto;padding:30px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
+      const gone = await shopRes.json().catch(() => ({}));
+      document.body.innerHTML = gone.demoDeleted
+        ? `<div style="max-width:420px;margin:80px auto;padding:30px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
+        <div style="font-size:48px;margin-bottom:16px;">🗑️</div>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;margin-bottom:10px;">Demo Account Deleted</h2>
+        <p style="color:#7a7a8c;font-size:14px;line-height:1.7;">
+          <span>This was a trial account and it has been removed.</span><br>
+          <span>Please ask at the counter for the shop's own QR code.</span>
+        </p>
+      </div>`
+        : `<div style="max-width:420px;margin:80px auto;padding:30px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
         <div style="font-size:48px;margin-bottom:16px;">❌</div>
         <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;">Shop Not Found</h2>
+        <p style="color:#7a7a8c;font-size:14px;line-height:1.7;">
+          <span>This QR code does not belong to any shop.</span><br>
+          <span>Please ask at the counter for the correct QR code.</span>
+        </p>
       </div>`;
       return;
     }
@@ -1094,6 +1137,21 @@ async function init() {
         QSPi18n.setLang(_lang);
       }
     } catch (e) {}
+
+    // ── A demo whose time is up ──
+    // The shop still exists, so this is not an error — the trial simply ended.
+    if (shop.demo_expired) {
+      document.body.innerHTML = `<div style="max-width:420px;margin:80px auto;padding:30px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;">
+        <div style="font-size:52px;margin-bottom:16px;">⏳</div>
+        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;margin-bottom:10px;">Demo Expired</h2>
+        <p style="color:#7a7a8c;font-size:14px;line-height:1.7;">
+          <b style="color:#3a3740;" data-no-i18n>${shop.name || ''}</b><br>
+          <span>This was a trial account and its time has run out.</span><br>
+          <span>Please ask at the counter — the shop can print for you there.</span>
+        </p>
+      </div>`;
+      return;
+    }
 
     // ── Subscription expired? Block everything ──
     if (shop.subscription_expired) {
@@ -1253,7 +1311,7 @@ async function handleFileUpload(input) {
         pwAborted.fileName = pwAborted.fileName || file.name;
         break;
       }
-      toast(`❌ Could not load ${file.name}: ` + e.message);
+      toast('❌ ' + file.name + ' — ' + plainError(e, 'this file could not be opened.'));
     }
   }
 
@@ -1586,7 +1644,7 @@ async function handleAddDocument(input) {
           : `⬅️ ${file.name} was not added`);
         break;                                  // stop the remaining files too
       }
-      toast(`❌ Could not load ${file.name}: ` + e.message);
+      toast('❌ ' + file.name + ' — ' + plainError(e, 'this file could not be opened.'));
     }
   }
   renderEditor();
@@ -1840,7 +1898,7 @@ function startPhotoFlow() {
         askPhotoCount(img);
       } catch(e) {
         console.error('[4x6] photo load fail:', e);
-        toast('❌ ' + e.message);
+        toast('❌ ' + plainError(e));
       } finally {
         try { inp.value = ''; } catch(e) {}
       }
@@ -2519,7 +2577,7 @@ function buildSheetFromPhoto(photo, count) {
     renderEditor();
     toast(`✅ ${count}-photo sheet ready! Continue`);
   } catch(e) {
-    toast('❌ ' + e.message);
+    toast('❌ ' + plainError(e));
   }
 }
 
@@ -2567,7 +2625,7 @@ async function checkResumeHandoff() {
     toast('⏳ Uploading resume...');
     await uploadAllPages();
     toast('✅ Resume ready — just pay, print is automatic');
-  } catch(e) { toast('❌ Resume failed to load: ' + e.message); }
+  } catch(e) { toast('❌ ' + plainError(e, 'The resume maker could not open.')); }
 }
 
 // ═══ ADVANCED GATE ═══
@@ -3827,7 +3885,10 @@ function xhrUpload(url, formData, onProgress) {
       let j = null;
       try { j = JSON.parse(xhr.responseText); } catch (err) {}
       if (xhr.status >= 200 && xhr.status < 300) resolve(j || {});
-      else reject(new Error((j && j.error && j.error.message) || ('Upload failed (' + xhr.status + ')')));
+      else reject(new Error((j && j.error && j.error.message)
+        || (xhr.status === 413 ? 'That file is too large for this shop.'
+          : xhr.status >= 500 ? 'The shop server had a problem while saving the file. Please tell the shop owner.'
+          : 'The file could not be sent. Please try again.')));
     };
     xhr.onerror = function () { reject(new Error('Network problem')); };
     xhr.ontimeout = function () { reject(new Error('The upload timed out')); };
@@ -3956,7 +4017,7 @@ async function onMiniFilesChosen(e){
     buildMiniPreview();
   }catch(err){
     console.error('[mini] file load failed', err);
-    toast((err && err.message) || 'File did not load', 'err');
+    toast(plainError(err, 'The file did not load.'), 'err');
     miniBack();
   }
 }
@@ -4297,8 +4358,8 @@ async function uploadAllPages() {
     upProgDone();
     toast('✅ File ready!');
   } catch(e) {
-    upProgFail(e.message);
-    toast('❌ Upload error: ' + e.message);
+    upProgFail(plainError(e, 'The file could not be sent.'));
+    toast('❌ ' + plainError(e, 'The file could not be sent.'));
   }
 }
 
@@ -4652,14 +4713,14 @@ async function payOnline() {
           redirectTarget: '_self'
         });
         if (result && result.error) {
-          toast('❌ Cashfree: ' + (result.error.message || 'the payment page could not load'));
+          toast('❌ ' + plainError(result.error, 'The payment page could not open. Please try again or pay at the counter.'));
         } else if (result && result.redirect) {
           // The SDK is redirecting — do nothing
         } else {
           toast('⏳ The Cashfree page didn\'t open — press Pay Online again');
         }
       } catch (err) {
-        toast('❌ Cashfree error: ' + (err && err.message ? err.message : 'unknown'));
+        toast('❌ ' + plainError(err, 'The payment page could not open. Please try again or pay at the counter.'));
       }
       return;
     }
@@ -4700,7 +4761,7 @@ async function payOnline() {
       window.location.href = data.paymentUrl;
     }
   } catch(e) {
-    toast('❌ Network error: ' + e.message);
+    toast('❌ ' + plainError(e, 'The payment could not be started.'));
   }
 }
 
@@ -4770,7 +4831,7 @@ function downloadMyPdf() {
     setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
     toast('✅ Download started');
   } catch (e) {
-    toast('❌ Download failed: ' + e.message);
+    toast('❌ ' + plainError(e, 'The download did not finish.'));
   }
 }
 

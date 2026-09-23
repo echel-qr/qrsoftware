@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Back Soon — Echel</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#c81e28">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--red:#c81e28;--ink:#16181b;--ink-2:#3b4148;--muted:#6b727a;--line:#e3e6e9;--bg:#f4f5f6;--silver:#eef0f2}
+body{font-family:'Inter','Noto Sans Meetei Mayek',sans-serif;background:var(--bg);color:var(--ink);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;line-height:1.6}
+body:before{content:'';position:fixed;left:0;right:0;top:0;height:3px;background:var(--red)}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;max-width:440px;width:100%;
+  padding:40px 30px 30px;text-align:center;position:relative;
+  box-shadow:0 1px 2px rgba(22,24,27,.04),0 14px 36px -20px rgba(22,24,27,.3)}
+.logo{width:60px;height:60px;border-radius:50%;background:var(--silver);object-fit:cover;
+  box-shadow:0 0 0 1px var(--line);margin-bottom:18px}
+h1{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:24px;letter-spacing:-.4px;margin-bottom:10px}
+p{font-size:14px;color:var(--muted);line-height:1.8}
+.strip{margin-top:22px;padding-top:18px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
+.dots{display:inline-flex;gap:5px;margin-bottom:16px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--red);opacity:.3;animation:pulse 1.4s ease-in-out infinite}
+.dots i:nth-child(2){animation-delay:.2s}
+.dots i:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,100%{opacity:.25;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
+@media(prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.6}}
+select{margin-top:16px;border:1px solid #d3d8dc;border-radius:8px;padding:7px 10px;font-size:12px;
+  font-weight:600;background:#fff;color:var(--ink);cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="/img/echel-logo.jpeg" alt="" width="60" height="60">
+    <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <h1>We will be back shortly</h1>
+    <p>Echel is being updated right now. Printing will work again in a little while — please try once more after some time.</p>
+    <div class="strip">
+      <span data-no-i18n>Echel</span> · <span>Thank you for your patience</span>
+    </div>
+    <select data-i18n-select aria-label="Language">
+      <option value="en">English</option>
+      <option value="mni-mtei">ꯃꯤꯇꯩꯂꯣꯟ</option>
+    </select>
+  </div>
+<script src="/i18n.js" defer></script>
+</body>
+</html>

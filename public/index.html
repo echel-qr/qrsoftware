@@ -2835,6 +2835,19 @@ html.legal-open,body.legal-open{overflow:hidden}
   <!-- ═══ PRICING PLANS ═══ -->
   <section class="sec container plans-wrap" id="pricingSection">
     <h2 data-cfg="plan01" class="plans-title reveal">💰 Choose Your Plan</h2>
+    <!-- Festival offer: the banner sits on each plan card, the timer here above
+         them all. Both stay hidden until Superadmin switches the offer on and
+         gives it an end time. -->
+    <div class="festival-countdown" id="festivalCountdown">
+      <span class="fc-lead" data-cfg="festLead">Offer ends in</span>
+      <span class="fc-box" id="fcDaysBox" style="display:none;"><span class="fc-num" id="fcDays">00</span><span class="fc-lbl">Days</span></span>
+      <span class="fc-sep" id="fcSep1" style="display:none;">:</span>
+      <span class="fc-box"><span class="fc-num" id="fcHours">00</span><span class="fc-lbl">Hours</span></span>
+      <span class="fc-sep">:</span>
+      <span class="fc-box"><span class="fc-num" id="fcMins">00</span><span class="fc-lbl">Min</span></span>
+      <span class="fc-sep">:</span>
+      <span class="fc-box"><span class="fc-num" id="fcSecs">00</span><span class="fc-lbl">Sec</span></span>
+    </div>
     <div class="plans3 stagger">
       <div class="plan3">
         <div data-cfg="plan02" class="p3t">🎯 Demo</div>
@@ -4218,8 +4231,13 @@ loadPrices();
       if (ds) ds.textContent = 'Advance Features are not included — you can unlock them separately later for ₹'
         + d.advancedFee;
     }
-    if (d.offerPrice !== undefined) document.getElementById('hpOnetime').textContent = d.offerPrice;
-    if (d.actualPrice) document.getElementById('hpCut').textContent = '₹' + d.actualPrice;
+    // The single one-time price card is gone; the three plan cards replaced it.
+    // Reading its two elements threw here and the catch below swallowed it, so
+    // everything after this line — the festival offer — never ran at all.
+    const onetimeEl = document.getElementById('hpOnetime');
+    if (onetimeEl && d.offerPrice !== undefined) onetimeEl.textContent = d.offerPrice;
+    const cutEl = document.getElementById('hpCut');
+    if (cutEl && d.actualPrice) cutEl.textContent = '₹' + d.actualPrice;
     initFestivalOffer(d.festivalOfferEnabled, d.festivalOfferName, d.festivalOfferEnd);
   } catch(e) {}
 })();
@@ -4232,18 +4250,22 @@ function initFestivalOffer(enabled, name, endAt) {
   const endTime = new Date(endAt).getTime();
   if (isNaN(endTime) || endTime <= Date.now()) return;
 
-  const bannerEl = document.getElementById('festivalBanner');
+  // Every plan card has a banner slot. Reading one missing element used to
+  // throw and take the whole offer down with it, so each is checked.
+  const banners = [].slice.call(document.querySelectorAll('.fest-b'));
   const cdEl = document.getElementById('festivalCountdown');
+  if (!cdEl) return;
   const daysBox = document.getElementById('fcDaysBox');
   const sep1 = document.getElementById('fcSep1');
   const daysEl = document.getElementById('fcDays');
   const hoursEl = document.getElementById('fcHours');
   const minsEl = document.getElementById('fcMins');
   const secsEl = document.getElementById('fcSecs');
-  if (name) {
-    bannerEl.textContent = '🎉 ' + name;
-    bannerEl.style.display = 'inline-block';
-  }
+  if (!daysBox || !sep1 || !daysEl || !hoursEl || !minsEl || !secsEl) return;
+  if (name) banners.forEach(function (b) {
+    b.textContent = '🎉 ' + name;
+    b.style.display = 'inline-block';
+  });
   cdEl.style.display = 'flex';
 
   const pad = n => String(n).padStart(2, '0');
@@ -4252,7 +4274,7 @@ function initFestivalOffer(enabled, name, endAt) {
     const diff = endTime - Date.now();
     if (diff <= 0) {
       cdEl.style.display = 'none';
-      bannerEl.style.display = 'none';
+      banners.forEach(function (b) { b.style.display = 'none'; });
       clearInterval(timer);
       return;
     }

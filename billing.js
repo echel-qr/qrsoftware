@@ -33,15 +33,22 @@ function validatePricingUpdate(body, definitions, currentPlans, currentFees) {
     return n;
   };
   const values={...currentFees};
-  const mapping={offerPrice:'setup_fee_amount',actualPrice:'setup_actual_price',monthlyFee:'monthly_fee',advancedFee:'advanced_fee',monthlyActualPrice:'monthly_actual_price',advancedActualPrice:'advanced_actual_price',agentBasePrice:'agent_base_price',agentPremiumBasePrice:'agent_base_price_premium'};
+  const mapping={offerPrice:'setup_fee_amount',actualPrice:'setup_actual_price',monthlyFee:'monthly_fee',advancedFee:'advanced_fee',monthlyActualPrice:'monthly_actual_price',advancedActualPrice:'advanced_actual_price',agentBasePrice:'agent_base_price',agentPremiumBasePrice:'agent_base_price_premium',wlLicenseFee:'wl_license_fee',wlLicenseActual:'wl_license_actual',wlBasePrice:'wl_base_price'};
   for(const [field,key] of Object.entries(mapping))if(body[field]!==undefined){
     // Hidden legacy monthly input can be empty; retain its configured amount.
     if(field==='monthlyFee'&&Number(body[field])===0)continue;
     const n=integer(body[field],field,field==='advancedFee'?1:0);
     values[field]=n;changes.push([key,String(n)]);
   }
-  for(const [actual,fee] of [['actualPrice','offerPrice'],['monthlyActualPrice','monthlyFee'],['advancedActualPrice','advancedFee']]){
+  for(const [actual,fee] of [['actualPrice','offerPrice'],['monthlyActualPrice','monthlyFee'],['advancedActualPrice','advancedFee'],['wlLicenseActual','wlLicenseFee']]){
     if(values[actual]>0&&values[actual]<values[fee])throw new Error(actual+' must be zero or at least '+fee);
+  }
+  // A partner may not sell a shop below what the plan itself costs, or they
+  // would be underselling us with our own software.
+  if(values.wlBasePrice>0){
+    const starter=body.plans?.starter?.fee;
+    const floor=starter===undefined?currentPlans.starter.fee:Number(starter);
+    if(values.wlBasePrice<floor)throw new Error('wlBasePrice must be zero or at least the starter price');
   }
   for(const [field,tier] of [['agentBasePrice','pro'],['agentPremiumBasePrice','premium']]){
     const proposed=body.plans?.[tier]?.fee;

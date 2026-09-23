@@ -102,6 +102,72 @@ test('complete backend boots on an empty PostgreSQL database and serves authenti
     assert.deepEqual(await response.json(), { success: true, saved: 0, removed: 1 });
     response = await fetch(base + '/api/i18n/dict?lang=mni-mtei');
     assert.equal((await response.json()).dict[sample], undefined);
+    // The White Label licence price is the super admin's to set.
+    response = await fetch(base + '/api/superadmin/setup-fee', { headers });
+    let fees = await response.json();
+    assert.equal(typeof fees.wlLicenseFee, 'number');
+    assert.equal(typeof fees.wlBasePriceEffective, 'number');
+    response = await fetch(base + '/api/superadmin/setup-fee', { method: 'PUT', headers, body: JSON.stringify({ wlLicenseFee: 14999, wlLicenseActual: 29999, wlBasePrice: 1499 }) });
+    assert.equal(response.status, 200, await response.text());
+    response = await fetch(base + '/api/superadmin/setup-fee', { headers });
+    fees = await response.json();
+    assert.deepEqual([fees.wlLicenseFee, fees.wlLicenseActual, fees.wlBasePrice], [14999, 29999, 1499]);
+    // And a partner's page shows exactly that.
+    response = await fetch(base + '/api/whitelabel/license-fee');
+    assert.deepEqual(await response.json(), { licenseFee: 14999, licenseActual: 29999, basePrice: 1499 });
+    // The struck-out price may not be below the real one, and the partner's
+    // floor may not undercut the plan it sells.
+    response = await fetch(base + '/api/superadmin/setup-fee', { method: 'PUT', headers, body: JSON.stringify({ wlLicenseFee: 14999, wlLicenseActual: 500 }) });
+    assert.equal(response.status, 400);
+    response = await fetch(base + '/api/superadmin/setup-fee', { method: 'PUT', headers, body: JSON.stringify({ wlBasePrice: 1 }) });
+    assert.equal(response.status, 400);
+
+    // Automatic blocking is a switch, and off it only suggests.
+    response = await fetch(base + '/api/superadmin/security-events', { headers });
+    let sec = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(sec));
+    assert.equal(sec.autoBlock, true);
+    assert.deepEqual(sec.suggestions, []);
+    response = await fetch(base + '/api/superadmin/auto-block', { method: 'PUT', headers, body: JSON.stringify({ enabled: false }) });
+    assert.deepEqual(await response.json(), { success: true, enabled: false });
+    response = await fetch(base + '/api/superadmin/security-events', { headers });
+    assert.equal((await response.json()).autoBlock, false);
+    response = await fetch(base + '/api/superadmin/auto-block', { method: 'PUT', headers, body: JSON.stringify({ enabled: true }) });
+    assert.deepEqual(await response.json(), { success: true, enabled: true });
+
+    // A demo the super admin removed reads as removed, not as a broken link.
+    response = await fetch(base + '/api/shop/DEMO_NOTHERE');
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'This demo account has been deleted.', demoDeleted: true });
+    response = await fetch(base + '/api/shop/SHOP_NOTHERE');
+    assert.equal(response.status, 404);
+    assert.equal((await response.json()).demoDeleted, false, 'a normal Shop ID is not a deleted demo');
+
+    // Website maintenance: the notice covers the site, never the super admin.
+    response = await fetch(base + '/api/superadmin/maintenance', { headers });
+    assert.equal((await response.json()).enabled, false);
+    response = await fetch(base + '/api/superadmin/maintenance', { method: 'PUT', headers, body: JSON.stringify({ enabled: true }) });
+    assert.deepEqual(await response.json(), { success: true, enabled: true });
+    response = await fetch(base + '/', { headers: { Accept: 'text/html' } });
+    assert.equal(response.status, 503);
+    assert.match(await response.text(), /We will be back shortly/);
+    response = await fetch(base + '/admin', { headers: { Accept: 'text/html' } });
+    assert.equal(response.status, 503, 'a direct link to the shop sign-in is covered too');
+    response = await fetch(base + '/api/shop/SHOP_NOTHERE');
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).maintenance, true);
+    // These three have to keep answering.
+    response = await fetch(base + '/superadmin', { headers: { Accept: 'text/html' } });
+    assert.equal(response.status, 200, 'the super admin must never be locked out');
+    response = await fetch(base + '/healthz');
+    assert.equal(response.status, 200, 'the host watches this one');
+    response = await fetch(base + '/api/agent/version');
+    assert.equal(response.status, 200, 'a shop mid-print keeps its jobs');
+    response = await fetch(base + '/api/superadmin/maintenance', { method: 'PUT', headers, body: JSON.stringify({ enabled: false }) });
+    assert.deepEqual(await response.json(), { success: true, enabled: false });
+    response = await fetch(base + '/', { headers: { Accept: 'text/html' } });
+    assert.equal(response.status, 200, 'and the site comes straight back');
+
     // Moving to another host: the report says what is needed, the backup holds
     // every row, and restoring that file puts them all back.
     response = await fetch(base + '/api/superadmin/migration/report', { headers });
