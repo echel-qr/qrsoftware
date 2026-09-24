@@ -886,6 +886,7 @@ a{color:inherit}
 .plan3 .p3t{font-weight:800;font-size:15px;text-align:center;font-family:'Plus Jakarta Sans',sans-serif}
 .plan3 .p3p{font-size:32px;font-weight:800;text-align:center;margin:8px 0 4px;color:var(--pink);font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-1px}
 .plan3 .p3p small{font-size:12px;color:#6b6870;font-weight:600;letter-spacing:0}
+.plan3 .p3p .p3per{font-size:13px;margin-left:2px}
 .plan3 .p3p .cut3{font-size:14px;color:#9b9690;text-decoration:line-through;margin-right:6px;font-weight:600;letter-spacing:0}
 .plan3 .p3note{font-size:10.5px;text-align:center;font-weight:700;margin-bottom:14px}
 .festival-banner{display:inline-block;margin:0 auto 8px;padding:5px 14px;border-radius:20px;
@@ -2865,7 +2866,7 @@ html.legal-open,body.legal-open{overflow:hidden}
       <div class="plan3">
         <div class="festival-banner-wrap"><span class="festival-banner fest-b" style="display:none;"></span></div>
         <div data-cfg="plan06" class="p3t">🚀 Starter</div>
-        <div data-cfg-html="plan07" class="p3p"><span class="cut3 hpStarterCut" style="display:none;">₹0</span>₹<span id="hpStarter">599</span></div>
+        <div data-cfg-html="plan07" class="p3p"><span class="cut3 hpStarterCut" style="display:none;">₹0</span>₹<span id="hpStarter">599</span><small class="p3per" id="hpStarterPer"></small></div>
         <div data-echel-cycle="starter" class="p3note" style="color:#166534;">Lifetime — pay once, no renewal</div>
         <ul id="planStarterList">
           <li>✅ Auto Print Software</li>
@@ -2882,7 +2883,7 @@ html.legal-open,body.legal-open{overflow:hidden}
       <div class="plan3 hot">
         <div class="festival-banner-wrap"><span id="festivalBanner" class="festival-banner fest-b" style="display:none;"></span></div>
         <div data-cfg="plan10" class="p3t">💎 Pro</div>
-        <div data-cfg-html="plan11" class="p3p"><span class="cut3 hpProCut" style="display:none;">₹0</span>₹<span id="hpPro">899</span></div>
+        <div data-cfg-html="plan11" class="p3p"><span class="cut3 hpProCut" style="display:none;">₹0</span>₹<span id="hpPro">899</span><small class="p3per" id="hpProPer"></small></div>
         <div data-echel-cycle="pro" class="p3note" style="color:#166534;">Lifetime — Advance Features already unlocked</div>
         <ul id="planProList">
           <li>✅ Everything in Starter</li>
@@ -2900,7 +2901,7 @@ html.legal-open,body.legal-open{overflow:hidden}
         <div class="p3crown">👑 BEST VALUE</div>
         <div class="festival-banner-wrap"><span class="festival-banner fest-b" style="display:none;"></span></div>
         <div data-cfg="plan16" class="p3t">👑 Premium</div>
-        <div data-cfg-html="plan17" class="p3p"><span class="cut3 hpPremiumCut" style="display:none;">₹0</span>₹<span id="hpPremium">999</span></div>
+        <div data-cfg-html="plan17" class="p3p"><span class="cut3 hpPremiumCut" style="display:none;">₹0</span>₹<span id="hpPremium">999</span><small class="p3per" id="hpPremiumPer"></small></div>
         <div data-echel-cycle="premium" class="p3note" style="color:#166534;">Lifetime — today's and everything to come</div>
         <ul id="planPremiumList">
           <li>✅ Everything in Pro</li>
@@ -4177,6 +4178,9 @@ loadPrices();
   } catch(e) {}
 })();
 
+// What follows a renewing plan's price. Lifetime has nothing after it.
+var PLAN_PERIOD = { monthly: ' / month', quarterly: ' / 3 months', yearly: ' / year' };
+
 // Homepage plan prices — live from Superadmin
 (async () => {
   try {
@@ -4204,6 +4208,10 @@ loadPrices();
         if (!p) { if (card) card.style.display = 'none'; return; }
         if (card) card.style.display = '';
         if (el) el.textContent = p.fee;
+        // "₹399" alone reads as a one-time payment. A plan that renews
+        // says how often, right next to its price.
+        var per = document.getElementById(row[1] + 'Per');
+        if (per) per.textContent = PLAN_PERIOD[p.billingCycle] || '';
         document.querySelectorAll('.' + row[2]).forEach(function(c){
           if (p.actual > 0) { c.textContent = '₹' + p.actual; c.style.display = ''; }
           else c.style.display = 'none';

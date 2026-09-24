@@ -3263,6 +3263,31 @@ app.post('/api/superadmin/shop/:shopId/reset-password', verifySuperAdmin, async 
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
+// Change a shop owner's mobile number, when the owner asks for it.
+// The Shop ID is what signs an owner in, so nothing about their login moves.
+// The demo record keeps the OLD number on purpose: it is what stops one
+// number from taking a second free demo, and a new number must not reopen that.
+app.post('/api/superadmin/shop/:shopId/phone', verifySuperAdmin, async (req, res) => {
+  try {
+    // "+91 98765 43210" and "098765-43210" are the same number as 9876543210.
+    const phone = String((req.body && req.body.phone) || '')
+      .replace(/\D/g, '').replace(/^(?:91|0)(?=\d{10}$)/, '');
+    if (!/^\d{10}$/.test(phone))
+      return res.status(400).json({ error: 'Enter a valid 10-digit mobile number' });
+    const cur = await pool.query('SELECT phone FROM shops WHERE id=$1', [req.params.shopId]);
+    if (!cur.rows.length) return res.status(404).json({ error: 'Shop not found' });
+    const oldPhone = cur.rows[0].phone || '';
+    if (oldPhone === phone) return res.status(400).json({ error: "That is already this shop's number" });
+    await pool.query('UPDATE shops SET phone=$1 WHERE id=$2', [phone, req.params.shopId]);
+    // Another shop on the same number is not wrong in itself — one owner can
+    // run two shops — but the super admin should see it before closing the request.
+    const other = await pool.query(
+      'SELECT id, name FROM shops WHERE phone=$1 AND id<>$2 ORDER BY created_at LIMIT 5', [phone, req.params.shopId]);
+    console.log(`Mobile number changed by superadmin: ${req.params.shopId} | ${oldPhone || '-'} -> ${phone}`);
+    res.json({ success: true, oldPhone, phone, sharedWith: other.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── Demo accounts list — for monitoring + manual deletion ──
 // Cloudinary status — how many files are sitting there right now (the truth, from Cloudinary, not the DB)
 // Echel starts from its own database; cross-project copying is unavailable.
@@ -7575,7 +7600,13 @@ async function getPlanPricing() {
   try {
     const r = await pool.query(
       `SELECT key, value FROM system_settings WHERE key = ANY($1)`, [keys]);
-    r.rows.forEach(row => { map[row.key] = parseInt(row.value); });
+    // Prices are numbers, but the billing cycle is a word. Running parseInt()
+    // over it too turned 'monthly' into NaN, and NaN reads as lifetime — so
+    // whatever cycle Superadmin chose, the homepage said "one-time payment"
+    // and every new shop was registered as lifetime, never to be renewed.
+    r.rows.forEach(row => {
+      map[row.key] = /_cycle$/.test(row.key) ? String(row.value || '') : parseInt(row.value);
+    });
   } catch (e) { /* fall back to the default */ }
 
   const out = {};

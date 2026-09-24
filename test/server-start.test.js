@@ -102,6 +102,40 @@ test('complete backend boots on an empty PostgreSQL database and serves authenti
     assert.deepEqual(await response.json(), { success: true, saved: 0, removed: 1 });
     response = await fetch(base + '/api/i18n/dict?lang=mni-mtei');
     assert.equal((await response.json()).dict[sample], undefined);
+    // A plan's billing cycle has to come back as it was saved. It used to go
+    // through parseInt(), which turned 'monthly' into NaN — and NaN reads as
+    // lifetime, so the homepage always said "one-time payment" and every new
+    // shop was registered as lifetime, never to renew.
+    for (const cycle of ['monthly', 'quarterly', 'yearly', 'lifetime']) {
+      response = await fetch(base + '/api/superadmin/setup-fee', { method: 'PUT', headers, body: JSON.stringify({ plans: { starter: { fee: 399, actual: 0, billingCycle: cycle }, pro: { fee: 899, actual: 0, billingCycle: 'yearly' } } }) });
+      assert.equal(response.status, 200, await response.text());
+      response = await fetch(base + '/api/setup-fee/current');
+      const current = await response.json();
+      assert.equal(current.plans.starter.billingCycle, cycle, 'the homepage reads back ' + cycle);
+      assert.equal(current.plans.pro.billingCycle, 'yearly');
+      response = await fetch(base + '/api/superadmin/setup-fee', { headers });
+      assert.equal((await response.json()).plans.starter.billingCycle, cycle, 'and so does Superadmin after a reload');
+    }
+    // A shop that registers under a monthly plan is stored as monthly.
+    response = await fetch(base + '/api/superadmin/setup-fee', { method: 'PUT', headers, body: JSON.stringify({ plans: { starter: { fee: 399, actual: 0, billingCycle: 'monthly' } } }) });
+    assert.equal(response.status, 200);
+
+    // The super admin changes a shop owner's mobile number when they ask.
+    await db.query("INSERT INTO shops (id, name, phone, setup_paid, password_hash) VALUES ('SHOP_PHONE01','Phone Test','9000000001',true,'x'), ('SHOP_PHONE02','Second Shop','9811111111',true,'y')");
+    response = await fetch(base + '/api/superadmin/shop/SHOP_PHONE01/phone', { method: 'POST', headers, body: JSON.stringify({ phone: '+91 98111-11111' }) });
+    const changed = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(changed));
+    // "+91 98111-11111" is the same number as 9811111111.
+    assert.deepEqual([changed.oldPhone, changed.phone], ['9000000001', '9811111111']);
+    // Another shop already on that number is pointed out, not refused.
+    assert.deepEqual(changed.sharedWith.map(x => x.id), ['SHOP_PHONE02']);
+    const after = (await db.query("SELECT phone, password_hash FROM shops WHERE id='SHOP_PHONE01'")).rows[0];
+    assert.deepEqual([after.phone, after.password_hash], ['9811111111', 'x'], 'only the number moves — the login stays');
+    for (const [body, status] of [[{ phone: '12345' }, 400], [{ phone: '98111 11111' }, 400], [{}, 400]])
+      assert.equal((await fetch(base + '/api/superadmin/shop/SHOP_PHONE01/phone', { method: 'POST', headers, body: JSON.stringify(body) })).status, status, JSON.stringify(body));
+    assert.equal((await fetch(base + '/api/superadmin/shop/SHOP_NOBODY/phone', { method: 'POST', headers, body: JSON.stringify({ phone: '9000000009' }) })).status, 404);
+    assert.equal((await fetch(base + '/api/superadmin/shop/SHOP_PHONE01/phone', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: '9000000009' }) })).status, 401, 'only the super admin');
+
     // The White Label licence price is the super admin's to set.
     response = await fetch(base + '/api/superadmin/setup-fee', { headers });
     let fees = await response.json();

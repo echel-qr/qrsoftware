@@ -78,6 +78,7 @@ h1 .mark{background:linear-gradient(transparent 62%,var(--yellow) 62%);padding:0
 .plan-card.sel{border-color:#ff3b6b;background:#fff5f7;box-shadow:0 4px 14px rgba(255,59,107,.15)}
 .plan-card .pt{font-weight:800;font-size:14px;margin-bottom:4px}
 .plan-card .pp{font-size:20px;font-weight:800;color:#ff3b6b}
+.pp .pper{font-size:12px;font-weight:600;color:#6b6870;margin-left:2px}
 .plan-card .pp .cut{font-size:12px;color:#9b9690;text-decoration:line-through;font-weight:600;margin-right:5px}
 .plan-card .pd{font-size:10.5px;color:#6b6870;margin-top:4px;line-height:1.5}
 @media(max-width:480px){.plan-row{grid-template-columns:1fr}}
@@ -216,14 +217,14 @@ h1 .mark{background:linear-gradient(transparent 62%,var(--yellow) 62%);padding:0
     <div class="plan-row">
       <div class="plan-card" id="planStarter" onclick="selPlan('starter')">
         <div class="pt">🚀 Starter</div>
-        <div class="pp"><span class="cut planCut" id="cutStarter" style="display:none;">₹0</span>₹<span id="feeStarter">599</span></div>
+        <div class="pp"><span class="cut planCut" id="cutStarter" style="display:none;">₹0</span>₹<span id="feeStarter">599</span><small class="pper" id="perStarter"></small></div>
         <div class="pd" style="color:#166534;font-weight:700;">Pay once — Lifetime, no renewal</div>
         <div class="pd planFeat" id="featStarter" style="text-align:left;margin-top:8px;">✅ Auto Print Software<br>✅ Personalized QR For Shop<br>✅ Unlimited Print<br>✅ 2 Printer Connect — 1 B&W + 1 Color<br>✅ Help with Setup<br>✅ WhatsApp Assistant</div>
         <div class="pdiff pdiff-plain" id="diffStarter">Advance Features are not included — you can unlock them later for ₹199</div>
       </div>
       <div class="plan-card sel" id="planPro" onclick="selPlan('pro')">
         <div class="pt">💎 Pro</div>
-        <div class="pp"><span class="cut planCut" id="cutPro" style="display:none;">₹0</span>₹<span id="feePro">899</span></div>
+        <div class="pp"><span class="cut planCut" id="cutPro" style="display:none;">₹0</span>₹<span id="feePro">899</span><small class="pper" id="perPro"></small></div>
         <div class="pd" style="color:#166534;font-weight:700;">Lifetime — Advance Features already unlocked</div>
         <div class="pd planFeat" id="featPro" style="text-align:left;margin-top:8px;">✅ Everything in Starter<br>✅ Advance Feature UNLOCKED — Duplex · 4×6 Photo · A3 · Resume Maker<br>✅ 5 Printer Connect — B&W · Color · A3 · Duplex · 4×6 Photo<br>✅ Assistant in Online Payment Gateway Setup<br>✅ Bug Fix Within 2 Hr<br>✅ AnyDesk Assistant</div>
         <div class="pdiff pdiff-warn" id="diffPro">All of today's advance features. Any new advance feature later costs ₹49 separately</div>
@@ -231,7 +232,7 @@ h1 .mark{background:linear-gradient(transparent 62%,var(--yellow) 62%);padding:0
       <div class="plan-card" id="planPremium" onclick="selPlan('premium')">
         <div class="pcrown">👑 BEST VALUE</div>
         <div class="pt">👑 Premium</div>
-        <div class="pp"><span class="cut planCut" id="cutPremium" style="display:none;">₹0</span>₹<span id="feePremium">999</span></div>
+        <div class="pp"><span class="cut planCut" id="cutPremium" style="display:none;">₹0</span>₹<span id="feePremium">999</span><small class="pper" id="perPremium"></small></div>
         <div class="pd" style="color:#166534;font-weight:700;">Lifetime — today's and everything to come</div>
         <div class="pd planFeat" id="featPremium" style="text-align:left;margin-top:8px;">✅ Everything in Pro<br>✅ Advance Feature UNLOCKED — Duplex · 4×6 Photo · A3 · Resume Maker<br>✅ Smart Scanner included with Premium<br>✅ All future features included<br>✅ 5 Printer Connect — B&W · Color · A3 · Duplex · 4×6 Photo<br>✅ Future feature updates included<br>✅ Priority Support</div>
         <div class="pdiff pdiff-good">Any new advance feature reaches you automatically — no paying again</div>
@@ -353,6 +354,9 @@ function selPlan(p) {
         if (!p) { if (card) card.style.display = 'none'; return; }
         const fEl = document.getElementById('fee' + cap);
         if (fEl) fEl.textContent = p.fee;
+        // A plan that renews says how often, right beside its price.
+        const perEl = document.getElementById('per' + cap);
+        if (perEl) perEl.textContent = ({ monthly: ' / month', quarterly: ' / 3 months', yearly: ' / year' })[p.billingCycle] || '';
         const cEl = document.getElementById('cut' + cap);
         if (cEl) {
           if (p.actual > 0) { cEl.textContent = '₹' + p.actual; cEl.style.display = ''; }

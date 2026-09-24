@@ -4382,7 +4382,7 @@ function setFilter(f) {
 }
 
 function shopActions(shop) {
-  return `${shop.advanced_unlocked ? `<span style="display:inline-block;background:#f1f2f3;color:#b51c26;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:800;margin-right:6px;" title="Advance Feature active">⚡✓</span>` : `<button onclick="unlockAdvancedFor('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">⚡ Unlock</button>`}${(shop.billing_cycle || (shop.plan_type === 'monthly' ? 'monthly' : 'lifetime')) !== 'lifetime' ? `<button onclick="extendShop30('${shop.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔄 Extend cycle</button>` : ''}<button onclick="openPrinterPanel('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#0f766e;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC printer list + payment method">🖨️ Printer</button>${saScanBtn(shop)}<button onclick="resetShopPassword('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔑 Reset Pass</button>${shop.agent_bound ? `<button onclick="saDisconnectPc('${shop.id}','${(shop.agent_machine||'').replace(/'/g,"")}')" style="background:#fff;color:#b45309;border:1.5px solid #fde68a;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC: ${(shop.agent_machine||'unknown').replace(/"/g,'')} — after removal the Shop ID can be used on a new PC">🔌 Disconnect PC</button>` : ''}${!shop.setup_paid ? `<button onclick="manualActivate('${shop.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">💰 Activate</button>` : ''}${(!shop.setup_paid || !shop.setup_amount || shop.setup_amount == 0) && shop.id !== 'SHOP_ECB1AB8A' ? `<button onclick="deletePendingShop('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#ff3b3b;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑️ Delete</button>` : `<span style="font-size:11px;color:#b0b0b0">${shop.id === 'SHOP_ECB1AB8A' ? '🔒 Protected' : '—'}</span>`}`;
+  return `${shop.advanced_unlocked ? `<span style="display:inline-block;background:#f1f2f3;color:#b51c26;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:800;margin-right:6px;" title="Advance Feature active">⚡✓</span>` : `<button onclick="unlockAdvancedFor('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">⚡ Unlock</button>`}${(shop.billing_cycle || (shop.plan_type === 'monthly' ? 'monthly' : 'lifetime')) !== 'lifetime' ? `<button onclick="extendShop30('${shop.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔄 Extend cycle</button>` : ''}<button onclick="openPrinterPanel('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#0f766e;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC printer list + payment method">🖨️ Printer</button>${saScanBtn(shop)}<button onclick="resetShopPassword('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔑 Reset Pass</button><button onclick="changeShopPhone('${shop.id}','${(shop.phone||'').replace(/[^0-9]/g,'')}')" style="background:#fff;color:#3b4148;border:1.5px solid #d3d8dc;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="Change the owner's mobile number, on their request">📱 Change Mobile</button>${shop.agent_bound ? `<button onclick="saDisconnectPc('${shop.id}','${(shop.agent_machine||'').replace(/'/g,"")}')" style="background:#fff;color:#b45309;border:1.5px solid #fde68a;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC: ${(shop.agent_machine||'unknown').replace(/"/g,'')} — after removal the Shop ID can be used on a new PC">🔌 Disconnect PC</button>` : ''}${!shop.setup_paid ? `<button onclick="manualActivate('${shop.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">💰 Activate</button>` : ''}${(!shop.setup_paid || !shop.setup_amount || shop.setup_amount == 0) && shop.id !== 'SHOP_ECB1AB8A' ? `<button onclick="deletePendingShop('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#ff3b3b;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑️ Delete</button>` : `<span style="font-size:11px;color:#b0b0b0">${shop.id === 'SHOP_ECB1AB8A' ? '🔒 Protected' : '—'}</span>`}`;
 }
 
 async function renderShops() {
@@ -4802,6 +4802,32 @@ async function resetShopPassword(shopId){
       prompt('✅ New temporary password (tell the owner over the phone; copy it now):', d.tempPassword);
     } else alert('❌ '+(d.error||'Fail'));
   }catch(e){ alert('❌ '+e.message); }
+}
+
+/* Change the owner's mobile number, when they ask for it. Their Shop ID and
+   password do not change, so they sign in exactly as before. */
+async function changeShopPhone(shopId, current){
+  const entered = prompt(
+    'New mobile number for ' + shopId + (current ? '\n(now: ' + current + ')' : '') +
+    '\n\nOnly change it when the owner has asked. Their Shop ID and password stay the same.',
+    '');
+  if (entered === null) return;
+  const phone = entered.replace(/\D/g, '').replace(/^(?:91|0)(?=\d{10}$)/, '');
+  if (!/^\d{10}$/.test(phone)) return alert('\u274c Enter a valid 10-digit mobile number');
+  if (!confirm('Change ' + shopId + (current ? ' from ' + current : '') + ' to ' + phone + '?')) return;
+  try{
+    const res = await fetch('/api/superadmin/shop/' + encodeURIComponent(shopId) + '/phone', {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+authToken },
+      body: JSON.stringify({ phone }) });
+    const d = await res.json();
+    if (!res.ok || !d.success) throw new Error(d.error || 'Could not change the number');
+    let msg = '\u2705 Mobile number changed to ' + d.phone + '.';
+    if (d.sharedWith && d.sharedWith.length)
+      msg += '\n\nNote: this number is also on ' + d.sharedWith.map(s => s.id + (s.name ? ' (' + s.name + ')' : '')).join(', ') +
+             '. That is fine if the same person runs both shops.';
+    alert(msg);
+    loadPanel();          // the shop list shows the new number straight away
+  }catch(e){ alert('\u274c ' + e.message); }
 }
 
 async function manualActivate(shopId){

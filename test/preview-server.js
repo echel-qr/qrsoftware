@@ -10,6 +10,8 @@ const publicRoot=path.join(root,'public');
 const homeRoutes=['/','/about','/contact','/features','/setup-guide','/terms','/privacy','/refund','/disclaimer'];
 // The design preview can show the festival offer: open /?festival=1
 let previewFestival=false;
+// The design preview can show a renewing plan: open /?cycle=monthly
+let previewCycle='';
 const previewAdvance=[
   {id:'photo4x6',icon:'📷',title:'4×6 Passport Photos',desc:'A sheet of 4, 6, 8 or 10 builds itself and comes out with cutting lines.',isNew:false},
   {id:'resume',icon:'📝',title:'Resume Maker',desc:'The customer builds a resume in one of 6 designs straight from the QR.',isNew:false},
@@ -50,7 +52,9 @@ http.createServer((req,res)=>{
     // ?festival=1 turns the offer on, so the banner and timer can be looked at.
     if(u.pathname==='/api/setup-fee/current'||u.pathname==='/api/superadmin/setup-fee'){
       const fest=u.searchParams.get('festival')==='1'||previewFestival;
-      return send({amount:999,offerPrice:999,actualPrice:2999,plans:previewPlans,monthlyFee:399,advancedFee:199,
+      // /?cycle=monthly shows every plan as it looks when it renews.
+      const plans=previewCycle?Object.fromEntries(Object.entries(previewPlans).map(([k,v])=>[k,{...v,billingCycle:previewCycle}])):previewPlans;
+      return send({amount:999,offerPrice:999,actualPrice:2999,plans,monthlyFee:399,advancedFee:199,
         wlLicenseFee:9999,wlLicenseActual:24999,wlBasePrice:0,wlBasePriceEffective:599,
         festivalOfferEnabled:fest,festivalOfferName:fest?'Diwali Offer':'',
         festivalOfferEnd:fest?new Date(Date.now()+2*86400000+3600000).toISOString().slice(0,16):''});
@@ -62,6 +66,7 @@ http.createServer((req,res)=>{
     return send({error:'API requires the configured application server.'},503);
   }
   if(u.searchParams.get('festival')==='1')previewFestival=true;
+  if(u.searchParams.has('cycle'))previewCycle=u.searchParams.get('cycle')||'';
   let name=homeRoutes.includes(u.pathname)?'index.html':u.pathname.slice(1);
   if(u.pathname==='/preview/superadmin')name='superadmin.html';
   if(u.pathname==='/whitelabel'||u.pathname==='/partner')name='whitelabel.html';
