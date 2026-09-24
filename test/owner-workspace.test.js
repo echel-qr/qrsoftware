@@ -68,6 +68,12 @@ test('all five printers are chosen in the Printer Setup tab, and only there', ()
   dom.window.close();
 });
 
+test('no agent-version warnings from the old product reach the owner', () => {
+  // Every Echel agent is 2.1 or newer. The old product's "needs Agent v10+"
+  // notices only looked like errors here.
+  assert.doesNotMatch(source, /Agent v\d+\+/i);
+});
+
 test('printer lists are rebuilt, not doubled, every time the panel reloads', async () => {
   // Saving reloads the panel, which fills the five lists again.
   const fill = source.match(/async function loadColorPrinterDropdowns[\s\S]*?\n}\n/)[0];
