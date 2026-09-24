@@ -15,7 +15,7 @@
     panel.prepend(masthead);
     side.setAttribute('aria-label', 'Shop navigation');
     const nav = document.createElement('div'); nav.className = 'owner-navigation';
-    const order = ['overview','orders','qr','settings','payment','custlang','advance','agent','support','account'];
+    const order = ['overview','orders','qr','settings','printers','payment','custlang','advance','agent','support','account'];
     order.forEach(key => { const button = side.querySelector('[data-nav="'+key+'"]'); if (button) nav.append(button); });
     side.prepend(nav);
     // Retired features have no entry points in this client edition.

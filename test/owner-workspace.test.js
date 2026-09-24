@@ -40,6 +40,52 @@ test('owner redesign preserves the original form, status and data nodes', () => 
   dom.window.close();
 });
 
+test('all five printers are chosen in the Printer Setup tab, and only there', () => {
+  const { dom, doc } = workspace();
+  const setup = doc.querySelector('[data-sect="printers"]');
+  assert.ok(setup, 'the Printer Setup section exists');
+  for (const id of ['setPrinterBW','setPrinterColor','setPrinter4x6','setPrinterA3','setPrinterDuplex']) {
+    assert.equal(doc.querySelectorAll('#'+id).length, 1, 'No duplicate ' + id);
+    assert.ok(setup.contains(doc.getElementById(id)), id + ' belongs to Printer Setup');
+  }
+  // Settings keeps the printer MODEL, Advance keeps duplex on/off and the rates.
+  for (const sect of ['settings','advance']) {
+    const left = doc.querySelectorAll('[data-sect="'+sect+'"] select[id^="setPrinter"]:not(#setPrinter)');
+    assert.equal(left.length, 0, 'no printer choice left in ' + sect);
+  }
+  assert.ok(doc.querySelector('[data-sect="settings"] #setPrinter'), 'the printer model stays in Settings');
+  assert.ok(doc.querySelector('[data-sect="advance"] #setDuplexMode'), 'duplex on/off stays in Advance');
+  assert.ok(doc.querySelector('[data-sect="advance"] #setPriceA3Bw'), 'big-size rates stay in Advance');
+  // The tab sits right after Settings.
+  const tabs = [...doc.querySelectorAll('.owner-navigation [data-nav]')].map(b => b.dataset.nav);
+  assert.equal(tabs[tabs.indexOf('settings') + 1], 'printers');
+  dom.window.close();
+});
+
+test('printer lists are rebuilt, not doubled, every time the panel reloads', async () => {
+  // Saving reloads the panel, which fills the five lists again.
+  const fill = source.match(/async function loadColorPrinterDropdowns[\s\S]*?\n}\n/)[0];
+  const { dom } = workspace();
+  const w = dom.window;
+  w.authToken = 'test';
+  w.fetch = async () => ({ json: async () => ({ printers: ['HP LaserJet', 'Canon G2010'] }) });
+  w.eval(fill);
+  await w.loadColorPrinterDropdowns('HP LaserJet', '', '', 'Old A3', '');
+  await w.loadColorPrinterDropdowns('HP LaserJet', '', '', 'Old A3', '');
+  const values = id => [...w.document.getElementById(id).options].map(o => o.value);
+  assert.deepEqual(values('setPrinterBW'), ['', 'HP LaserJet', 'Canon G2010']);
+  assert.equal(w.document.getElementById('setPrinterBW').value, 'HP LaserJet');
+  // A saved printer that is not connected right now still shows, once.
+  assert.deepEqual(values('setPrinterA3'), ['', 'HP LaserJet', 'Canon G2010', 'Old A3']);
+  // No list from the server: every saved printer still shows, so a save keeps it.
+  w.fetch = async () => { throw new Error('offline'); };
+  await w.loadColorPrinterDropdowns('HP LaserJet', 'Canon G2010', 'Photo One', 'Old A3', 'Duplex One');
+  assert.equal(w.document.getElementById('setPrinter4x6').value, 'Photo One');
+  assert.equal(w.document.getElementById('setPrinterDuplex').value, 'Duplex One');
+  assert.deepEqual(values('setPrinterColor'), ['', 'Canon G2010']);
+  dom.window.close();
+});
+
 test('quick actions, password visibility and keyboard sign-in work', () => {
   const { dom, doc, calls } = workspace();
   doc.querySelector('[data-owner-nav="orders"]').click();

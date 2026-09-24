@@ -730,7 +730,7 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <link rel="stylesheet" href="/echel-theme.css?v=1">
 <script src="/echel-brand.js?v=1" defer></script>
-<script src="/i18n.js" defer></script><link rel="stylesheet" href="/echel-owner.css?v=2"><script src="/echel-owner.js?v=2" defer></script></head>
+<script src="/i18n.js" defer></script><link rel="stylesheet" href="/echel-owner.css?v=2"><script src="/echel-owner.js?v=3" defer></script></head>
 <body class="echel-panel echel-owner">
 
 <nav class="owner-public-nav">
@@ -808,6 +808,7 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
     <button class="nav-it" data-nav="orders" onclick="navTo('orders',this)"><span class="ico">📋</span> Orders</button>
     <button class="nav-it" data-nav="agent" id="navAgent" style="display:none;" onclick="navTo('agent',this)"><span class="ico">💼</span> <span id="navAgentLabel">Become Agent</span><span class="new-dot"><i>✨</i>NEW</span></button>
     <button class="nav-it" data-nav="settings" onclick="navTo('settings',this)"><span class="ico">⚙️</span> Settings</button>
+    <button class="nav-it" data-nav="printers" onclick="navTo('printers',this)"><span class="ico">🖨️</span> Printer Setup</button>
     <button class="nav-it" data-nav="custlang" onclick="navTo('custlang',this)"><span class="ico">🌐</span> Customer Language</button>
     <button class="nav-it" data-nav="advance" onclick="navTo('advance',this)"><span class="ico">⚡</span> Advance Feature</button>
     <button class="nav-it" data-nav="payment" onclick="navTo('payment',this)"><span class="ico">💳</span> Payment Setup</button>
@@ -1379,24 +1380,6 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
             <input id="customPrinterInputAdmin" placeholder="Type your printer model">
           </div>
         </div>
-        <div class="form-group full">
-          <label>⬛ Which printer prints B&amp;W? <span style="font-weight:400;color:#6b6870;">(e.g. HP M1005)</span></label>
-          <select id="setPrinterBW">
-            <option value="">System Default Printer (auto)</option>
-          </select>
-        </div>
-        <div class="form-group full">
-          <label>🌈 Which printer prints Color? <span style="font-weight:400;color:#6b6870;">(e.g. Canon G2010)</span></label>
-          <select id="setPrinterColor">
-            <option value="">System Default Printer (auto)</option>
-          </select>
-        </div>
-
-        <div class="form-group full">
-          <p style="font-size:12px;color:#6b6870;margin:-8px 0 0;">
-            This list comes from the Print Agent on your computer. If a printer is missing, restart the agent or wait for its next update (every 30 minutes). System Default Printer uses the default printer selected in Windows.
-          </p>
-        </div>
         <div class="form-group"><label>Address</label><input id="setAddr"></div>
         <div class="form-group"><label>Phone</label><input id="setPhone"></div>
         <div class="form-group full">
@@ -1450,6 +1433,64 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
     </div>
 
     </div><!-- /settings -->
+
+    <!-- All five printers in one place. The selects keep their ids, so
+         saveSettings() and loadColorPrinterDropdowns() find them here. -->
+    <div data-sect="printers">
+    <div class="card">
+      <h2>🖨️ Printer Setup</h2>
+      <p style="font-size:13px;color:#6b6870;line-height:1.6;margin:6px 0 16px;">Choose which printer prints each kind of job. One save keeps all five.</p>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>⬛ Which printer prints B&amp;W? <span style="font-weight:400;color:#6b6870;">(e.g. HP M1005)</span></label>
+          <select id="setPrinterBW">
+            <option value="">System Default Printer (auto)</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>🌈 Which printer prints Color? <span style="font-weight:400;color:#6b6870;">(e.g. Canon G2010)</span></label>
+          <select id="setPrinterColor">
+            <option value="">System Default Printer (auto)</option>
+          </select>
+        </div>
+        <div class="form-group full" id="advPrinterGroup" style="border-top:1.5px solid #e9ebec;padding-top:16px;margin-top:4px;">
+          <div style="font-size:14px;font-weight:800;">⚡ Advance Feature printers</div>
+          <p style="font-size:12px;color:#6b6870;margin:0;line-height:1.6;">For 4×6 photos, A3 and bigger sizes, and two-sided printing.</p>
+        </div>
+        <div class="form-group full">
+          <label>📷 Which printer prints 4×6 PHOTO? (if you have a photo printer)</label>
+          <select id="setPrinter4x6">
+            <option value="">— None / Use the Color-B&amp;W one —</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>📐 Which printer prints A3 (big size)? (if you have an A3 printer)</label>
+          <select id="setPrinterA3">
+            <option value="">— None / Use the Color-B&amp;W one —</option>
+          </select>
+          <p style="font-size:11px;color:#6b6870;margin:4px 0 0;">A2/A1 jobs also go to this printer. Agent v15+ is required to set this.</p>
+        </div>
+        <div class="form-group full">
+          <label>🖨️ Which printer handles duplex?</label>
+          <select id="setPrinterDuplex">
+            <option value="">— Use the standard B&amp;W / colour printer —</option>
+          </select>
+          <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:4px 0 0;line-height:1.55;">
+            Usually only <b>one printer</b> handles two-sided printing. Select that printer here to route duplex orders to it. <b>Leave it blank</b> to route duplex jobs to the standard B&amp;W or colour printer. Photo and large-format jobs keep their dedicated printer settings.
+          </p>
+          <p style="font-size:11px;color:#6b6870;margin:4px 0 0;line-height:1.55;">Two-sided printing itself is switched on in the Advance Feature tab.</p>
+        </div>
+        <div class="form-group full">
+          <p style="font-size:12px;color:#6b6870;margin:0;">
+            This list comes from the Print Agent on your computer. If a printer is missing, restart the agent or wait for its next update (every 30 minutes). System Default Printer uses the default printer selected in Windows.
+          </p>
+        </div>
+      </div>
+      <button class="btn-save" id="printerSaveBtn" onclick="savePrinterSetup()">💾 Save Printers</button>
+      <div class="success-msg" id="printerSaveOk">✅ Printers saved!</div>
+      <div class="err-msg" id="printerSaveErr"></div>
+    </div>
+    </div><!-- /printers -->
 
     <div data-sect="custlang">
     <div class="card">
@@ -1700,19 +1741,6 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
   </style>
 
         <div class="form-group full">
-          <label>📷 Which printer prints 4×6 PHOTO? (if you have a photo printer)</label>
-          <select id="setPrinter4x6">
-            <option value="">— None / Use the Color-B&amp;W one —</option>
-          </select>
-        </div>
-        <div class="form-group full">
-          <label>📐 Which printer prints A3 (big size)? (if you have an A3 printer)</label>
-          <select id="setPrinterA3">
-            <option value="">— None / Use the Color-B&amp;W one —</option>
-          </select>
-          <p style="font-size:11px;color:#6b6870;margin:4px 0 0;">A2/A1 jobs also go to this printer. Agent v15+ is required to set this.</p>
-        </div>
-        <div class="form-group full">
           <label>📄 Duplex (Dual-Side) Printing</label>
           <select id="setDuplexMode" onchange="toggleDuplexPrices()">
             <option value="">❌ No — single side only</option>
@@ -1722,14 +1750,6 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
           <p style="font-size:11px;color:#c2410c;margin:4px 0 0;">⚠️ Duplex needs Print Agent v10+ — update the agent first, then enable this.</p>
         </div>
         <div class="form-group full" id="duplexExtraRow" style="display:none;background:#f4f5f6;border:1.5px solid #dfe3e6;border-radius:12px;padding:12px;margin-top:4px;">
-          <label style="color:#3b4148;">🖨️ Which printer handles duplex?</label>
-          <select id="setPrinterDuplex">
-            <option value="">— Use the standard B&amp;W / colour printer —</option>
-          </select>
-          <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:4px 0 12px;line-height:1.55;">
-            Usually only <b>one printer</b> handles two-sided printing. Select that printer here to route duplex orders to it. <b>Leave it blank</b> to route duplex jobs to the standard B&amp;W or colour printer. Photo and large-format jobs keep their dedicated printer settings.
-          </p>
-
           <label style="color:#3b4148;">Which prints should offer duplex?</label>
           <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:4px 0 10px;line-height:1.55;">
             Turn a mode <b>OFF</b> and the Two-Sided option <b>is hidden</b> from customers in that mode.
@@ -1856,7 +1876,7 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
         </button>
         <div class="success-msg" id="advSaveOk">✅ Advance settings saved!</div>
         <div class="err-msg" id="advSaveErr"></div>
-        <p style="font-size:11px;color:#9b9690;text-align:center;margin-top:10px;">After selecting a printer, save it right here — no need to go to the Settings tab</p>
+        <p style="font-size:11px;color:#9b9690;text-align:center;margin-top:10px;">The 4×6, A3 and duplex printers are chosen in the Printer Setup tab.</p>
       </div>
     </div>
     </div><!-- /advance -->
@@ -2222,7 +2242,7 @@ async function loadBreakdown(){
 }
 
 // ===== SIDEBAR NAV =====
-const PAGE_TITLES={account:'Delete Account', partner:'Partner Program', review:'Leave a Review', overview:'Shop overview',qr:'QR & Downloads',orders:'Orders',payment:'Payment Setup',advance:'Print features',support:'Support',settings:'Settings',custlang:'Customer Language',agent:'Agent Dashboard'};
+const PAGE_TITLES={account:'Delete Account', partner:'Partner Program', review:'Leave a Review', overview:'Shop overview',qr:'QR & Downloads',orders:'Orders',payment:'Payment Setup',advance:'Print features',support:'Support',settings:'Settings',printers:'Printer Setup',custlang:'Customer Language',agent:'Agent Dashboard'};
 /* ── Leave a Review ─────────────────────────────────────────
    The shop submits its review. It does not go live directly — the
    superadmin approves it first. Each shop keeps a single review:
@@ -2826,54 +2846,44 @@ async function loadPrinterModelsAdmin(currentModel) {
 }
 
 async function loadColorPrinterDropdowns(currentBW, currentColor, current4x6, currentA3, currentDuplex) {
-  const bwSelect = document.getElementById('setPrinterBW');
-  const colorSelect = document.getElementById('setPrinterColor');
-  const p4x6Select = document.getElementById('setPrinter4x6');
-  const a3Select = document.getElementById('setPrinterA3');
-  const duplexSelect = document.getElementById('setPrinterDuplex');
+  const selects = ['setPrinterBW', 'setPrinterColor', 'setPrinter4x6', 'setPrinterA3', 'setPrinterDuplex']
+    .map(id => document.getElementById(id));
+  const currents = [currentBW, currentColor, current4x6, currentA3, currentDuplex];
+  let printers = [];
   try {
     const res = await fetch('/api/admin/printers', { headers: { 'Authorization': 'Bearer ' + authToken } });
     const data = await res.json();
-    const printers = data.printers || [];
-
-    const currents = [currentBW, currentColor, current4x6, currentA3, currentDuplex];
-    [bwSelect, colorSelect, p4x6Select, a3Select, duplexSelect].forEach((select, idx) => {
-      if (!select) return;   // old cached page — skip if the duplex select is missing
-      const currentValue = currents[idx];
-      // The "System Default Printer" option is already in the HTML; the other options are added here
-      printers.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-      });
-      // If the saved value is in the list, select it; otherwise, if a custom value
-      // is not in the list (an old printer was disconnected), still show it as an
-      // option so no data is lost
-      if (currentValue) {
-        const exists = Array.from(select.options).some(o => o.value === currentValue);
-        if (!exists) {
-          const opt = document.createElement('option');
-          opt.value = currentValue;
-          opt.textContent = currentValue + ' (offline/not detected yet)';
-          select.appendChild(opt);
-        }
-        select.value = currentValue;
-      }
-    });
+    printers = data.printers || [];
   } catch(e) {
-    // If the fetch fails, keep only the "System Default" option — no crash
-    if (currentBW) {
-      const opt = document.createElement('option');
-      opt.value = currentBW; opt.textContent = currentBW;
-      bwSelect.appendChild(opt); bwSelect.value = currentBW;
-    }
-    if (currentColor) {
-      const opt = document.createElement('option');
-      opt.value = currentColor; opt.textContent = currentColor;
-      colorSelect.appendChild(opt); colorSelect.value = currentColor;
-    }
+    // No list from the server: every select still shows its saved printer
+    // below, so the next save cannot wipe it.
   }
+  selects.forEach((select, idx) => {
+    if (!select) return;   // old cached page — skip a select that is missing
+    // Back to the fixed first option ("System Default" / "None"). This runs
+    // again after every save, and adding to the old list doubled each printer.
+    while (select.options.length > 1) select.remove(1);
+    printers.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+    // If the saved value is in the list, select it; otherwise, if a custom value
+    // is not in the list (an old printer was disconnected), still show it as an
+    // option so no data is lost
+    const currentValue = currents[idx];
+    if (currentValue) {
+      const exists = Array.from(select.options).some(o => o.value === currentValue);
+      if (!exists) {
+        const opt = document.createElement('option');
+        opt.value = currentValue;
+        opt.textContent = currentValue + ' (offline/not detected yet)';
+        select.appendChild(opt);
+      }
+      select.value = currentValue;
+    }
+  });
 }
 
 function checkOtherPrinterAdmin() {
@@ -2963,7 +2973,8 @@ function lockAdvancePrinterRows(shop){
     el.style.cursor  = locked ? 'not-allowed' : '';
   });
   let note = document.getElementById('advPrinterLockNote');
-  const anchor = document.getElementById('setDuplexMode');
+  // In the Printer Setup tab, under the "Advance Feature printers" heading.
+  const anchor = document.getElementById('advPrinterGroup');
   if (locked && anchor && !note){
     note = document.createElement('p');
     note.id = 'advPrinterLockNote';
@@ -2971,7 +2982,7 @@ function lockAdvancePrinterRows(shop){
       'border:1px solid #fde68a;border-radius:9px;padding:8px 10px;margin:8px 0 0;';
     note.textContent = 'Duplex and extra printer settings need the Advance Feature. ' +
                        'Unlock it from the Advance Feature tab to use these.';
-    anchor.parentElement.appendChild(note);
+    anchor.appendChild(note);
   } else if (!locked && note){
     note.remove();
   }
@@ -3030,6 +3041,22 @@ async function saveAdvanceSettings() {
     btn.style.background = '#16a34a';
     setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#1b1b1f'; }, 2500);
   }
+  setTimeout(() => { ok.style.display = 'none'; er.style.display = 'none'; }, 4000);
+}
+
+// Printer Setup tab. saveSettings() reads every field by id, so the five
+// printers are saved together with the rest of the shop, as before.
+async function savePrinterSetup() {
+  const btn = document.getElementById('printerSaveBtn');
+  if (btn) btn.disabled = true;
+  try { await saveSettings(); } finally { if (btn) btn.disabled = false; }
+  const src_ok = document.getElementById('settingsSuccess');
+  const src_er = document.getElementById('settingsErr');
+  const ok = document.getElementById('printerSaveOk');
+  const er = document.getElementById('printerSaveErr');
+  ok.style.display = src_ok.style.display;
+  er.style.display = src_er.style.display;
+  er.textContent = src_er.textContent;
   setTimeout(() => { ok.style.display = 'none'; er.style.display = 'none'; }, 4000);
 }
 

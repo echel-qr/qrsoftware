@@ -4840,7 +4840,7 @@ The print agent appears in the Windows system tray beside the clock.
 Keep the agent running while the shop accepts print orders.
 
 SELECT YOUR PRINTERS
-Open the agent panel or the shop dashboard's Settings tab.
+Open the agent panel or the shop dashboard's Printer Setup tab.
 Select the installed black-and-white and colour printers, then save.
 Configure duplex and dedicated photo or large-format printers if supported.
 If a printer is missing, confirm that it is installed and working in Windows.
