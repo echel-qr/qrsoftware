@@ -11,7 +11,7 @@
    To correct one line without a deploy: Superadmin -> Languages. Those edits
    live in the database and are applied on top of this file.
 
-   3718 entries. */
+   3719 entries. */
 (function (w) {
  var D = {
  "-- Select brand --": "-- ꯕ꯭ꯔꯥꯟꯗ ꯈꯜꯂꯨ --",
@@ -781,6 +781,7 @@
  "📄 Document Print mode — A4": "📄 ꯗꯣꯀꯨꯃꯦꯟꯠ ꯄ꯭ꯔꯤꯟꯠ ꯃꯣꯗ — A4",
  "📄 Duplex": "📄 ꯗꯨꯞꯂꯦꯛꯁ",
  "📄 Duplex (Dual-Side) Printing": "📄 ꯗꯨꯞꯂꯦꯛꯁ (ꯃꯥꯏ ꯑꯅꯤꯃꯛ) ꯄ꯭ꯔꯤꯟꯇꯤꯡ",
+ "📄 Duplex (two-sided) is switched on, as Auto or Manual, in the Printer Setup tab. Once it is on, its options and rates appear here.": "📄 ꯗꯨꯞꯂꯦꯛꯁ (ꯃꯥꯏ ꯑꯅꯤꯃꯛ) ꯑꯁꯤ ꯄ꯭ꯔꯤꯟꯇꯔ ꯁꯦꯠꯑꯞ ꯇꯦꯕꯇꯥ ꯑꯣꯇꯣ ꯅꯠꯔꯒꯥ ꯃꯦꯅꯨꯋꯦꯜ ꯑꯣꯏꯅꯥ ꯑꯣꯟ ꯇꯧꯏ꯫ ꯑꯣꯟ ꯇꯧꯔꯕꯥ ꯃꯇꯨꯡꯗꯥ ꯃꯁꯤꯒꯤ ꯑꯣꯄꯁꯅꯁꯤꯡ ꯑꯃꯁꯨꯡ ꯔꯦꯇꯁꯤꯡ ꯃꯐꯝ ꯑꯁꯤꯗꯥ ꯎꯠꯀꯅꯤ꯫",
  "📄 Legal": "📄 ꯂꯤꯒꯦꯜ",
  "📄 Letter": "📄 ꯂꯦꯇꯔ",
  "📄 Multi-file Print": "📄 ꯐꯥꯏꯜ ꯀꯌꯥ ꯄꯨꯟꯅꯥ ꯄ꯭ꯔꯤꯟꯠ",
@@ -3435,7 +3436,6 @@
  "Two plans are available through your agent link. Each plan has its own price. For each paid shop, you earn flat ₹100 commission.": "ꯅꯍꯥꯛꯀꯤ ꯑꯦꯖꯦꯟꯠ ꯂꯤꯡꯛꯇꯒꯤ ꯄ꯭ꯂꯥꯟ ꯑꯅꯤ ꯐꯪꯏ꯫ ꯄ꯭ꯂꯥꯟ ꯈꯨꯗꯤꯡꯃꯛꯀꯤ ꯃꯁꯥꯒꯤ ꯃꯃꯜ ꯂꯩ꯫ ꯁꯦꯜ ꯄꯤꯔꯕꯥ ꯁꯣꯞ ꯈꯨꯗꯤꯡꯃꯛꯇꯒꯤ ꯅꯍꯥꯛꯅꯥ ꯍꯣꯡꯗꯕꯥ ₹100 ꯀꯃꯤꯁꯟ ꯐꯪꯒꯅꯤ꯫",
  "Two-sided option on B&W prints": "B&W ꯄ꯭ꯔꯤꯟꯇꯇꯥ ꯃꯥꯏ ꯑꯅꯤꯃꯛꯀꯤ ꯑꯣꯄꯁꯟ",
  "Two-sided option on Color prints": "ꯃꯆꯨ ꯄ꯭ꯔꯤꯟꯇꯇꯥ ꯃꯥꯏ ꯑꯅꯤꯃꯛꯀꯤ ꯑꯣꯄꯁꯟ",
- "Two-sided printing itself is switched on in the Advance Feature tab.": "ꯃꯥꯏ ꯑꯅꯤꯃꯛꯇꯥ ꯄ꯭ꯔꯤꯟꯠ ꯇꯧꯕꯥ ꯑꯁꯤ ꯃꯁꯥꯃꯛ ꯑꯦꯗꯚꯥꯟꯁ ꯐꯤꯆꯔ ꯇꯦꯕꯇꯥ ꯑꯣꯟ ꯇꯧꯏ꯫",
  "TXT": "TXT",
  "Type DELETE first": "ꯍꯥꯟꯅꯥ DELETE ꯏꯔꯨ",
  "Type DELETE to confirm": "ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ DELETE ꯏꯔꯨ",
@@ -3568,6 +3568,7 @@
  "Which language customers see": "ꯀꯁꯇꯃꯔꯁꯤꯡꯅꯥ ꯎꯒꯗꯕꯥ ꯂꯣꯜ",
  "WHICH PLAN?": "ꯀꯔꯝꯕꯥ ꯄ꯭ꯂꯥꯟ?",
  "Which printers are supported?": "ꯀꯔꯝꯕꯥ ꯄ꯭ꯔꯤꯟꯇꯔꯁꯤꯡ ꯁꯄꯣꯔ꯭ꯠ ꯇꯧꯕꯒꯦ?",
+ "Which prints offer duplex, and the duplex rates, are set in the Advance Feature tab.": "ꯀꯔꯝꯕꯥ ꯄ꯭ꯔꯤꯟꯠꯁꯤꯡꯗꯥ ꯗꯨꯞꯂꯦꯛꯁ ꯄꯤꯒꯅꯤ ꯍꯥꯌꯕꯥ ꯑꯃꯁꯨꯡ ꯗꯨꯞꯂꯦꯛꯁꯀꯤ ꯔꯦꯇꯁꯤꯡ ꯑꯦꯗꯚꯥꯟꯁ ꯐꯤꯆꯔ ꯇꯦꯕꯇꯥ ꯊꯃꯕꯤꯌꯨ꯫",
  "Which prints should offer duplex?": "ꯀꯔꯝꯕꯥ ꯄ꯭ꯔꯤꯟꯠꯁꯤꯡꯗꯥ ꯗꯨꯞꯂꯦꯛꯁ ꯄꯤꯒꯗꯒꯦ?",
  "White Label": "ꯋ꯭ꯍꯥꯏꯠ ꯂꯦꯕꯦꯜ",
  "White Label — sell under your own brand": "ꯋꯥꯏꯠ ꯂꯦꯕꯦꯜ — ꯅꯍꯥꯛꯀꯤ ꯃꯁꯥꯒꯤ ꯕ꯭ꯔꯥꯟꯗꯇꯥ ꯌꯣꯅꯕꯤꯌꯨ",

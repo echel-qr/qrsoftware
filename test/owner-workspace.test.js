@@ -48,14 +48,20 @@ test('all five printers are chosen in the Printer Setup tab, and only there', ()
     assert.equal(doc.querySelectorAll('#'+id).length, 1, 'No duplicate ' + id);
     assert.ok(setup.contains(doc.getElementById(id)), id + ' belongs to Printer Setup');
   }
-  // Settings keeps the printer MODEL, Advance keeps duplex on/off and the rates.
+  // Settings keeps the printer MODEL; Advance keeps which prints offer duplex
+  // and every rate.
   for (const sect of ['settings','advance']) {
     const left = doc.querySelectorAll('[data-sect="'+sect+'"] select[id^="setPrinter"]:not(#setPrinter)');
     assert.equal(left.length, 0, 'no printer choice left in ' + sect);
   }
   assert.ok(doc.querySelector('[data-sect="settings"] #setPrinter'), 'the printer model stays in Settings');
-  assert.ok(doc.querySelector('[data-sect="advance"] #setDuplexMode'), 'duplex on/off stays in Advance');
+  assert.ok(doc.querySelector('[data-sect="advance"] #setDuplexBw'), 'which prints offer duplex stays in Advance');
+  assert.ok(doc.querySelector('[data-sect="advance"] #setPriceBwDuplex'), 'duplex rates stay in Advance');
   assert.ok(doc.querySelector('[data-sect="advance"] #setPriceA3Bw'), 'big-size rates stay in Advance');
+  // The duplex mode (No / Auto / Manual) sits directly under the duplex printer.
+  assert.equal(doc.querySelectorAll('#setDuplexMode').length, 1, 'No duplicate setDuplexMode');
+  const order = [...setup.querySelectorAll('select')].map(s => s.id);
+  assert.equal(order[order.indexOf('setPrinterDuplex') + 1], 'setDuplexMode');
   // The tab sits right after Settings.
   const tabs = [...doc.querySelectorAll('.owner-navigation [data-nav]')].map(b => b.dataset.nav);
   assert.equal(tabs[tabs.indexOf('settings') + 1], 'printers');

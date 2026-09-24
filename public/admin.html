@@ -1478,7 +1478,16 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
           <p data-i18n-sentence style="font-size:11px;color:#6b6870;margin:4px 0 0;line-height:1.55;">
             Usually only <b>one printer</b> handles two-sided printing. Select that printer here to route duplex orders to it. <b>Leave it blank</b> to route duplex jobs to the standard B&amp;W or colour printer. Photo and large-format jobs keep their dedicated printer settings.
           </p>
-          <p style="font-size:11px;color:#6b6870;margin:4px 0 0;line-height:1.55;">Two-sided printing itself is switched on in the Advance Feature tab.</p>
+        </div>
+        <div class="form-group full">
+          <label>📄 Duplex (Dual-Side) Printing</label>
+          <select id="setDuplexMode" onchange="toggleDuplexPrices()">
+            <option value="">❌ No — single side only</option>
+            <option value="auto">🔁 Auto Duplex — the printer prints both sides itself</option>
+            <option value="manual">✋ Manual Duplex — a popup after the front, flip the page and print the back</option>
+          </select>
+          <p style="font-size:11px;color:#c2410c;margin:4px 0 0;">⚠️ Duplex needs Print Agent v10+ — update the agent first, then enable this.</p>
+          <p style="font-size:11px;color:#6b6870;margin:4px 0 0;line-height:1.55;">Which prints offer duplex, and the duplex rates, are set in the Advance Feature tab.</p>
         </div>
         <div class="form-group full">
           <p style="font-size:12px;color:#6b6870;margin:0;">
@@ -1741,13 +1750,7 @@ select[data-i18n-select] option:checked{background-color:#642b30;color:#fff}
   </style>
 
         <div class="form-group full">
-          <label>📄 Duplex (Dual-Side) Printing</label>
-          <select id="setDuplexMode" onchange="toggleDuplexPrices()">
-            <option value="">❌ No — single side only</option>
-            <option value="auto">🔁 Auto Duplex — the printer prints both sides itself</option>
-            <option value="manual">✋ Manual Duplex — a popup after the front, flip the page and print the back</option>
-          </select>
-          <p style="font-size:11px;color:#c2410c;margin:4px 0 0;">⚠️ Duplex needs Print Agent v10+ — update the agent first, then enable this.</p>
+          <p style="font-size:11.5px;color:#6b6870;background:#f9fafa;border:1.5px solid #e9ebec;border-radius:12px;padding:10px 12px;margin:0;line-height:1.55;">📄 Duplex (two-sided) is switched on, as Auto or Manual, in the Printer Setup tab. Once it is on, its options and rates appear here.</p>
         </div>
         <div class="form-group full" id="duplexExtraRow" style="display:none;background:#f4f5f6;border:1.5px solid #dfe3e6;border-radius:12px;padding:12px;margin-top:4px;">
           <label style="color:#3b4148;">Which prints should offer duplex?</label>
