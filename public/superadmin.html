@@ -726,7 +726,7 @@ input,select,textarea{border:1.5px solid #e7e8e9;border-radius:12px;
 
 
     <div class="card" style="margin-bottom:20px;">
-      <h2><span>🔄 Print Agent Auto-Update</span></h2>
+      <h2><span>🔄 Print Agent Version</span></h2>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:#f8f7f5;border-radius:14px;padding:16px 20px;margin-bottom:14px;">
         <div>
           <div style="font-size:11px;color:#6b6870;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Current Live Version</div>
@@ -755,8 +755,9 @@ input,select,textarea{border:1.5px solid #e7e8e9;border-radius:12px;
 
       <button class="filter-tab" style="padding:14px 24px;background:#1c6fff;color:#fff;border-color:#1c6fff;font-size:13px;" onclick="pushAgentUpdate()">🚀 Push New Update</button>
       <p style="font-size:11px;color:#6b6870;line-height:1.6;">
-        <strong>Do this first:</strong> put the new code into <code>agent-template/print_agent.py</code> on GitHub and deploy it on Render.<br>
-        <strong>Then:</strong> Push the update to make it available to installed agents. They download it and restart when they next check for updates, normally within one hour.<br>
+        <strong>Do this first:</strong> upload the new Echel Agent installer to a GitHub Release and save its link above, under Easy Installer URL.<br>
+        <strong>Then:</strong> push the version. From v2.1 on, agents never update themselves: they tell the shop owner that a newer version is ready, and the owner runs the installer.<br>
+        <strong>Older agents:</strong> agents older than v2.1 download that installer by themselves, normally within one hour, and open it for the shop owner to finish.<br>
         <strong>Version series:</strong> The next version is suggested automatically and can be changed. The server rejects versions older than the current release.
       </p>
       <div id="agentVersionMsg" style="font-size:12px;margin-top:8px;display:none;"></div>
@@ -3324,9 +3325,13 @@ function renderWhitelabels(d) {
       : w.blocked
         ? '<span style="font-size:10px;background:#fee2e2;color:#991b1b;border-radius:999px;padding:2px 9px;font-weight:800;">PAUSED</span>'
         : '<span style="font-size:10px;background:#dcfce7;color:#166534;border-radius:999px;padding:2px 9px;font-weight:800;">ACTIVE</span>';
-    const rzpChip = w.razorpayReady
+    // The gateway shop setup fees go through. A partner on Cashfree used to
+    // read as "Razorpay not set up".
+    const rzpChip = w.payMode === 'razorpay'
       ? '<span style="font-size:10.5px;color:#166534;font-weight:700;">💳 Razorpay ✓</span>'
-      : '<span style="font-size:10.5px;color:#991b1b;font-weight:700;">💳 Razorpay not set up</span>';
+      : w.payMode === 'cashfree'
+        ? '<span style="font-size:10.5px;color:#166534;font-weight:700;">💳 Cashfree ✓</span>'
+        : '<span style="font-size:10.5px;color:#991b1b;font-weight:700;">💳 No payment gateway — shops cannot register yet</span>';
 
     return `<details style="background:#f7f7f8;border:1.5px solid ${w.blocked ? '#fecaca' : '#e2ddd6'};border-radius:14px;padding:13px 15px;margin-bottom:11px;">
       <summary style="cursor:pointer;font-weight:800;font-size:14px;list-style:none;">
@@ -3367,6 +3372,7 @@ function renderWhitelabels(d) {
         <input id="wlBase_${w.id}" type="number" value="${w.basePrice}" style="width:110px;padding:8px 10px;border:1.5px solid #e2ddd6;border-radius:9px;font-size:13px;font-weight:700;">
         <button onclick="saveWlBase('${w.id}')" style="background:#111114;color:#fff;border:none;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">Base Price Save</button>
         ${w.paid ? `<button onclick="toggleWlBlock('${w.id}',${w.blocked ? 'false' : 'true'})" style="background:${w.blocked ? '#16a34a' : '#fee2e2'};color:${w.blocked ? '#fff' : '#dc2626'};border:none;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">${w.blocked ? '▶️ Unblock' : '⏸️ Pause'}</button>` : ''}
+        ${w.paid ? `<button onclick="resetWlPassword('${w.id}')" style="background:#fff;color:#111114;border:1.5px solid #e2ddd6;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">🔑 Reset password</button>` : ''}
       </div>
       <p style="font-size:10.5px;color:#9b9690;margin-top:8px;line-height:1.55;">
         Base price = this partner cannot sell to shops below this. When it changes, a partner price below the base is raised to match it.
@@ -3400,7 +3406,22 @@ async function toggleWlBlock(id, blocked) {
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'fail');
+    // The list used to keep showing the old state until a reload.
+    loadWhitelabels();
+  } catch (e) { alert('❌ ' + e.message); }
+}
 
+// A partner who lost their password — or whose licence was activated after
+// the payment page had closed — gets a new one. It is shown here once.
+async function resetWlPassword(id) {
+  if (!confirm('Set a new password for this partner? The old one stops working.')) return;
+  try {
+    const r = await fetch(`/api/superadmin/whitelabel/${id}/reset-password`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'fail');
+    prompt('New partner password — copy it and send it to the partner. It is shown only once.', d.password);
   } catch (e) { alert('❌ ' + e.message); }
 }
 
@@ -3816,7 +3837,7 @@ function agentVerBadge(v, lastSeen, label) {
   if (myLabel) {
     const behind = _latestAgentLabel && cmpVerLabel(myLabel, _latestAgentLabel) < 0;
     return behind
-      ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 7px;" title="Old version — the latest is v${_latestAgentLabel}. The agent updates itself within 1 hour.">v${myLabel} ⬆</span>`
+      ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 7px;" title="Old version — the latest is v${_latestAgentLabel}. Update it with the Echel Agent installer.">v${myLabel} ⬆</span>`
       : `<span style="display:inline-block;font-size:10px;font-weight:800;background:#dcfce7;color:#166534;border-radius:6px;padding:2px 7px;" title="Running the latest version">v${myLabel} ✓</span>`;
   }
   if (!ver) {
@@ -3826,7 +3847,7 @@ function agentVerBadge(v, lastSeen, label) {
   }
   const latest = _latestAgentVersion;
   if (latest && ver < latest) {
-    return `<span style="display:inline-block;font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 7px;" title="Old version — the latest is v${latest}. The agent updates itself within 1 hour.">v${ver} ⬆</span>`;
+    return `<span style="display:inline-block;font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 7px;" title="Old version — the latest is v${latest}. Update it with the Echel Agent installer.">v${ver} ⬆</span>`;
   }
   return `<span style="display:inline-block;font-size:10px;font-weight:800;background:#dcfce7;color:#166534;border-radius:6px;padding:2px 7px;" title="Running the latest version">v${ver} ✓</span>`;
 }
@@ -4192,7 +4213,7 @@ async function pushAgentUpdate() {
     ? `\n\n📝 "What's in Update" will carry ${notes.split('\n').filter(l => l.trim()).length} line(s).`
     : `\n\n⚠️ "What's in the Update" is empty — shop owners will see no update notes, and the previous note will be removed too.`;
 
-  if (!confirm(`Are you sure? Version v${label} will be pushed and every customer's Print Agent will download the new code. First confirm that the new agent-template/print_agent.py has been deployed on GitHub/Render.${notesLine}`)) {
+  if (!confirm(`Are you sure? Version v${label} will be pushed. Every Print Agent will tell its shop owner that a newer version is ready. First make sure the Easy Installer URL points to the new installer.${notesLine}`)) {
     return;
   }
 
@@ -4208,7 +4229,7 @@ async function pushAgentUpdate() {
       _latestAgentLabel   = data.versionLabel || label;
       document.getElementById('agentVersionDisplay').textContent = data.displayVersion || data.versionLabel;
       if (inputEl) inputEl.value = data.nextLabel || '';
-      msgEl.textContent = `✅ Version v${data.versionLabel} pushed! All customer PCs will auto-update within 1 hour.`;
+      msgEl.textContent = `✅ Version v${data.versionLabel} pushed! Agents now tell shop owners that a newer version is ready.`;
       msgEl.style.color = '#00c853';
       msgEl.style.display = 'block';
     } else {

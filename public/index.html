@@ -102,7 +102,7 @@
       "name": "How much does Echel cost?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "There is a free demo first. After that it is ₹399 per month, or ₹999 one-time for a lifetime plan. There is no per-print commission and no hidden charge."
+        "text": "There is a free demo first. After that you pick a plan — Starter, Pro or Premium — and each shows its current price on echel.in. There is no per-print commission and no hidden charge."
       }
     },
     {
@@ -3850,7 +3850,7 @@ html.legal-open,body.legal-open{overflow:hidden}
         <h3 data-cfg="roi01">🧮 Do the Math — In How Many Days Is It Recovered?</h3>
         <div data-cfg-html="roi02" class="roi-line"><span>Just 15 prints a day (at minimum)</span><span>15 × ₹5 = ₹75/day</span></div>
         <div data-cfg-html="roi03" class="roi-line"><span>Monthly print earnings</span><span>~₹2,250</span></div>
-        <div data-cfg-html="roi04" class="roi-line"><span>Software cost (One-Time)</span><span>₹999 — ONE time</span></div>
+        <div data-cfg-html="roi04" class="roi-line"><span>Software cost</span><span id="roiSoftwareCost">see the plans below</span></div>
         <div data-cfg-html="roi05" class="roi-line"><span>Recovered</span><span>In under 2 weeks ✅</span></div>
         <p data-cfg="roi06" style="font-size:11px;opacity:.7;margin:10px 0 0;">* For example only — your rates and prints depend on your shop. Plus the time saved and extra photo/resume earnings on top.</p>
       </div>
@@ -4217,6 +4217,20 @@ var PLAN_PERIOD = { monthly: ' / month', quarterly: ' / 3 months', yearly: ' / y
           else c.style.display = 'none';
         });
       });
+      // "Do the Math" quotes what the software costs. It said "Rs 999 — ONE
+      // time" whatever the plans were; now it quotes the cheapest plan the
+      // way its own card does. One whole sentence per cycle, so the
+      // translation never gets an English piece glued into it.
+      var roiCost = document.getElementById('roiSoftwareCost');
+      var cheapest = ['starter', 'pro', 'premium'].map(function(k){ return d.plans[k]; })
+        .filter(Boolean).sort(function(a, b){ return a.fee - b.fee; })[0];
+      if (roiCost && cheapest) {
+        roiCost.textContent =
+            cheapest.billingCycle === 'monthly'   ? 'from ₹' + cheapest.fee + ' / month'
+          : cheapest.billingCycle === 'quarterly' ? 'from ₹' + cheapest.fee + ' / 3 months'
+          : cheapest.billingCycle === 'yearly'    ? 'from ₹' + cheapest.fee + ' / year'
+          :                                         'from ₹' + cheapest.fee + ' — one time';
+      }
       // The grid is only as wide as the number of remaining cards. Without this,
       // two cards stick to the left corner of a 4-column grid and the right half
       // of the page looks empty.

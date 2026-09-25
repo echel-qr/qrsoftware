@@ -239,6 +239,86 @@ test('complete backend boots on an empty PostgreSQL database and serves authenti
     // Rows numbered by the database carry on after the highest id restored.
     await db.query("INSERT INTO reviews (name, stars, text) VALUES ('After restore', 5, 'still works')");
     response = await fetch(base + '/about'); assert.equal(response.status, 200); assert.match(await response.text(), /Echel/);
+
+    // ── Money paths ────────────────────────────────────────────────────────
+    // (The sandbox has no fetch, so nothing here can reach Razorpay.)
+    const jwt = localRequire('jsonwebtoken');
+    const nodeCrypto = require('node:crypto');
+    const rzpSign = (secret, orderId, paymentId) => nodeCrypto.createHmac('sha256', secret).update(orderId + '|' + paymentId).digest('hex');
+    const post = (url, body, extra) => fetch(base + url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(extra || {}) }, body: JSON.stringify(body) });
+    await db.query(`INSERT INTO shops (id, name, phone, setup_paid, password_hash, payment_mode, payment_gateway, razorpay_key_id, razorpay_key_secret, price_bw, price_color)
+                    VALUES ('SHOP_PAY01','Pay Test','9000000003',true,'x','both','razorpay','rzp_test_fixture','shop-fixture-secret',2,5)`);
+    await db.query(`INSERT INTO print_jobs (id, shop_id, file_name, total_pages, copies, color_mode, amount, razorpay_order_id) VALUES
+                    ('JOB_CHEAP','SHOP_PAY01','a.pdf',1,1,'bw',2,'order_cheap'),
+                    ('JOB_BIG','SHOP_PAY01','b.pdf',50,1,'bw',100,'order_big'),
+                    ('JOB_CTR','SHOP_PAY01','c.pdf',5,1,'bw',10,''),
+                    ('JOB_CTR2','SHOP_PAY01','d.pdf',5,1,'bw',10,'')`);
+    const cheapReceipt = { razorpay_order_id: 'order_cheap', razorpay_payment_id: 'pay_1', razorpay_signature: rzpSign('shop-fixture-secret', 'order_cheap', 'pay_1') };
+    // The receipt of the Rs 2 print cannot pay for the Rs 100 one.
+    response = await post('/api/payment/razorpay/verify', { ...cheapReceipt, jobId: 'JOB_BIG' });
+    assert.equal(response.status, 400);
+    assert.equal((await db.query("SELECT payment_status FROM print_jobs WHERE id='JOB_BIG'")).rows[0].payment_status, 'pending');
+    // Its own receipt pays it — once.
+    response = await post('/api/payment/razorpay/verify', { ...cheapReceipt, jobId: 'JOB_CHEAP' });
+    assert.equal(response.status, 200, await response.text());
+    let job = (await db.query("SELECT payment_status, status FROM print_jobs WHERE id='JOB_CHEAP'")).rows[0];
+    assert.deepEqual([job.payment_status, job.status], ['paid', 'queued']);
+    await db.query("UPDATE print_jobs SET status='printed' WHERE id='JOB_CHEAP'");
+    response = await post('/api/payment/razorpay/verify', { ...cheapReceipt, jobId: 'JOB_CHEAP' });
+    assert.equal(response.status, 200);
+    assert.equal((await db.query("SELECT status FROM print_jobs WHERE id='JOB_CHEAP'")).rows[0].status, 'printed', 'the same receipt cannot queue a printed job again');
+    response = await post('/api/payment/razorpay/verify', { razorpay_order_id: 'order_big', razorpay_payment_id: 'pay_2', razorpay_signature: 'f'.repeat(64), jobId: 'JOB_BIG' });
+    assert.equal(response.status, 400, 'a forged signature');
+
+    // The bill counts the pages that will print — not a number the browser sends.
+    response = await post('/api/payment/counter', { jobId: 'JOB_CTR', totalPages: 1, selectedPages: [], copies: -5, colorMode: 'bw' });
+    assert.equal(response.status, 200, await response.text());
+    job = (await db.query("SELECT amount, copies, total_pages, selected_pages FROM print_jobs WHERE id='JOB_CTR'")).rows[0];
+    assert.deepEqual([Number(job.amount), job.copies, job.total_pages, job.selected_pages], [10, 1, 5, '1,2,3,4,5']);
+    response = await post('/api/payment/counter', { jobId: 'JOB_CTR2', totalPages: 1, selectedPages: [2, 4], copies: 2, colorMode: 'bw' });
+    job = (await db.query("SELECT amount, total_pages, selected_pages FROM print_jobs WHERE id='JOB_CTR2'")).rows[0];
+    assert.deepEqual([Number(job.amount), job.total_pages, job.selected_pages], [8, 2, '2,4'], '2 pages x 2 copies x Rs 2');
+    // A paid print cannot be priced again, and an expired upload cannot be paid.
+    assert.equal((await post('/api/payment/counter', { jobId: 'JOB_CTR', copies: 100 })).status, 409);
+    await db.query("UPDATE print_jobs SET status='abandoned' WHERE id='JOB_BIG'");
+    assert.equal((await post('/api/payment/counter', { jobId: 'JOB_BIG' })).status, 410);
+
+    // The Advance pack opens only with its own unlock order.
+    await db.query("INSERT INTO shops (id, name, phone, setup_paid, password_hash, advanced_order_id) VALUES ('SHOP_ADV01','Adv Test','9000000004',true,'x','order_adv')");
+    const advAuth = { Authorization: 'Bearer ' + jwt.sign({ shopId: 'SHOP_ADV01' }, env.JWT_SECRET) };
+    response = await post('/api/admin/advanced/verify', { razorpay_order_id: 'order_renewal', razorpay_payment_id: 'pay_r', razorpay_signature: rzpSign('', 'order_renewal', 'pay_r') }, advAuth);
+    assert.equal(response.status, 400, 'a receipt for some other payment of ours');
+    let adv = (await db.query("SELECT advanced_unlocked, owned_features FROM shops WHERE id='SHOP_ADV01'")).rows[0];
+    assert.deepEqual([adv.advanced_unlocked, adv.owned_features.length], [false, 0], 'nothing was granted');
+    response = await post('/api/admin/advanced/verify', { razorpay_order_id: 'order_adv', razorpay_payment_id: 'pay_a', razorpay_signature: rzpSign('', 'order_adv', 'pay_a') }, advAuth);
+    assert.equal(response.status, 200, await response.text());
+    adv = (await db.query("SELECT advanced_unlocked, owned_features FROM shops WHERE id='SHOP_ADV01'")).rows[0];
+    assert.equal(adv.advanced_unlocked, true);
+    assert.ok(adv.owned_features.length > 0, 'the pack is granted with it');
+
+    // Prices must be real prices, at registration and in Settings.
+    const payAuth = { Authorization: 'Bearer ' + jwt.sign({ shopId: 'SHOP_PAY01' }, env.JWT_SECRET) };
+    const putSettings = body => fetch(base + '/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...payAuth }, body: JSON.stringify(body) });
+    for (const bad of [0, -3, 'abc']) assert.equal((await putSettings({ price_bw: bad })).status, 400, 'price_bw ' + bad);
+    assert.equal((await putSettings({ price_color: 0 })).status, 400);
+    response = await putSettings({ price_bw: 3.5 });
+    assert.equal(response.status, 200, await response.text());
+    assert.equal(Number((await db.query("SELECT price_bw FROM shops WHERE id='SHOP_PAY01'")).rows[0].price_bw), 3.5);
+
+    // Superadmin -> White Label: the partner's gateway, and a password reset
+    // that only a paid partner can get.
+    const partner = (await db.query('SELECT id FROM whitelabels LIMIT 1')).rows[0];
+    response = await fetch(base + '/api/superadmin/whitelabels', { headers });
+    assert.equal((await response.json()).whitelabels[0].payMode, '', 'no gateway yet');
+    assert.equal((await fetch(base + '/api/superadmin/whitelabel/' + partner.id + '/reset-password', { method: 'POST', headers })).status, 400);
+    await db.query('UPDATE whitelabels SET paid=true WHERE id=$1', [partner.id]);
+    response = await fetch(base + '/api/superadmin/whitelabel/' + partner.id + '/reset-password', { method: 'POST', headers });
+    const reset = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(reset));
+    assert.match(reset.password, /^[0-9A-F]{8}$/);
+    response = await post('/api/whitelabel/login', { wlId: partner.id, password: reset.password });
+    assert.equal(response.status, 200, 'the partner signs in with it');
+    assert.equal((await fetch(base + '/api/superadmin/whitelabel/' + partner.id + '/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' } })).status, 401, 'only the super admin');
   } finally {
     if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
     await db.close();

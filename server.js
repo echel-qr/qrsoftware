@@ -4676,6 +4676,26 @@ app.post('/api/admin/feature/create-order', verifyToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// The Advance pack, unlocked by its order — for the webhook and the reconcile.
+// Only the first caller wins (AND advanced_order_id=$2), so a payment is
+// recorded once however many of them arrive, and the pack is granted exactly
+// as the browser's verify grants it.
+async function unlockAdvancedByOrder(shopId, orderId, paymentId, via) {
+  const r = await pool.query(
+    "UPDATE shops SET advanced_unlocked=true, advanced_order_id='' WHERE id=$1 AND advanced_order_id=$2 RETURNING id",
+    [shopId, orderId]);
+  if (!r.rows.length) return false;
+  await grantFeatures(shopId, coreFeatureIds(await getAdvanceFeatures()));
+  console.log('Advanced unlocked (' + via + '):', shopId);
+  await recordPayment({
+    kind: 'advanced', shopId,
+    amount: await getAdvancedFee(),
+    paymentId: paymentId || ('RECONCILE_' + orderId), orderId,
+    note: via === 'webhook' ? 'Advanced printing unlock (webhook)' : 'Advanced printing unlock (reconcile)'
+  });
+  return true;
+}
+
 // Unlock the add-on by order id. It is called from TWO paths:
 //   1. /api/admin/feature/verify — from the customer's browser, right after payment
 //   2. The Razorpay webhook — if the browser was closed, the network dropped, or the
@@ -5975,6 +5995,9 @@ app.get('/api/superadmin/whitelabels', verifySuperAdmin, async (req, res) => {
         phone: w.phone, email: w.email, paid: !!w.paid, blocked: !!w.blocked,
         licenseFee: w.license_fee || 0, basePrice: w.base_price || 0, shopPrice: w.shop_price || 0,
         razorpayReady: !!(w.razorpay_key_id && w.razorpay_key_secret),
+        // 'razorpay' | 'cashfree' | '' — the gateway a shop's setup fee goes
+        // through. '' means shops cannot register under this partner yet.
+        payMode: wlPayMode(w),
         poweredBy: w.powered_by || '', createdAt: w.created_at, paidAt: w.paid_at,
         stats: s.rows[0]
       });
@@ -5985,6 +6008,20 @@ app.get('/api/superadmin/whitelabels', verifySuperAdmin, async (req, res) => {
       licenseActual: await getWlLicenseActual(),
       defaultBasePrice: await getWlBasePrice()
     });
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// A new password for a partner who has lost theirs, or whose licence was
+// activated by the reconcile (the browser that would have shown it was
+// closed). Shown once, to the super admin, who passes it on.
+app.post('/api/superadmin/whitelabel/:id/reset-password', verifySuperAdmin, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT id, paid FROM whitelabels WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'White label not found' });
+    if (!r.rows[0].paid) return res.status(400).json({ error: 'This partner has not paid the licence yet.' });
+    const password = crypto.randomBytes(4).toString('hex').toUpperCase();
+    await pool.query('UPDATE whitelabels SET password_hash=$2 WHERE id=$1', [req.params.id, await hashPassword(password)]);
+    res.json({ success: true, password });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -7172,6 +7209,12 @@ app.post('/api/shop/register', async (req, res) => {
 
     if (!name || !name.trim()) return res.status(400).json({ error: 'The shop name is required' });
     if (!password || password.length < 4) return res.status(400).json({ error: 'The password must be at least 4 characters' });
+    // Prices: empty keeps the usual Rs 5 / Rs 10; anything typed has to be a
+    // real price. A negative or zero price went straight into the database.
+    const regPriceBw = (price_bw === undefined || price_bw === null || price_bw === '') ? 5 : parsePrice(price_bw);
+    const regPriceColor = (price_color === undefined || price_color === null || price_color === '') ? 10 : parsePrice(price_color);
+    if (!(regPriceBw > 0)) return res.status(400).json({ error: 'Enter a B&W price above ₹0' });
+    if (!(regPriceColor > 0)) return res.status(400).json({ error: 'Enter a Color price above ₹0' });
     if (password.length > PASSWORD_MAX) return res.status(400).json({ error: 'The password is too long' });
 
     // Email is now REQUIRED — the payment confirmation is sent to it
@@ -7288,7 +7331,7 @@ app.post('/api/shop/register', async (req, res) => {
          setup_paid,setup_amount,plan_type,referred_by,onboarded_by,base_price_at_signup,sold_price,whitelabel_id,
          created_ip,billing_cycle)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,false,$16,$17,$18,$19,$20,$21,$22,$23,$24)`,
-      [shopId, name, address, _ph.phone, finalEmail, printer_model, price_bw||5, price_color||10, finalPaymentMode, passwordHash,
+      [shopId, name, address, _ph.phone, finalEmail, printer_model, regPriceBw, regPriceColor, finalPaymentMode, passwordHash,
        finalGateway, razorpay_key_id||'', razorpay_key_secret||'', cashfree_app_id||'', cashfree_secret_key||'',
        firstPayment, plan, referredBy, onboardedBy, basePrice, soldPrice, whitelabelId,
        _regIp, planPricing[plan].billingCycle]
@@ -7897,6 +7940,16 @@ app.post('/api/admin/advanced/verify', verifyToken, async (req, res) => {
     const r = await pool.query(
       "UPDATE shops SET advanced_unlocked=true, advanced_order_id='' WHERE id=$1 AND advanced_order_id=$2 RETURNING id",
       [req.shopId, razorpay_order_id]);
+    if (!r.rows.length) {
+      // The signature only proves that Razorpay saw SOME payment of ours — a
+      // renewal, an add-on, another shop's unlock. The pack used to be granted
+      // right here anyway, so any of those receipts opened it for free. Now
+      // only this shop's own open unlock order does. The same order coming back
+      // after the webhook or the reconcile already used it is simply done.
+      const sh = await pool.query('SELECT advanced_unlocked FROM shops WHERE id=$1', [req.shopId]);
+      if (sh.rows[0] && sh.rows[0].advanced_unlocked) return res.json({ success: true, unlocked: true });
+      return res.status(400).json({ error: 'This payment does not belong to this unlock.' });
+    }
     // Grant the core pack along with the legacy flag — the real truth now lives in
     // owned_features. Without it the Pro/Premium difference would not
     // apply and the ownership of new features would be unknown.
@@ -7904,7 +7957,7 @@ app.post('/api/admin/advanced/verify', verifyToken, async (req, res) => {
       const catalog = await getAdvanceFeatures();
       await grantFeatures(req.shopId, coreFeatureIds(catalog));
     }
-    if (r.rows.length) {
+    {
       console.log('Advanced unlocked:', req.shopId, razorpay_payment_id);
       // PREVIOUSLY this money was not recorded anywhere — just a console.log.
       // That is why the ₹199 unlocks never showed up in superadmin.
@@ -8364,6 +8417,17 @@ app.put('/api/admin/settings', verifyToken, async (req, res) => {
     const cashfree_secret_key = (typeof cashfreeSecretRaw === 'string' && cashfreeSecretRaw !== '__KEEP__')
       ? cashfreeSecretRaw.trim() : cashfreeSecretRaw;
 
+    // Prices — not sent (or empty) keeps the old one; anything sent must be
+    // above 0. Settings used to store any value, a zero included, and a zero
+    // price made every online payment fail.
+    const priceIn = v => (v === undefined || v === null || v === '') ? null : parsePrice(v);
+    const priceBw = priceIn(price_bw), priceColor = priceIn(price_color);
+    if (priceBw !== null ? !(priceBw > 0) : (price_bw !== undefined && price_bw !== null && price_bw !== ''))
+      return res.status(400).json({ error: 'Enter a B&W price above ₹0' });
+    if (priceColor !== null ? !(priceColor > 0) : (price_color !== undefined && price_color !== null && price_color !== ''))
+      return res.status(400).json({ error: 'Enter a Color price above ₹0' });
+    const printerIn = v => (typeof v === 'string') ? v.slice(0, 300) : null;
+
     // Email — old shops (that had no email) can fill it in here.
     // undefined = the field was not sent, so the old value stays as it is.
     let finalEmail;
@@ -8450,10 +8514,10 @@ app.put('/api/admin/settings', verifyToken, async (req, res) => {
         printer_name_bw=COALESCE($14,printer_name_bw),
         printer_name_color=COALESCE($15,printer_name_color)
       WHERE id=$16`,
-      [name, address, phone, printer_model, price_bw, price_color, finalPaymentMode,
+      [name, address, phone, printer_model, priceBw, priceColor, finalPaymentMode,
        finalGateway, finalRzpId||'', finalRzpSecret||'', finalCfId||'', finalCfSecret||'',
        finalEmail === undefined ? null : finalEmail,
-       printer_name_bw, printer_name_color,
+       printerIn(printer_name_bw), printerIn(printer_name_color),
        req.shopId]
     );
 
@@ -9279,9 +9343,17 @@ app.post('/api/upload', upload.single('file'), handleUploadErrors, async (req, r
 
 function parseSelectedPages(selectedPages, fallbackCount) {
   if (Array.isArray(selectedPages) && selectedPages.length) {
-    return selectedPages.map(p => parseInt(p)).filter(p => !isNaN(p));
+    const list = selectedPages.map(p => parseInt(p, 10)).filter(p => Number.isInteger(p) && p >= 1);
+    if (list.length) return list;
   }
-  return Array.from({length: fallbackCount}, (_, i) => i + 1);
+  return Array.from({length: Math.max(1, parseInt(fallbackCount, 10) || 1)}, (_, i) => i + 1);
+}
+
+/** A print that is paid already, or whose upload expired, cannot be priced again. */
+function paidOrExpired(job) {
+  if (job.payment_status === 'paid') return { status: 409, error: 'This print is already paid.' };
+  if (job.status === 'abandoned') return { status: 410, error: 'This upload has expired. Please upload the file again.' };
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -9342,7 +9414,7 @@ function verifyCashfreeWebhook(secretKey, timestamp, rawBody, signature) {
 
 app.post('/api/payment/online/create', async (req, res) => {
   try {
-    const { jobId, colorMode, copies, totalPages, selectedPages } = req.body;
+    const { jobId, colorMode, copies, selectedPages } = req.body;
 
     const jobCheck = await pool.query(
       `SELECT j.*, s.price_bw, s.price_color, s.price_bw_duplex, s.price_color_duplex, s.price_4x6_4, s.price_4x6_6, s.price_4x6_8, s.price_4x6_10, s.price_4x6_12, s.page_slabs, s.price_resume_color, s.price_resume_bw, ${BIG_SIZE_PRICE_SELECT}, s.payment_mode, s.payment_gateway, s.paused, s.plan_type, s.billing_cycle, s.paid_until,
@@ -9355,6 +9427,8 @@ app.post('/api/payment/online/create', async (req, res) => {
     if (!isSubscriptionActive(jobCheck.rows[0])) return res.status(403).json({ error: '⏸️ The shop is inactive — the owner needs to renew the subscription' });
 
     const job = jobCheck.rows[0];
+    const _closed = paidOrExpired(job);
+    if (_closed) return res.status(_closed.status).json({ error: _closed.error });
 
     // Demo limit — BEFORE the payment STARTS. Stopping it at the webhook would be
     // wrong: the money would be debited and no print would come out.
@@ -9374,7 +9448,7 @@ app.post('/api/payment/online/create', async (req, res) => {
       return res.status(400).json({ error: 'This shop has not set up online payment yet' });
     }
 
-    const finalColorMode = colorMode || job.color_mode;
+    const finalColorMode = (colorMode || job.color_mode) === 'color' ? 'color' : 'bw';
     // ── DUPLEX ── only when the shop has enabled it; with manual duplex
     // copies are forced to 1 (otherwise the owner would have to put up with a
     // front/back popup for every copy and the pages would get mixed up)
@@ -9392,12 +9466,16 @@ app.post('/api/payment/online/create', async (req, res) => {
     const dupClOk   = dupRow.duplex_color_enabled !== false;
     const dupModeOk = finalColorMode === 'color' ? dupClOk : dupBwOk;
     if (req.body.duplex === true && shopDuplexMode && dupModeOk) finalDuplex = true;
-    const finalCopies = parseInt(copies) || job.copies;
-    const finalPages = parseInt(totalPages) || job.total_pages;
+    // Copies: a whole number from 1 up (-5 used to make a negative bill).
+    const finalCopies = Math.max(1, parseInt(copies, 10) || parseInt(job.copies, 10) || 1);
+    // The bill is made from the SAME page list the agent prints from. It used
+    // to come from a page count sent by the browser, so "1 page" could be
+    // paid while every page of a 50-page file went to the printer.
+    const finalSelectedPages = parseSelectedPages(selectedPages, job.total_pages);
+    const finalPages = finalSelectedPages.length;
     // With manual duplex, copies are ALWAYS 1 — for the print and for the BILL (otherwise
     // the customer would pay for N copies and get 1 print)
     const effCopies = (finalDuplex && shopDuplexMode === 'manual') ? 1 : finalCopies;
-    const finalSelectedPages = parseSelectedPages(selectedPages, job.total_pages);
 
     // The cap on total sheets. It lives here because the copies are known only HERE —
     // at upload time the customer has not chosen copies yet.
@@ -9617,24 +9695,48 @@ app.post('/api/payment/razorpay/verify', async (req, res) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, jobId } = req.body;
 
     const jobCheck = await pool.query(
-      'SELECT s.razorpay_key_secret FROM print_jobs j JOIN shops s ON j.shop_id=s.id WHERE j.id=$1', [jobId]
+      `SELECT j.razorpay_order_id, j.payment_status, j.amount,
+              s.razorpay_key_id, s.razorpay_key_secret
+         FROM print_jobs j JOIN shops s ON j.shop_id=s.id WHERE j.id=$1`, [jobId]
     );
     if (!jobCheck.rows.length) return res.status(404).json({ error: 'Job not found' });
-    const keySecret = jobCheck.rows[0].razorpay_key_secret;
+    const job = jobCheck.rows[0];
+    const keySecret = job.razorpay_key_secret;
 
     const expectedSignature = crypto
-      .createHmac('sha256', keySecret)
+      .createHmac('sha256', keySecret || '')
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    if (expectedSignature !== razorpay_signature) {
+    if (!keySecret || expectedSignature !== razorpay_signature) {
       return res.status(400).json({ error: 'Payment verification failed' });
     }
 
-    await pool.query(
-      'UPDATE print_jobs SET payment_status=$1, status=$2, payment_id=$3 WHERE id=$4',
-      ['paid', 'queued', razorpay_payment_id, jobId]
+    // The signature proves that Razorpay took the money — not WHICH print it
+    // paid for. Every order of a shop is signed with the same secret, so the
+    // receipt of a Rs 2 print could mark a Rs 500 print paid. The order has
+    // to be this print's own. An older order of the same print (a second
+    // checkout window) counts only when Razorpay says it is paid in full.
+    if (razorpay_order_id !== job.razorpay_order_id) {
+      let ok = false;
+      try {
+        const order = await razorpayOrderStatus(razorpay_order_id, job.razorpay_key_id, keySecret);
+        ok = !!(order && order.receipt === jobId && order.status === 'paid'
+                && Number(order.amount_paid) >= Math.round(Number(job.amount) * 100));
+      } catch (e) { ok = false; }
+      if (!ok) return res.status(400).json({ error: 'This payment does not belong to this print.' });
+    }
+
+    // Once only: the same receipt sent again cannot put a print back in the
+    // queue.
+    const upd = await pool.query(
+      `UPDATE print_jobs SET payment_status='paid', payment_id=$1,
+              status = CASE WHEN status='pending' THEN 'queued' ELSE status END
+        WHERE id=$2 AND payment_status <> 'paid'
+        RETURNING shop_id`,
+      [razorpay_payment_id, jobId]
     );
+    if (upd.rows.length) markShopHasWork(upd.rows[0].shop_id);
 
     console.log(`Razorpay payment verified: ${jobId} | ${razorpay_payment_id}`);
     res.json({ success: true });
@@ -9746,7 +9848,7 @@ app.get('/api/payment/cashfree/status/:jobId', async (req, res) => {
 
 app.post('/api/payment/counter', async (req, res) => {
   try {
-    const { jobId, colorMode, copies, totalPages, selectedPages } = req.body;
+    const { jobId, colorMode, copies, selectedPages } = req.body;
     if (!jobId) return res.status(400).json({ error:'Job ID required' });
 
     const jobCheck = await pool.query(
@@ -9755,6 +9857,8 @@ app.post('/api/payment/counter', async (req, res) => {
     if (!jobCheck.rows.length) return res.status(404).json({ error:'Job not found' });
 
     const job = jobCheck.rows[0];
+    const _closed = paidOrExpired(job);
+    if (_closed) return res.status(_closed.status).json({ error: _closed.error });
     if (job.paused) return res.status(403).json({ error: '🏪 The shop is closed right now — try again later' });
     if (!isSubscriptionActive(job)) return res.status(403).json({ error: '⏸️ The shop is inactive — the owner needs to renew the subscription' });
 
@@ -9772,7 +9876,7 @@ app.post('/api/payment/counter', async (req, res) => {
       return res.status(400).json({ error: 'This shop accepts Online payment only' });
     }
 
-    const finalColorMode = colorMode || job.color_mode;
+    const finalColorMode = (colorMode || job.color_mode) === 'color' ? 'color' : 'bw';
     // ── DUPLEX ── only when the shop has enabled it; with manual duplex
     // copies are forced to 1 (otherwise the owner would have to put up with a
     // front/back popup for every copy and the pages would get mixed up)
@@ -9790,12 +9894,16 @@ app.post('/api/payment/counter', async (req, res) => {
     const dupClOk   = dupRow.duplex_color_enabled !== false;
     const dupModeOk = finalColorMode === 'color' ? dupClOk : dupBwOk;
     if (req.body.duplex === true && shopDuplexMode && dupModeOk) finalDuplex = true;
-    const finalCopies = parseInt(copies) || job.copies;
-    const finalPages = parseInt(totalPages) || job.total_pages;
+    // Copies: a whole number from 1 up (-5 used to make a negative bill).
+    const finalCopies = Math.max(1, parseInt(copies, 10) || parseInt(job.copies, 10) || 1);
+    // The bill is made from the SAME page list the agent prints from. It used
+    // to come from a page count sent by the browser, so "1 page" could be
+    // paid while every page of a 50-page file went to the printer.
+    const finalSelectedPages = parseSelectedPages(selectedPages, job.total_pages);
+    const finalPages = finalSelectedPages.length;
     // With manual duplex, copies are ALWAYS 1 — for the print and for the BILL (otherwise
     // the customer would pay for N copies and get 1 print)
     const effCopies = (finalDuplex && shopDuplexMode === 'manual') ? 1 : finalCopies;
-    const finalSelectedPages = parseSelectedPages(selectedPages, job.total_pages);
 
     // The cap on total sheets. It lives here because the copies are known only HERE —
     // at upload time the customer has not chosen copies yet.
@@ -11408,14 +11516,7 @@ app.post('/api/webhook/razorpay', async (req, res) => {
 
           const adv = await pool.query('SELECT id FROM shops WHERE advanced_order_id=$1', [orderId]);
           if (adv.rows.length) {
-            await pool.query("UPDATE shops SET advanced_unlocked=true, advanced_order_id='' WHERE id=$1", [adv.rows[0].id]);
-            console.log('Advanced unlocked (webhook):', adv.rows[0].id);
-            await recordPayment({
-              kind: 'advanced', shopId: adv.rows[0].id,
-              amount: await getAdvancedFee(),
-              paymentId: paymentId || '', orderId,
-              note: 'Advanced printing unlock (webhook)'
-            });
+            await unlockAdvancedByOrder(adv.rows[0].id, orderId, paymentId || '', 'webhook');
             return res.json({ status: 'ok' });
           }
         }
@@ -11563,17 +11664,42 @@ async function backgroundMaintenance() {
       } catch(e) { /* the next cycle will retry */ }
     }
 
-    // 2b) Setup fee reconcile (owner keys)
-    if (OWNER_RAZORPAY_KEY_ID && OWNER_RAZORPAY_KEY_SECRET) {
+    // 2b) Setup fee reconcile. A partner's shop pays into the PARTNER's own
+    //     account (Razorpay or Cashfree), so its order can only be looked up
+    //     with the partner's keys — with ours it was never found, and a partner
+    //     shop that paid and closed the page stayed inactive for good.
+    //     Every list below is taken in random order: "the first 10" were
+    //     always the same 10 abandoned orders, and nothing behind them was
+    //     ever checked.
+    {
       const setups = await pool.query(
-        `SELECT id, setup_order_id FROM shops
-         WHERE setup_paid=false AND setup_order_id IS NOT NULL AND setup_order_id <> ''
-         LIMIT 10`);
+        `SELECT s.id, s.setup_order_id, s.whitelabel_id,
+                w.razorpay_key_id AS wl_rzp_id, w.razorpay_key_secret AS wl_rzp_secret,
+                w.cashfree_app_id AS wl_cf_id, w.cashfree_secret_key AS wl_cf_secret
+           FROM shops s LEFT JOIN whitelabels w ON w.id = s.whitelabel_id
+          WHERE s.setup_paid=false AND s.setup_order_id IS NOT NULL AND s.setup_order_id <> ''
+          ORDER BY random() LIMIT 20`);
       for (const shop of setups.rows) {
         try {
-          const order = await razorpayOrderStatus(shop.setup_order_id, OWNER_RAZORPAY_KEY_ID, OWNER_RAZORPAY_KEY_SECRET);
-          if (order && order.status === 'paid') {
-            await activateShop(shop.id, order.id);
+          let paid = false;
+          if (shop.whitelabel_id) {
+            if (/^QSPS_/.test(shop.setup_order_id)) {
+              // Our own Cashfree order id (see /api/setup-fee/create)
+              if (shop.wl_cf_id && shop.wl_cf_secret) {
+                const o = await cashfreeRequest('GET', '/pg/orders/' + encodeURIComponent(shop.setup_order_id),
+                  shop.wl_cf_id, shop.wl_cf_secret, null);
+                paid = !!(o && o.order_status === 'PAID');
+              }
+            } else if (shop.wl_rzp_id && shop.wl_rzp_secret) {
+              const o = await razorpayOrderStatus(shop.setup_order_id, shop.wl_rzp_id, shop.wl_rzp_secret);
+              paid = !!(o && o.status === 'paid');
+            }
+          } else if (OWNER_RAZORPAY_KEY_ID && OWNER_RAZORPAY_KEY_SECRET) {
+            const o = await razorpayOrderStatus(shop.setup_order_id, OWNER_RAZORPAY_KEY_ID, OWNER_RAZORPAY_KEY_SECRET);
+            paid = !!(o && o.status === 'paid');
+          }
+          if (paid) {
+            await activateShop(shop.id, shop.setup_order_id);
             console.log('💰 Reconciled setup fee:', shop.id);
           }
         } catch(e) { /* next cycle */ }
@@ -11583,7 +11709,7 @@ async function backgroundMaintenance() {
     if (OWNER_RAZORPAY_KEY_ID && OWNER_RAZORPAY_KEY_SECRET) {
       const renews = await pool.query(
         `SELECT id, renewal_order_id FROM shops
-         WHERE renewal_order_id IS NOT NULL AND renewal_order_id <> '' LIMIT 10`);
+         WHERE renewal_order_id IS NOT NULL AND renewal_order_id <> '' ORDER BY random() LIMIT 20`);
       for (const shop of renews.rows) {
         try {
           const order = await razorpayOrderStatus(shop.renewal_order_id, OWNER_RAZORPAY_KEY_ID, OWNER_RAZORPAY_KEY_SECRET);
@@ -11598,20 +11724,58 @@ async function backgroundMaintenance() {
     // 2b-iii) Advanced unlock reconcile
     if (OWNER_RAZORPAY_KEY_ID && OWNER_RAZORPAY_KEY_SECRET) {
       const advs = await pool.query(
-        `SELECT id, advanced_order_id FROM shops WHERE advanced_order_id IS NOT NULL AND advanced_order_id <> '' LIMIT 10`);
+        `SELECT id, advanced_order_id FROM shops WHERE advanced_order_id IS NOT NULL AND advanced_order_id <> '' ORDER BY random() LIMIT 20`);
       for (const shop of advs.rows) {
         try {
           const order = await razorpayOrderStatus(shop.advanced_order_id, OWNER_RAZORPAY_KEY_ID, OWNER_RAZORPAY_KEY_SECRET);
           if (order && order.status === 'paid') {
-            await pool.query("UPDATE shops SET advanced_unlocked=true, advanced_order_id='' WHERE id=$1", [shop.id]);
-            console.log('Advanced unlocked (reconcile):', shop.id);
-            await recordPayment({
-              kind: 'advanced', shopId: shop.id,
-              amount: await getAdvancedFee(),
-              orderId: shop.advanced_order_id,
-              paymentId: 'RECONCILE_' + shop.advanced_order_id,
-              note: 'Advanced printing unlock (reconcile)'
-            });
+            await unlockAdvancedByOrder(shop.id, shop.advanced_order_id, '', 'reconcile');
+          }
+        } catch(e) {}
+      }
+    }
+
+    // 2b-iv) Add-on (Rs 49) reconcile. Only the webhook covered these, and
+    //        the webhook needs RAZORPAY_WEBHOOK_SECRET — without it a closed
+    //        page after payment meant money taken and no feature.
+    if (OWNER_RAZORPAY_KEY_ID && OWNER_RAZORPAY_KEY_SECRET) {
+      const fts = await pool.query(
+        `SELECT id, feature_order_id FROM shops WHERE feature_order_id IS NOT NULL AND feature_order_id <> '' ORDER BY random() LIMIT 20`);
+      for (const shop of fts.rows) {
+        try {
+          const order = await razorpayOrderStatus(shop.feature_order_id, OWNER_RAZORPAY_KEY_ID, OWNER_RAZORPAY_KEY_SECRET);
+          if (order && order.status === 'paid') {
+            const fid = await unlockFeatureByOrder(shop.id, shop.feature_order_id, 'RECONCILE_' + shop.feature_order_id);
+            if (fid) console.log('Feature unlocked (reconcile):', shop.id, fid);
+          }
+        } catch(e) {}
+      }
+    }
+
+    // 2b-v) Partner licence reconcile. The partner's password is shown only
+    //       by the browser's verify, so a licence paid in a page that was
+    //       closed is activated here and the super admin sets the password
+    //       (Superadmin -> White Label -> Reset password).
+    if (OWNER_RAZORPAY_KEY_ID && OWNER_RAZORPAY_KEY_SECRET) {
+      const lic = await pool.query(
+        `SELECT id, license_order_id, brand_name, license_fee FROM whitelabels
+          WHERE paid=false AND license_order_id IS NOT NULL AND license_order_id <> ''
+          ORDER BY random() LIMIT 10`);
+      for (const w of lic.rows) {
+        try {
+          const order = await razorpayOrderStatus(w.license_order_id, OWNER_RAZORPAY_KEY_ID, OWNER_RAZORPAY_KEY_SECRET);
+          if (order && order.status === 'paid') {
+            const up = await pool.query(
+              'UPDATE whitelabels SET paid=true, paid_at=NOW() WHERE id=$1 AND paid=false RETURNING id', [w.id]);
+            if (up.rows.length) {
+              await recordPayment({
+                kind: 'wl_license', whitelabelId: w.id, shopName: w.brand_name || '',
+                amount: w.license_fee || 0,
+                paymentId: 'RECONCILE_' + w.license_order_id, orderId: w.license_order_id,
+                note: 'White-label license fee (reconcile)'
+              });
+              console.log('💰 Reconciled partner licence:', w.id);
+            }
           }
         } catch(e) {}
       }
