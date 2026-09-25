@@ -451,6 +451,9 @@ AGENT_TOKEN_FILE   = os.path.join(_APPDATA_DIR, "agent_token.txt")
 # (Without this the second instance quietly exited and the
 # owner thought "nothing happened".)
 PANEL_REQUEST_FILE = os.path.join(_APPDATA_DIR, "show_panel.request")
+# The installer leaves this to ask a running agent to close before it replaces
+# the program. Keep the name identical in Echel-Agent-Setup.iss.
+QUIT_REQUEST_FILE = os.path.join(_APPDATA_DIR, "quit.request")
 
 
 def _machine_name():
@@ -1397,6 +1400,74 @@ def _register_startup_folder(cmd):
         return False
 
 
+# The installer writes the owner's answer here: 1 = start with Windows, 0 = do
+# not. The agent obeys it on every launch — it keeps the entries repaired when
+# the answer is yes, and removes any left over from an older version when the
+# answer is no (otherwise that old entry would keep starting it anyway).
+AUTOSTART_REG_KEY = r"Software\Echel\Agent"
+AUTOSTART_REG_VALUE = "AutoStart"
+
+
+def autostart_choice():
+    """True / False as the installer recorded it, or None when nothing was
+    recorded (an agent that was not installed with the installer)."""
+    if os.name != "nt":
+        return None
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, AUTOSTART_REG_KEY, 0, winreg.KEY_READ)
+        try:
+            value, _ = winreg.QueryValueEx(key, AUTOSTART_REG_VALUE)
+        finally:
+            winreg.CloseKey(key)
+        return bool(int(value))
+    except Exception:
+        return None
+
+
+def remove_from_startup():
+    """Take the agent out of Windows startup — both places it could be."""
+    if os.name != "nt":
+        return
+    removed = []
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+        try:
+            winreg.DeleteValue(key, "EchelPrintAgent")
+            removed.append("registry")
+        except FileNotFoundError:
+            pass
+        finally:
+            winreg.CloseKey(key)
+    except Exception as e:
+        log(f"\u26a0\ufe0f  Could not remove the startup registry entry: {e}", "WARN")
+    folder = _startup_folder()
+    vbs_path = os.path.join(folder, STARTUP_VBS_NAME) if folder else ""
+    try:
+        if vbs_path and os.path.exists(vbs_path):
+            os.remove(vbs_path)
+            removed.append("Startup folder")
+    except Exception as e:
+        log(f"\u26a0\ufe0f  Could not remove the Startup folder entry: {e}", "WARN")
+    if removed:
+        log("\u2139\ufe0f  Start with Windows is off \u2014 removed the old entry from the " + " and ".join(removed))
+
+
+def apply_startup_choice():
+    """Start with Windows only when the owner said so at install time."""
+    choice = autostart_choice()
+    if choice is False:
+        remove_from_startup()
+        log("\u2139\ufe0f  Start with Windows: off (chosen during install). "
+            "Open Echel Agent from the desktop icon after a restart.")
+        return
+    # Yes — or an older copy that was never installed, which always started
+    # with Windows and should keep doing so.
+    add_to_startup()
+
+
 def add_to_startup():
     """
     Make sure the agent starts by itself after a Windows restart.
@@ -1434,7 +1505,7 @@ def show_banner():
     # FIRST line of main() — meaning the exe hit a FATAL CRASH on every
     # launch (the log shows "'NoneType' object has no attribute
     # 'write'"). log() is already guarded, so send it through log().
-    log(f"Echel - Local Agent v{VERSION_LABEL} | Tray + Auto-Update + Fit-A4")
+    log(f"Echel - Local Agent v{VERSION_LABEL} | Tray + Fit-A4")
     # Do not guess what is and is not in the bundle - write it to the log.
     try:
         bundle_selfcheck()
@@ -3920,8 +3991,7 @@ def apply_update_and_restart(new_code=None):
         time.sleep(2.0)   # give the new process time to start
 
         # Close the tray icon and exit this old process
-        if agent_state["tray_icon"]:
-            agent_state["tray_icon"].stop()
+        _remove_tray_icon()
         os._exit(0)
     except Exception as e:
         log(f"❌ Error while applying the update: {e}", "ERROR")
@@ -4042,8 +4112,7 @@ def run_installer_and_exit(new_exe_path):
         return
 
     time.sleep(1)
-    if agent_state["tray_icon"]:
-        agent_state["tray_icon"].stop()
+    _remove_tray_icon()
     os._exit(0)
 
 def apply_exe_update_and_restart():
@@ -4530,22 +4599,16 @@ def _manual_update_headless():
             return
 
         _rl = remote_label_or(remote)
-        log(f"🔄 New version available: v{VERSION_LABEL} → v{_rl} (headless update)")
-        _msgbox(f"New version found: v{VERSION_LABEL} -> v{_rl}\n\n"
-                f"Downloading now. The agent will restart by itself.\n"
-                f"This can take a few minutes on a slow connection.",
-                "Echel — Update")
-        try:
-            installer_path, err = download_installer(None)
-        except Exception as e:
-            installer_path, err = None, str(e)
-        if not installer_path:
-            log(f"❌ Manual update (headless): {err}", "ERROR")
-            _msgbox(f"Update download failed.\n\n{err}",
-                    "Echel — Update", 0x10)
-            return
-        log(f"✅ Installing v{remote} (headless)...")
-        run_installer_and_exit(installer_path)
+        log(f"\u2139\ufe0f  Newer version available: v{VERSION_LABEL} -> v{_rl}")
+        # The agent does not update itself any more. It opens the download of
+        # the new installer; the owner runs it, and their Shop ID and settings
+        # stay exactly as they are.
+        _msgbox(f"A newer version is available: v{_rl}\n"
+                f"(this computer has v{VERSION_LABEL})\n\n"
+                f"The download of the new installer opens now. Run it to update \u2014\n"
+                f"your Shop ID and settings are kept.",
+                "Echel \u2014 Update")
+        open_download_page()
     except Exception as e:
         log(f"❌ Headless update error: {e}", "ERROR")
         _msgbox(f"Update check error: {e}", "Echel", 0x10)
@@ -4585,6 +4648,33 @@ def _seconds_until_next_update_check():
             if t > now and (best is None or t < best):
                 best = t
     return max(60, (best - now).total_seconds())
+
+
+def note_newer_version():
+    """Look once whether a newer version exists, and only write it down.
+
+    This fills REMOTE_VERSION_INT / REMOTE_VERSION_LABEL for the panel, which
+    then shows "v2.1 -> v2.2 available". Nothing is downloaded or installed.
+    """
+    time.sleep(20)
+    try:
+        remote = get_remote_version()
+        if remote is not None and remote > VERSION:
+            log(f"\u2139\ufe0f  A newer version is available: v{remote_label_or(remote)} "
+                f"(running v{VERSION_LABEL}). Download the new installer from {SERVER_URL}")
+    except Exception as e:
+        log(f"\u26a0\ufe0f  Could not check for a newer version: {e}", "WARN")
+
+
+def open_download_page():
+    """The latest installer, in the owner's browser."""
+    try:
+        import webbrowser
+        webbrowser.open(f"{SERVER_URL}/api/agent/download-latest-exe")
+        return True
+    except Exception as e:
+        log(f"\u26a0\ufe0f  Could not open the download page: {e}", "WARN")
+        return False
 
 
 def update_checker_loop():
@@ -4632,6 +4722,72 @@ def update_tray_status(status_text):
             agent_state["tray_icon"].title = f"Echel — {status_text}"
         except Exception:
             pass
+
+
+# The tray keeper and the way out take turns: an icon being put back must not
+# land after the agent has taken it away on Exit, or a dead icon stays behind.
+_TRAY_LOCK = threading.Lock()
+
+
+def _tray_icon_present(icon):
+    """Does Windows really show our tray icon?
+
+    pystray never looks at Windows' answer when it adds the icon. Explorer
+    sometimes turns the icon down — right after a restart, when the agent
+    starts with Windows before the taskbar is ready, and now and then while
+    Explorer is busy — and the agent then runs with no icon at all. A change
+    that changes nothing succeeds only for an icon that is there, so that is
+    the question asked here; the tooltip is left alone.
+    """
+    try:
+        import ctypes
+        from pystray._util import win32 as _pw
+        hwnd = getattr(icon, "_hwnd", None)
+        if not hwnd:
+            return False
+        # pystray adds its icon as number 0 (it passes its own number under a
+        # misspelt name). The second number covers a pystray that fixes that.
+        for number in (0, id(icon) & 0xFFFFFFFF):
+            data = _pw.NOTIFYICONDATAW(
+                cbSize=ctypes.sizeof(_pw.NOTIFYICONDATAW),
+                hWnd=hwnd, uID=number, uFlags=0)
+            if _pw.Shell_NotifyIcon(_pw.NIM_MODIFY, ctypes.byref(data)):
+                return True
+        return False
+    except Exception:
+        return True      # cannot tell — leave the icon to pystray
+
+
+def tray_keeper():
+    """Keep the tray icon on screen for as long as the agent runs.
+
+    Looks every 2 seconds for the first two minutes — the time Explorer may
+    still need after a restart — and twice a minute after that. A missing
+    icon is added again.
+    """
+    started = time.time()
+    told = False
+    while agent_state.get("running", True):
+        time.sleep(2 if time.time() - started < 120 else 30)
+        icon = agent_state.get("tray_icon")
+        if icon is None or not getattr(icon, "visible", False):
+            continue          # not shown yet, or on its way out
+        with _TRAY_LOCK:
+            if agent_state.get("tray_closing") or not agent_state.get("running", True):
+                return
+            if _tray_icon_present(icon):
+                continue
+            try:
+                icon._show()
+            except Exception:
+                pass
+            back = _tray_icon_present(icon)
+        if back:
+            log("🔁 Windows had not shown the tray icon — it is back now")
+            told = False
+        elif not told:
+            log("⚠️  Windows is not showing the tray icon yet — trying again", "WARN")
+            told = True
 
 # To wake the print loop immediately. The flag used to be checked every 1 second,
 # so even after pressing Reconnect it could wait up to 1 second.
@@ -4925,8 +5081,7 @@ def change_shop_id(icon=None, item=None):
     except Exception as e:
         log(f"Restart error: {e}", "ERROR")
 
-    if agent_state["tray_icon"]:
-        agent_state["tray_icon"].stop()
+    _remove_tray_icon()
     os._exit(0)
 
 def _uninstall_clear_autostart():
@@ -5086,8 +5241,7 @@ def _uninstall_flow():
                             cwd=tempfile.gettempdir())
         except Exception as e:
             log(f"The uninstall helper did not run: {e}", "ERROR")
-    if agent_state["tray_icon"]:
-        agent_state["tray_icon"].stop()
+    _remove_tray_icon()
     time.sleep(0.5)
     os._exit(0)
 
@@ -5101,20 +5255,51 @@ def uninstall_agent(icon=None, item=None):
     threading.Thread(target=_uninstall_flow, daemon=True).start()
 
 
+def _remove_tray_icon():
+    """Take the tray icon away NOW, before the process ends.
+
+    icon.stop() only posts a message to pystray's loop; the icon is removed
+    when that loop next runs. os._exit() comes first, so the icon stayed
+    behind as a dead one. Setting visible to False removes it at once
+    (Shell_NotifyIcon NIM_DELETE), from any thread.
+    """
+    icon = agent_state.get("tray_icon")
+    if not icon:
+        return
+    agent_state["tray_closing"] = True
+    # Let a repair by tray_keeper() finish first, so it cannot put the icon
+    # back after this.
+    locked = _TRAY_LOCK.acquire(timeout=2)
+    try:
+        try:
+            icon.visible = False
+        except Exception:
+            pass
+        try:
+            icon.stop()
+        except Exception:
+            pass
+    finally:
+        if locked:
+            _TRAY_LOCK.release()
+
+
 def quit_agent(icon=None, item=None):
     """Shut the agent down gracefully when 'Exit' is clicked in the tray"""
     log("👋 Exit pressed from the tray — shutting the agent down...")
     agent_state["running"] = False
     wake_print_loop()     # a loop stuck in sleep ends immediately
     # Close the panel window — otherwise the main thread's webview loop keeps
-    # running and the process never exits completely.
+    # running and the process never exits completely. It gets 3 seconds: a
+    # window stuck behind a dialog must not keep the agent alive after Exit.
     try:
         if PANEL is not None:
-            PANEL.shutdown()
+            closer = threading.Thread(target=PANEL.shutdown, daemon=True)
+            closer.start()
+            closer.join(3)
     except Exception:
         pass
-    if agent_state["tray_icon"]:
-        agent_state["tray_icon"].stop()
+    _remove_tray_icon()
     os._exit(0)
 
 def _tray_action(fn):
@@ -5179,9 +5364,20 @@ def panel_request_watcher():
     Did the owner double-click the exe again? That second instance leaves a
     request file and exits — we see it and open our
     panel.
+
+    The installer uses the same road to ask the agent to close before it
+    replaces the program: the agent then leaves exactly as the tray's Exit
+    does, taking its tray icon with it.
     """
     while agent_state.get("running", True):
         try:
+            if os.path.exists(QUIT_REQUEST_FILE):
+                try:
+                    os.remove(QUIT_REQUEST_FILE)
+                except Exception:
+                    pass
+                log("\U0001f44b The installer asked the agent to close \u2014 shutting down")
+                quit_agent()
             if os.path.exists(PANEL_REQUEST_FILE):
                 try:
                     os.remove(PANEL_REQUEST_FILE)
@@ -5255,6 +5451,9 @@ def run_tray_icon():
         icon_image = create_tray_icon_image()
         icon = pystray.Icon("echel_agent", icon_image, "Echel — Starting...", menu)
         agent_state["tray_icon"] = icon
+        # Windows sometimes turns the icon down without a word (see
+        # _tray_icon_present); this puts it back.
+        threading.Thread(target=tray_keeper, daemon=True).start()
 
         # ══════════════════════════════════════════════════════
         # THREAD SPLIT
@@ -5511,6 +5710,11 @@ def print_loop():
             _interruptible_sleep(backoff)
 
 def main():
+    try:
+        if os.path.exists(QUIT_REQUEST_FILE):
+            os.remove(QUIT_REQUEST_FILE)
+    except Exception:
+        pass
     show_banner()
     check_dependencies()
 
@@ -5518,8 +5722,8 @@ def main():
     log(f"🚀 Agent start | Shop: {SHOP_ID} | Version: v{VERSION_LABEL} (build {VERSION})")
     log(f"🌐 Server: {SERVER_URL}")
 
-    # On a PC restart the agent starts in the tray by itself — HKCU Run registry
-    add_to_startup()
+    # Start with Windows — only when the owner chose it during install.
+    apply_startup_choice()
 
     # CRITICAL FIX: this used to call input("Press Enter...") when no printer was
     # found — in the .exe's WINDOWED mode (which has no console/STDIN
@@ -5573,10 +5777,11 @@ def main():
     demo_thread = threading.Thread(target=demo_reminder_loop, daemon=True)
     demo_thread.start()
 
-    # Run the auto-update checker in a background thread
-    update_thread = threading.Thread(target=update_checker_loop, daemon=True)
-    update_thread.start()
-    log(f"🔄 Auto-update checker active — twice a day (around {UPDATE_HOURS[0]}:00 and {UPDATE_HOURS[1]}:00)")
+    # No automatic updates. A new version comes as a new installer that a
+    # person runs; the agent only looks once whether one exists, so the panel
+    # can say so. It never downloads or replaces anything by itself.
+    threading.Thread(target=note_newer_version, daemon=True).start()
+    log("\u2139\ufe0f  Automatic updates are off \u2014 install a new version with the Echel Agent installer")
 
     # Run the print loop in a background thread too — so the tray icon
     # can run in the foreground (an OS requirement for tray icons)

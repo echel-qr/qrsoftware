@@ -13,6 +13,16 @@ function deploymentConfig(env = process.env) {
   return { baseUrl, siteUrl: (env.SITE_URL || baseUrl).replace(/\/+$/, '') };
 }
 
+// A partner's own link: abcprint.echel.in. A Render address, an IP or
+// localhost cannot carry a wildcard subdomain, so there the ?wl= link is used.
+function partnerLink(baseUrl, slug) {
+  const url = new URL(baseUrl);
+  const host = url.hostname.replace(/^www\./, '');
+  const ownDomain = host.includes('.') && !/^[\d.]+$/.test(host) && !host.endsWith('.onrender.com');
+  if (!ownDomain) return url.origin + '/?wl=' + encodeURIComponent(slug);
+  return url.protocol + '//' + slug + '.' + host + (url.port ? ':' + url.port : '');
+}
+
 function databaseOptions(env = process.env) {
   const url = new URL(env.DATABASE_URL || 'postgresql://localhost/echel');
   // pg's URL parser can override the explicit TLS configuration through sslmode.
@@ -44,4 +54,4 @@ async function protectAppTables(db) {
     await db.query('REVOKE ALL ON TABLE ' + APP_TABLES.map(t => 'public."' + t + '"').join(',') + ' FROM "' + rolname + '"');
   }
 }
-module.exports = { deploymentConfig, databaseOptions, UPLOAD_PREFIX, BRAND_PREFIX, isJobAsset, APP_TABLES, protectAppTables };
+module.exports = { deploymentConfig, partnerLink, databaseOptions, UPLOAD_PREFIX, BRAND_PREFIX, isJobAsset, APP_TABLES, protectAppTables };

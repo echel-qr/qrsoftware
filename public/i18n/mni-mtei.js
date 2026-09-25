@@ -11,7 +11,7 @@
    To correct one line without a deploy: Superadmin -> Languages. Those edits
    live in the database and are applied on top of this file.
 
-   3734 entries. */
+   3731 entries. */
 (function (w) {
  var D = {
  "-- Select brand --": "-- ꯕ꯭ꯔꯥꯟꯗ ꯈꯜꯂꯨ --",
@@ -49,7 +49,6 @@
  "— the print will come out at this size": "— ꯄ꯭ꯔꯤꯟꯠ ꯑꯁꯤꯒꯨꯝꯕꯥ ꯃꯆꯥꯎꯗꯥ ꯊꯣꯛꯀꯅꯤ",
  "— they are not charged anything.": "— ꯃꯈꯣꯌꯗꯒꯤ ꯀꯔꯤꯁꯨ ꯂꯧꯔꯣꯏ꯫",
  "— this is what the customer pays": "— ꯀꯁꯇꯃꯔꯅꯥ ꯄꯤꯒꯗꯕꯥ ꯁꯦꯜ ꯃꯁꯤꯅꯤ",
- "— this works only after the admin sets up DNS. Until then, use the link above.": "— ꯃꯁꯤ ꯑꯦꯗꯃꯤꯟꯅꯥ DNS ꯁꯦꯝꯂꯕꯥ ꯃꯇꯨꯡꯗꯥ ꯈꯛꯇꯥ ꯊꯕꯛ ꯇꯧꯒꯅꯤ꯫ ꯃꯗꯨ ꯐꯥꯑꯣꯕꯥ ꯃꯊꯛꯀꯤ ꯂꯤꯡꯛ ꯑꯗꯨ ꯁꯤꯖꯤꯟꯅꯕꯤꯌꯨ꯫",
  "— to run echel.in;": "— echel.in ꯆꯂꯥꯏꯅꯕꯥ;",
  "— to switch it to counter, tick the box above and press Save.": "— ꯀꯥꯎꯟꯇꯔꯗꯥ ꯍꯣꯡꯗꯣꯛꯅꯕꯥ ꯃꯊꯛꯀꯤ ꯕꯣꯀꯁ ꯇꯤꯛ ꯇꯧꯔꯒꯥ Save ꯅꯝꯕꯤꯌꯨ꯫",
  "— to take and verify payment;": "— ꯁꯦꯜ ꯂꯧꯅꯕꯥ ꯑꯃꯁꯨꯡ ꯆꯨꯝꯅꯥ ꯌꯦꯡꯅꯕꯥ;",
@@ -189,7 +188,6 @@
  "%s: take Smart Scanner BACK?": "%s: ꯁ꯭ꯃꯥꯔ꯭ꯠ ꯁ꯭ꯀꯦꯅꯔ ꯍꯟꯗꯣꯛꯀꯗ꯭ꯔꯥ?",
  "%s: take Smart Scanner BACK? (The card will be removed from the customer page)": "%s: ꯁ꯭ꯃꯥꯔ꯭ꯠ ꯁ꯭ꯀꯦꯅꯔ ꯍꯟꯗꯣꯛꯀꯗ꯭ꯔꯥ? (ꯀꯥꯔ꯭ꯗ ꯑꯁꯤ ꯀꯁꯇꯃꯔꯒꯤ ꯂꯥꯃꯥꯏꯗꯒꯤ ꯂꯧꯊꯣꯛꯀꯅꯤ)",
  "%s: timeout": "%s: ꯃꯇꯝ ꯂꯣꯏꯔꯦ",
- "%s/?wl=%s": "%s/?wl=%s",
  "%s/10 digit": "%s/ꯃꯁꯤꯡ 10",
  "%s% OFF": "%s% ꯍꯟꯊꯍꯜꯂꯦ",
  "%s% vs yesterday": "ꯉꯔꯥꯡꯒꯥ ꯆꯥꯡꯗꯝꯂꯕꯗꯥ %s%",
@@ -3093,7 +3091,6 @@
  "straight into that partner's account": "ꯄꯥꯔ꯭ꯇꯅꯔ ꯑꯗꯨꯒꯤ ꯑꯦꯀꯥꯎꯟꯇꯗꯥ ꯃꯄꯨꯡ ꯐꯥꯅꯥ ꯆꯠꯂꯤ",
  "straight into your own Razorpay account": "ꯅꯍꯥꯛꯀꯤ ꯃꯁꯥꯒꯤ Razorpay ꯑꯦꯀꯥꯎꯟꯇꯗꯥ ꯃꯄꯨꯡ ꯐꯥꯅꯥ ꯆꯠꯂꯤ",
  "STREAM": "ꯁ꯭ꯠꯔꯤꯝ",
- "Subdomain link:": "ꯁꯕꯗꯣꯃꯦꯟ ꯂꯤꯡꯛ:",
  "Subscription Shops": "ꯁꯕꯁ꯭ꯛꯔꯤꯄꯁꯟ ꯁꯣꯄꯁꯤꯡ",
  "Suggested — the server would have paused these (%s)": "ꯄꯥꯎꯇꯥꯛ — ꯁꯔ꯭ꯚꯔꯅꯥ ꯃꯁꯤꯁꯤꯡ ꯊꯤꯡꯒꯗꯕꯅꯤ (%s)",
  "Super Admin": "ꯁꯨꯄꯔ ꯑꯦꯗꯃꯤꯟ",

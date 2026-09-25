@@ -620,12 +620,13 @@ class PanelAPI:
             return {"ok": False, "error": _plain(e)}
 
     def do_update(self):
+        # The agent no longer updates itself: this opens the download of the
+        # new installer, which the owner runs. Their Shop ID and settings stay.
         try:
-            fn = getattr(_AGENT, "check_and_update", None) or getattr(_AGENT, "apply_update_and_restart", None)
-            if callable(fn):
-                threading.Thread(target=fn, daemon=True).start()
-                return {"ok": True}
-            return {"ok": False, "error": "Update is not available in this build"}
+            fn = getattr(_AGENT, "open_download_page", None)
+            if callable(fn) and fn():
+                return {"ok": True, "message": "The download of the new installer opened in your browser."}
+            return {"ok": False, "error": "Could not open the download page. Visit echel.in to download the latest version."}
         except Exception as e:
             return {"ok": False, "error": _plain(e)}
 
@@ -829,7 +830,8 @@ def start_ui_loop(show_now=True):
             # old 1366x768 shop PC it fits completely together with the taskbar.
             width=900, height=720,
             min_size=(700, 600),
-            background_color="#12131a",
+            # The page's own silver: no dark flash before it paints.
+            background_color="#f4f5f6",
             hidden=not show_now,
             confirm_close=False,
         )

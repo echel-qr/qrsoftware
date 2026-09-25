@@ -249,7 +249,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
             <button onclick="copyLink()">Copy</button>
           </div>
           <button class="btn green" onclick="shareWA()">💬 Share on WhatsApp</button>
-          <p class="hint" id="subNote"></p>
         </div>
       </div>
 
@@ -645,8 +644,6 @@ async function boot() {
     updateMargin();
 
     $('shareLink').value = ME.shareLink || '';
-    $('subNote').innerHTML = 'Subdomain link: <b>' + esc(ME.subdomainLink || '') +
-      '</b> — this works only after the admin sets up DNS. Until then, use the link above.';
 
     $('bBrand').value = ME.brandName || '';
     $('bPowered').value = ME.poweredBy || '';
@@ -1027,7 +1024,7 @@ async function loadWlAnalytics() {
   try {
     const days = parseInt($('anRange').value, 10) || 30;
     const d = await api('/api/whitelabel/analytics?days=' + days);
-    $('anSlug').textContent = d.slug || '—';
+    $('anSlug').textContent = (ME && ME.shareLink || '').replace(/^https?:\/\//, '') || d.slug || '—';
     const tot = k => (d.totals || []).find(t => t.event_type === k) || { cnt: 0, uniq: 0 };
     const pv = tot('pageview'), reg = tot('register_click');
     const paid = (d.shopsDaily || []).reduce((n, r) => n + (r.paid || 0), 0);

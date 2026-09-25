@@ -1,4 +1,4 @@
-const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
+const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path'), http = require('node:http');
 const { createRequire } = require('node:module');
 const { PGlite } = require('@electric-sql/pglite');
 const express = require('express');
@@ -318,7 +318,34 @@ test('complete backend boots on an empty PostgreSQL database and serves authenti
     assert.match(reset.password, /^[0-9A-F]{8}$/);
     response = await post('/api/whitelabel/login', { wlId: partner.id, password: reset.password });
     assert.equal(response.status, 200, 'the partner signs in with it');
+    const partnerAuth = { Authorization: 'Bearer ' + (await response.json()).token };
     assert.equal((await fetch(base + '/api/superadmin/whitelabel/' + partner.id + '/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' } })).status, 401, 'only the super admin');
+
+    // The partner's link. This test site lives on an IP address, where no
+    // subdomain can exist, so the link is the ?wl= one, and only that one.
+    const me = await (await fetch(base + '/api/whitelabel/me', { headers: partnerAuth })).json();
+    assert.equal(me.shareLink, 'http://127.0.0.1/?wl=abcprint');
+    assert.equal(me.subdomainLink, undefined, 'no second link that cannot open');
+    // The subdomain alone names the partner, so abcprint.echel.in opens their site.
+    const byHost = await new Promise((resolve, reject) => {
+      http.get({ host: '127.0.0.1', port: server.address().port, path: '/api/whitelabel/branding', headers: { Host: 'abcprint.echel.in' } }, res => {
+        let text = ''; res.on('data', c => { text += c; }); res.on('end', () => resolve(JSON.parse(text)));
+      }).on('error', reject);
+    });
+    assert.equal(byHost.isWhitelabel, true);
+    assert.equal(byHost.brandName, 'ABC Print Solutions');
+    // Paying the licence hands the new partner the same link.
+    response = await post('/api/whitelabel/register', { brand_name: 'XYZ Prints', slug: 'xyzprint', owner_name: 'Second Partner', phone: '9000000002', email: 'xyz@example.com' });
+    const second = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(second));
+    await db.query("UPDATE whitelabels SET license_order_id='order_wl_licence' WHERE id=$1", [second.wlId]);
+    const licence = { razorpay_order_id: 'order_wl_licence', razorpay_payment_id: 'pay_wl', razorpay_signature: rzpSign('', 'order_wl_licence', 'pay_wl'), wlId: second.wlId };
+    response = await post('/api/whitelabel/license/verify', licence);
+    const paidNow = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(paidNow));
+    assert.equal(paidNow.link, 'http://127.0.0.1/?wl=xyzprint');
+    response = await post('/api/whitelabel/license/verify', licence);
+    assert.equal((await response.json()).link, paidNow.link, 'the same link when the payment is confirmed twice');
   } finally {
     if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
     await db.close();

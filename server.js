@@ -1,6 +1,6 @@
 const { CYCLES, billingCycle, subscriptionActive, validatePlanPrices, validatePricingUpdate, MONTHS_SQL, CYCLE_SQL } = require('./billing');
 require('dotenv').config();
-const { deploymentConfig, databaseOptions, UPLOAD_PREFIX, BRAND_PREFIX, isJobAsset, protectAppTables, APP_TABLES } = require('./deployment');
+const { deploymentConfig, partnerLink, databaseOptions, UPLOAD_PREFIX, BRAND_PREFIX, isJobAsset, protectAppTables, APP_TABLES } = require('./deployment');
 const migration = require('./migration');
 const deployment = deploymentConfig();
 const express = require('express');
@@ -5534,7 +5534,8 @@ app.post('/api/whitelabel/license/verify', async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ error: 'The order does not match' });
 
     // Idempotent — if verify arrives again, do not create a new password
-    if (r.rows[0].paid) return res.json({ success: true, alreadyPaid: true, wlId, slug: r.rows[0].slug });
+    if (r.rows[0].paid) return res.json({ success: true, alreadyPaid: true, wlId, slug: r.rows[0].slug,
+      link: partnerLink(BASE_URL, r.rows[0].slug) });
 
     const password = Math.random().toString(36).slice(-4).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
     await pool.query(
@@ -5552,7 +5553,7 @@ app.post('/api/whitelabel/license/verify', async (req, res) => {
 
     console.log(`White label activated: ${wlId} (${r.rows[0].slug})`);
     res.json({ success: true, wlId, slug: r.rows[0].slug, password,
-      loginUrl: `${BASE_URL}/wl-admin` });
+      link: partnerLink(BASE_URL, r.rows[0].slug), loginUrl: `${BASE_URL}/wl-admin` });
   } catch(err) {
     console.error('WL license verify error:', err.message);
     res.status(500).json({ error: err.message });
@@ -5626,8 +5627,7 @@ app.get('/api/whitelabel/me', verifyWhitelabel, async (req, res) => {
       notifyEmail: wl.notify_email || '',
       blocked: !!wl.blocked, licenseFee: wl.license_fee || 0, paidAt: wl.paid_at,
       stats: s.rows[0], collected: earned.rows[0].total,
-      shareLink: `${BASE_URL}/?wl=${wl.slug}`,
-      subdomainLink: `https://${wl.slug}.${(BASE_URL || '').replace(/^https?:\/\//, '')}`
+      shareLink: partnerLink(BASE_URL, wl.slug)
     });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });

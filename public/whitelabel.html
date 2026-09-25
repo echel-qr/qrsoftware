@@ -213,7 +213,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     <label for="fSlug">Your own link *</label>
     <div class="slug-row">
       <input id="fSlug" placeholder="abcprint" maxlength="40" autocapitalize="off" autocorrect="off" spellcheck="false">
-      <span class="slug-suffix" data-no-i18n>echel.in/?wl=</span>
+      <span class="slug-suffix" data-no-i18n>.echel.in</span>
     </div>
     <p class="hint">Small letters, numbers and dashes only. This cannot be changed later, so choose carefully.</p>
 
@@ -356,7 +356,7 @@ async function startPay() {
           if (!vr.ok || !vd.success) throw new Error(vd.error || T('The payment could not be verified'));
           document.getElementById('cId').textContent = vd.wlId;
           document.getElementById('cPass').textContent = vd.password || T('the one you already have');
-          document.getElementById('cSlug').textContent = location.origin + '/?wl=' + vd.slug;
+          document.getElementById('cSlug').textContent = vd.link;
           document.getElementById('formCard').style.display = 'none';
           document.getElementById('doneCard').style.display = 'block';
           window.scrollTo({ top: 0, behavior: 'smooth' });
