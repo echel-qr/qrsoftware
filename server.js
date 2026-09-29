@@ -11152,29 +11152,128 @@ app.put('/api/superadmin/shop/:shopId/printers', verifySuperAdmin, async (req, r
 // sends. Hardcoded server-side so nobody can bypass it.
 const PROTECTED_SHOP_IDS = ['SHOP_ECB1AB8A'];
 
-// ─── Shop delete — shops with a paid amount of 0 can be deleted ───
-// Rule: any shop with setup_amount 0 (or null) can be deleted
-// (pending + old ones whose amount was not captured). A shop that paid REAL money
-// (setup_amount > 0) is protected. The owner's first shop is always safe.
+/**
+ * Remove shops and everything that belongs to them, inside the caller's
+ * transaction (the caller runs BEGIN/COMMIT). Returns per-table row counts and
+ * the Cloudinary files to remove once the transaction has committed.
+ *
+ * Kept on purpose:
+ *   - platform_payments — the ledger of money that reached us; deleting a shop
+ *     must not rewrite revenue history.
+ *   - blocked_customers — a banned customer stays banned.
+ * demo_registrations only loses its link, so that phone can take a demo again.
+ */
+async function purgeShops(client, ids) {
+  const counts = {};
+  if (!ids.length) return { counts, files: [] };
+  const files = await client.query(
+    `SELECT file_public_id FROM print_jobs
+      WHERE shop_id = ANY($1) AND file_public_id IS NOT NULL AND file_deleted = false`, [ids]);
+  for (const tbl of ['print_jobs', 'reviews', 'withdrawals', 'security_events',
+                     'upload_fingerprints', 'demo_machines']) {
+    const r = await client.query(`DELETE FROM ${tbl} WHERE shop_id = ANY($1)`, [ids]);
+    counts[tbl] = r.rowCount;
+  }
+  // Commissions earned FOR these shops, and those earned BY them if one was an agent
+  const ac = await client.query(
+    'DELETE FROM agent_commissions WHERE shop_id = ANY($1) OR agent_id = ANY($1)', [ids]);
+  counts.agent_commissions = ac.rowCount;
+  await client.query('UPDATE demo_registrations SET shop_id = NULL WHERE shop_id = ANY($1)', [ids]);
+  await client.query('DELETE FROM system_settings WHERE key = ANY($1)', [ids.map(id => `printers_${id}`)]);
+  const sh = await client.query('DELETE FROM shops WHERE id = ANY($1)', [ids]);
+  counts.shops = sh.rowCount;
+  return { counts, files: files.rows.map(f => f.file_public_id) };
+}
+
+/** After COMMIT: forget cached state and remove the files in the background. */
+function afterShopsPurged(ids, files, label) {
+  for (const id of ids) { invalidateAgentToken(id); pendingHeartbeats.delete(id); }
+  if (!files.length) return;
+  (async () => {
+    let n = 0;
+    for (const f of files) {
+      try { await deleteFromCloudinary(f); n++; } catch (_) {}
+    }
+    console.log(`${label}: cloudinary files removed ${n}/${files.length}`);
+  })();
+}
+
+const describeShopKind = s =>
+  s.whitelabel_id ? 'white-label' : s.demo ? 'demo' : s.setup_paid ? 'paid' : 'pending';
+
+// ─── Shop delete — the superadmin can delete ANY shop ───
+// Paid, demo, pending, expired, or registered under a white-label partner.
+// Only the owner's own first shop (PROTECTED_SHOP_IDS) is refused.
+// A paid shop needs { confirm: 'DELETE' } in the body, so a stray request
+// cannot wipe a paying customer.
 app.delete('/api/superadmin/shop/:shopId', verifySuperAdmin, async (req, res) => {
+  const shopId = String(req.params.shopId || '');
+  if (PROTECTED_SHOP_IDS.includes(shopId)) {
+    return res.status(403).json({ error: 'This shop is protected — it cannot be deleted' });
+  }
+  const client = await pool.connect();
   try {
-    const shopId = req.params.shopId;
-    if (PROTECTED_SHOP_IDS.includes(shopId)) {
-      return res.status(403).json({ error: 'This shop is protected — it cannot be deleted' });
-    }
-    const chk = await pool.query('SELECT setup_paid, setup_amount FROM shops WHERE id=$1', [shopId]);
+    const chk = await client.query(
+      'SELECT id, name, phone, demo, setup_paid, setup_amount, whitelabel_id FROM shops WHERE id=$1', [shopId]);
     if (!chk.rows.length) return res.status(404).json({ error: 'Shop not found' });
-    // Deletable: PENDING (setup_paid=false — new or old) OR
-    // legacy paid-₹0. setup_amount is stored at registration (before the
-    // payment), so amount>0 is NOT proof of payment — setup_paid is.
-    const deletable = !chk.rows[0].setup_paid || (chk.rows[0].setup_amount || 0) === 0;
-    if (!deletable) {
-      return res.status(403).json({ error: 'A paid/active shop cannot be deleted' });
+    const shop = chk.rows[0];
+    const paid = !!shop.setup_paid && (shop.setup_amount || 0) > 0;
+    const confirmed = String((req.body && req.body.confirm) || '').trim().toUpperCase() === 'DELETE';
+    if (paid && !confirmed) {
+      return res.status(400).json({ error: 'This is a paid shop — type DELETE to confirm', needsConfirm: true });
     }
-    await pool.query('DELETE FROM print_jobs WHERE shop_id=$1', [shopId]);
-    await pool.query("DELETE FROM shops WHERE id=$1 AND (setup_paid=false OR COALESCE(setup_amount,0)=0)", [shopId]);
-    res.json({ success: true });
-  } catch(err) { res.status(500).json({ error: err.message }); }
+
+    await client.query('BEGIN');
+    const { counts, files } = await purgeShops(client, [shopId]);
+    await client.query('COMMIT');
+    afterShopsPurged([shopId], files, `SHOP DELETED ${shopId}`);
+
+    console.log(`SUPERADMIN SHOP DELETE: ${shopId} (${shop.name}, ${shop.phone}, ${describeShopKind(shop)}) | ` +
+      Object.entries(counts).map(([k, v]) => `${k}:${v}`).join(' '));
+    res.json({ success: true, deleted: counts, filesQueued: files.length });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error('superadmin shop delete error:', err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ─── White-label partner delete ───
+// Removes the partner AND every shop registered under it (they cannot work
+// without the partner's brand/payment setup). Always needs { confirm: 'DELETE' }.
+app.delete('/api/superadmin/whitelabel/:id', verifySuperAdmin, async (req, res) => {
+  const wlId = String(req.params.id || '');
+  if (String((req.body && req.body.confirm) || '').trim().toUpperCase() !== 'DELETE') {
+    return res.status(400).json({ error: 'Type DELETE to confirm', needsConfirm: true });
+  }
+  const client = await pool.connect();
+  try {
+    const w = await client.query('SELECT id, slug, brand_name FROM whitelabels WHERE id=$1', [wlId]);
+    if (!w.rows.length) return res.status(404).json({ error: 'White label not found' });
+
+    await client.query('BEGIN');
+    const s = await client.query(
+      'SELECT id FROM shops WHERE whitelabel_id=$1 AND NOT (id = ANY($2)) FOR UPDATE',
+      [wlId, PROTECTED_SHOP_IDS]);
+    const ids = s.rows.map(r => r.id);
+    const { counts, files } = await purgeShops(client, ids);
+    // A protected shop is never deleted — it is detached from the partner instead.
+    await client.query("UPDATE shops SET whitelabel_id='' WHERE whitelabel_id=$1", [wlId]);
+    await client.query('DELETE FROM whitelabels WHERE id=$1', [wlId]);
+    await client.query('COMMIT');
+    afterShopsPurged(ids, files, `WHITE LABEL DELETED ${wlId}`);
+
+    console.log(`SUPERADMIN WHITE LABEL DELETE: ${wlId} (${w.rows[0].brand_name}, ${w.rows[0].slug}) | shops:${counts.shops || 0}`);
+    res.json({ success: true, shopsDeleted: counts.shops || 0, deleted: counts, filesQueued: files.length });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error('superadmin whitelabel delete error:', err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
 });
 
 app.get('/api/superadmin/shop/:shopId/earnings', verifySuperAdmin, async (req, res) => {

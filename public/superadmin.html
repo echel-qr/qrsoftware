@@ -1325,9 +1325,9 @@ input,select,textarea{border:1.5px solid #e7e8e9;border-radius:12px;
           <table class="shop-table">
             <thead><tr>
               <th>Shop name / ID</th><th>Partner (brand)</th><th>Contact</th>
-              <th>Status</th><th>Registered</th>
+              <th>Status</th><th>Registered</th><th>Action</th>
             </tr></thead>
-            <tbody id="wlShopsList"><tr><td colspan="5" style="text-align:center;padding:22px;color:#6b6870;">Loading…</td></tr></tbody>
+            <tbody id="wlShopsList"><tr><td colspan="6" style="text-align:center;padding:22px;color:#6b6870;">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2711,7 +2711,7 @@ async function loadDemos(){
           <button onclick="openPrinterPanel('${d.id}','${sanitize(d.name||'')}')" style="background:#0f766e;color:#fff;border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🖨️ Printer</button>
           <button onclick="notifyShop('${d.id}')" style="background:#f59e0b;color:#fff;border:none;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🔔 Notify</button>
           ${d.agent_bound ? `<button onclick="saDisconnectPc('${d.id}','${(d.agent_machine||'').replace(/'/g,"")}')" style="background:#fff;color:#b45309;border:1.5px solid #fde68a;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🔌 Disconnect PC</button>` : ''}
-          <button onclick="deletePendingShop('${d.id}','${sanitize(d.name||'')}' )" style="background:#ff3b3b;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️ Delete</button>
+          <button onclick="deleteShop('${d.id}','${sanitize(d.name||'').replace(/'/g,'')}',false)" style="background:#ff3b3b;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️ Delete</button>
         </div>
       </div>`;
     }).join('');
@@ -3373,12 +3373,34 @@ function renderWhitelabels(d) {
         <button onclick="saveWlBase('${w.id}')" style="background:#111114;color:#fff;border:none;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">Base Price Save</button>
         ${w.paid ? `<button onclick="toggleWlBlock('${w.id}',${w.blocked ? 'false' : 'true'})" style="background:${w.blocked ? '#16a34a' : '#fee2e2'};color:${w.blocked ? '#fff' : '#dc2626'};border:none;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">${w.blocked ? '▶️ Unblock' : '⏸️ Pause'}</button>` : ''}
         ${w.paid ? `<button onclick="resetWlPassword('${w.id}')" style="background:#fff;color:#111114;border:1.5px solid #e2ddd6;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">🔑 Reset password</button>` : ''}
+        <button onclick="deleteWhitelabel('${esc(w.id)}')" style="background:#ff3b3b;color:#fff;border:none;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer;">🗑️ Delete partner</button>
       </div>
       <p style="font-size:10.5px;color:#9b9690;margin-top:8px;line-height:1.55;">
         Base price = this partner cannot sell to shops below this. When it changes, a partner price below the base is raised to match it.
       </p>
     </details>`;
   }).join('');
+}
+
+// Deletes the partner AND every shop registered under it.
+async function deleteWhitelabel(id) {
+  const w = _wls.find(x => x.id === id) || { id, brandName: id, stats: {} };
+  const total = (w.stats && w.stats.total) || 0;
+  const typed = prompt(`⚠️ Delete white-label partner "${w.brandName}" (${id})?\n\n`
+    + `This also deletes ALL ${total} shop(s) registered under this partner — their orders, reviews and files. `
+    + `Payment records stay in the ledger. It cannot be undone.\n\nType DELETE to confirm:`);
+  if (typed === null) return;
+  if (typed.trim().toUpperCase() !== 'DELETE') { alert('Not deleted — you did not type DELETE.'); return; }
+  try {
+    const r = await fetch(`/api/superadmin/whitelabel/${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ confirm: 'DELETE' })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.success) throw new Error(d.error || 'Delete failed');
+    alert(`✅ Partner deleted · ${d.shopsDeleted || 0} shop(s) removed`);
+    refreshShopLists();
+  } catch (e) { alert('❌ ' + e.message); }
 }
 
 async function saveWlBase(id) {
@@ -4403,7 +4425,7 @@ function setFilter(f) {
 }
 
 function shopActions(shop) {
-  return `${shop.advanced_unlocked ? `<span style="display:inline-block;background:#f1f2f3;color:#b51c26;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:800;margin-right:6px;" title="Advance Feature active">⚡✓</span>` : `<button onclick="unlockAdvancedFor('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">⚡ Unlock</button>`}${(shop.billing_cycle || (shop.plan_type === 'monthly' ? 'monthly' : 'lifetime')) !== 'lifetime' ? `<button onclick="extendShop30('${shop.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔄 Extend cycle</button>` : ''}<button onclick="openPrinterPanel('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#0f766e;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC printer list + payment method">🖨️ Printer</button>${saScanBtn(shop)}<button onclick="resetShopPassword('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔑 Reset Pass</button><button onclick="changeShopPhone('${shop.id}','${(shop.phone||'').replace(/[^0-9]/g,'')}')" style="background:#fff;color:#3b4148;border:1.5px solid #d3d8dc;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="Change the owner's mobile number, on their request">📱 Change Mobile</button>${shop.agent_bound ? `<button onclick="saDisconnectPc('${shop.id}','${(shop.agent_machine||'').replace(/'/g,"")}')" style="background:#fff;color:#b45309;border:1.5px solid #fde68a;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC: ${(shop.agent_machine||'unknown').replace(/"/g,'')} — after removal the Shop ID can be used on a new PC">🔌 Disconnect PC</button>` : ''}${!shop.setup_paid ? `<button onclick="manualActivate('${shop.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">💰 Activate</button>` : ''}${(!shop.setup_paid || !shop.setup_amount || shop.setup_amount == 0) && shop.id !== 'SHOP_ECB1AB8A' ? `<button onclick="deletePendingShop('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#ff3b3b;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑️ Delete</button>` : `<span style="font-size:11px;color:#b0b0b0">${shop.id === 'SHOP_ECB1AB8A' ? '🔒 Protected' : '—'}</span>`}`;
+  return `${shop.advanced_unlocked ? `<span style="display:inline-block;background:#f1f2f3;color:#b51c26;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:800;margin-right:6px;" title="Advance Feature active">⚡✓</span>` : `<button onclick="unlockAdvancedFor('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">⚡ Unlock</button>`}${(shop.billing_cycle || (shop.plan_type === 'monthly' ? 'monthly' : 'lifetime')) !== 'lifetime' ? `<button onclick="extendShop30('${shop.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔄 Extend cycle</button>` : ''}<button onclick="openPrinterPanel('${shop.id}','${(shop.name||'').replace(/'/g,"")}')" style="background:#0f766e;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC printer list + payment method">🖨️ Printer</button>${saScanBtn(shop)}<button onclick="resetShopPassword('${shop.id}')" style="background:#b51c26;color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;">🔑 Reset Pass</button><button onclick="changeShopPhone('${shop.id}','${(shop.phone||'').replace(/[^0-9]/g,'')}')" style="background:#fff;color:#3b4148;border:1.5px solid #d3d8dc;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="Change the owner's mobile number, on their request">📱 Change Mobile</button>${shop.agent_bound ? `<button onclick="saDisconnectPc('${shop.id}','${(shop.agent_machine||'').replace(/'/g,"")}')" style="background:#fff;color:#b45309;border:1.5px solid #fde68a;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px;" title="PC: ${(shop.agent_machine||'unknown').replace(/"/g,'')} — after removal the Shop ID can be used on a new PC">🔌 Disconnect PC</button>` : ''}${!shop.setup_paid ? `<button onclick="manualActivate('${shop.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">💰 Activate</button>` : ''}${shop.id !== 'SHOP_ECB1AB8A' ? `<button onclick="deleteShop('${shop.id}','${sanitize(shop.name||'').replace(/'/g,'')}',${isPaidShop(shop)})" style="background:#ff3b3b;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑️ Delete</button>` : `<span style="font-size:11px;color:#b0b0b0">🔒 Protected</span>`}`;
 }
 
 async function renderShops() {
@@ -4867,26 +4889,48 @@ async function manualActivate(shopId){
   }catch(e){ alert('❌ '+e.message); }
 }
 
-async function deletePendingShop(shopId, name){
-  if(!confirm(`Delete "${name}" (${shopId})? This shop cannot be restored.`)) return;
+// A shop that paid real money — deleting it needs "DELETE" typed, not one click.
+function isPaidShop(shop){ return !!shop.setup_paid && Number(shop.setup_amount||0) > 0; }
+
+// Delete ANY shop — paid, demo, pending, expired or white-label.
+// Every list that shows shops calls this, then all of them are refreshed.
+async function deleteShop(shopId, name, paid){
+  const label = `"${name || shopId}" (${shopId})`;
+  let confirmText = '';
+  if (paid) {
+    const typed = prompt(`⚠️ ${label} is a PAID shop.\n\nIts orders, reviews, withdrawals and files will be deleted permanently. Payment records stay in the ledger.\n\nType DELETE to confirm:`);
+    if (typed === null) return;
+    if (typed.trim().toUpperCase() !== 'DELETE') { alert('Not deleted — you did not type DELETE.'); return; }
+    confirmText = 'DELETE';
+  } else if (!confirm(`Delete ${label}? This shop cannot be restored.`)) return;
+
+  const send = (confirm) => fetch(`/api/superadmin/shop/${encodeURIComponent(shopId)}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+    body: JSON.stringify({ confirm })
+  }).then(r => r.json());
   try{
-    const res = await fetch(`/api/superadmin/shop/${shopId}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + authToken }
-    });
-    const data = await res.json();
+    let data = await send(confirmText);
+    // The list was stale: the shop has been paid since it loaded.
+    if (!data.success && data.needsConfirm) {
+      const typed = prompt(`${label} has been paid.\n\nType DELETE to delete it anyway:`);
+      if (typed === null || typed.trim().toUpperCase() !== 'DELETE') return;
+      data = await send('DELETE');
+    }
     if(data.success){
-      loadPanel();  // stats + main list
-      // The Demo tab has its own separate list — refresh it too, otherwise the
-      // card stays on screen even after the shop is deleted
-      // and it looks as if nothing was deleted.
-      try { if (typeof loadDemos === 'function') loadDemos(); } catch(e){}
-      try { if (typeof loadDemoRequests === 'function') loadDemoRequests(); } catch(e){}
-      try { if (typeof loadSecurity === 'function') loadSecurity(); } catch(e){}
+      refreshShopLists();
     } else {
       alert('❌ ' + (data.error || 'Delete failed'));
     }
   }catch(e){ alert('❌ ' + e.message); }
+}
+
+// Every list a shop can appear in — a deleted shop must vanish from all of them.
+function refreshShopLists(){
+  loadPanel();  // stats + main list
+  for (const fn of ['loadDemos', 'loadDemoRequests', 'loadSecurity', 'loadWlShops', 'loadWhitelabels']) {
+    try { if (typeof window[fn] === 'function') window[fn](); } catch(e){}
+  }
 }
 
 
@@ -5053,7 +5097,7 @@ async function loadWlShops(){
       tile('🎯', demo,          'Demo',            '#fff6e5', '#8a5a12') +
       tile('🏷️', brands,        'Partners',        '#fdeeee', '#8f151d');
     if (!shops.length){
-      tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#6b6870;">No white-label shops yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:22px;color:#6b6870;">No white-label shops yet</td></tr>';
       return;
     }
     tb.innerHTML = shops.map(s => {
@@ -5070,10 +5114,13 @@ async function loadWlShops(){
               : `<span class="status-pill ${s.setup_paid?'active':'pending'}">${s.setup_paid?'✅ Active':'⏳ Pending'}</span>`}
             <div style="font-size:10.5px;color:#6b6870;margin-top:4px;">money goes to the partner</div></td>
         <td style="font-size:11px;color:#6b6870;">${dt.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
+        <td>${s.id === 'SHOP_ECB1AB8A'
+              ? '<span style="font-size:11px;color:#b0b0b0">🔒 Protected</span>'
+              : `<button onclick="deleteShop('${sanitize(s.id)}','${sanitize(s.name||'').replace(/'/g,'')}',${isPaidShop(s)})" style="background:#ff3b3b;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑️ Delete</button>`}</td>
       </tr>`;
     }).join('');
   } catch(e){
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#dc2626;">Failed to load</td></tr>';
+    tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:22px;color:#dc2626;">Failed to load</td></tr>';
   }
 }
 

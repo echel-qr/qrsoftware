@@ -3729,5 +3729,20 @@
  "Your White Label dashboard": "ꯅꯍꯥꯛꯀꯤ ꯋꯥꯏꯠ ꯂꯦꯕꯦꯜ ꯗꯦꯁꯕꯣꯔ꯭ꯗ",
  "YouTube link": "YouTube ꯂꯤꯡꯛ",
  "youtube.com/@": "youtube.com/@",
- "Zero — all from the phone": "ꯀꯔꯤꯁꯨ ꯃꯊꯧ ꯇꯥꯗꯦ — ꯄꯨꯝꯅꯃꯛ ꯐꯣꯅꯗꯒꯤ"
+ "Zero — all from the phone": "ꯀꯔꯤꯁꯨ ꯃꯊꯧ ꯇꯥꯗꯦ — ꯄꯨꯝꯅꯃꯛ ꯐꯣꯅꯗꯒꯤ",
+ "%s has been paid.": "%s ꯒꯤ ꯁꯦꯜ ꯄꯤꯔꯦ꯫",
+ "%s has been paid. Type DELETE to delete it anyway:": "%s ꯒꯤ ꯁꯦꯜ ꯄꯤꯔꯦ꯫ ꯑꯗꯨꯝ ꯑꯣꯏꯅꯃꯛ ꯃꯨꯠꯊꯠꯅꯕꯥ DELETE ꯏꯔꯨ:",
+ "Type DELETE to delete it anyway:": "ꯑꯗꯨꯝ ꯑꯣꯏꯅꯃꯛ ꯃꯨꯠꯊꯠꯅꯕꯥ DELETE ꯏꯔꯨ:",
+ "⚠️ %s is a PAID shop.": "⚠️ %s ꯁꯦꯜ ꯄꯤꯔꯕꯥ ꯁꯣꯞꯅꯤ꯫",
+ "Its orders, reviews, withdrawals and files will be deleted permanently. Payment records stay in the ledger.": "ꯃꯁꯤꯒꯤ ꯑꯔ꯭ꯗꯔ, ꯔꯤꯚꯤꯎ, ꯁꯦꯜ ꯂꯧꯊꯣꯛꯄꯥ ꯑꯃꯁꯨꯡ ꯐꯥꯏꯜꯁꯤꯡ ꯃꯇꯝ ꯆꯨꯞꯄꯗꯥ ꯃꯨꯠꯊꯠꯀꯅꯤ꯫ ꯄꯦꯃꯦꯟꯠꯀꯤ ꯔꯦꯀꯣꯔꯗꯁꯤꯡ ꯂꯦꯖꯔꯗꯥ ꯂꯩꯒꯅꯤ꯫",
+ "⚠️ %s is a PAID shop. Its orders, reviews, withdrawals and files will be deleted permanently. Payment records stay in the ledger. Type DELETE to confirm:": "⚠️ %s ꯁꯦꯜ ꯄꯤꯔꯕꯥ ꯁꯣꯞꯅꯤ꯫ ꯃꯁꯤꯒꯤ ꯑꯔ꯭ꯗꯔ, ꯔꯤꯚꯤꯎ, ꯁꯦꯜ ꯂꯧꯊꯣꯛꯄꯥ ꯑꯃꯁꯨꯡ ꯐꯥꯏꯜꯁꯤꯡ ꯃꯇꯝ ꯆꯨꯞꯄꯗꯥ ꯃꯨꯠꯊꯠꯀꯅꯤ꯫ ꯄꯦꯃꯦꯟꯠꯀꯤ ꯔꯦꯀꯣꯔꯗꯁꯤꯡ ꯂꯦꯖꯔꯗꯥ ꯂꯩꯒꯅꯤ꯫ ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ DELETE ꯏꯔꯨ:",
+ "Type DELETE to confirm:": "ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ DELETE ꯏꯔꯨ:",
+ "⚠️ Delete white-label partner \"%s\" (%s)?": "⚠️ ꯋꯥꯏꯠ ꯂꯦꯕꯦꯜ ꯄꯥꯔ꯭ꯇꯅꯔ \"%s\" (%s) ꯃꯨꯠꯊꯠꯀꯗ꯭ꯔꯥ?",
+ "This also deletes ALL %s shop(s) registered under this partner — their orders, reviews and files. Payment records stay in the ledger. It cannot be undone.": "ꯃꯁꯤꯅꯥ ꯄꯥꯔ꯭ꯇꯅꯔ ꯑꯁꯤꯒꯤ ꯃꯈꯥꯗꯥ ꯔꯦꯖꯤꯁ꯭ꯇꯔ ꯇꯧꯔꯕꯥ ꯁꯣꯞ %s ꯄꯨꯝꯅꯃꯛꯁꯨ ꯃꯨꯠꯊꯠꯀꯅꯤ — ꯃꯈꯣꯌꯒꯤ ꯑꯔ꯭ꯗꯔ, ꯔꯤꯚꯤꯎ ꯑꯃꯁꯨꯡ ꯐꯥꯏꯜꯁꯤꯡ꯫ ꯄꯦꯃꯦꯟꯠꯀꯤ ꯔꯦꯀꯣꯔꯗꯁꯤꯡ ꯂꯦꯖꯔꯗꯥ ꯂꯩꯒꯅꯤ꯫ ꯃꯁꯤ ꯍꯟꯗꯣꯛꯄꯥ ꯌꯥꯔꯣꯏ꯫",
+ "⚠️ Delete white-label partner \"%s\" (%s)? This also deletes ALL %s shop(s) registered under this partner — their orders, reviews and files. Payment records stay in the ledger. It cannot be undone. Type DELETE to confirm:": "⚠️ ꯋꯥꯏꯠ ꯂꯦꯕꯦꯜ ꯄꯥꯔ꯭ꯇꯅꯔ \"%s\" (%s) ꯃꯨꯠꯊꯠꯀꯗ꯭ꯔꯥ? ꯃꯁꯤꯅꯥ ꯄꯥꯔ꯭ꯇꯅꯔ ꯑꯁꯤꯒꯤ ꯃꯈꯥꯗꯥ ꯔꯦꯖꯤꯁ꯭ꯇꯔ ꯇꯧꯔꯕꯥ ꯁꯣꯞ %s ꯄꯨꯝꯅꯃꯛꯁꯨ ꯃꯨꯠꯊꯠꯀꯅꯤ — ꯃꯈꯣꯌꯒꯤ ꯑꯔ꯭ꯗꯔ, ꯔꯤꯚꯤꯎ ꯑꯃꯁꯨꯡ ꯐꯥꯏꯜꯁꯤꯡ꯫ ꯄꯦꯃꯦꯟꯠꯀꯤ ꯔꯦꯀꯣꯔꯗꯁꯤꯡ ꯂꯦꯖꯔꯗꯥ ꯂꯩꯒꯅꯤ꯫ ꯃꯁꯤ ꯍꯟꯗꯣꯛꯄꯥ ꯌꯥꯔꯣꯏ꯫ ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ DELETE ꯏꯔꯨ:",
+ "✅ Partner deleted · %s shop(s) removed": "✅ ꯄꯥꯔ꯭ꯇꯅꯔ ꯃꯨꯠꯊꯠꯂꯦ · ꯁꯣꯞ %s ꯂꯧꯊꯣꯛꯂꯦ",
+ "🗑️ Delete partner": "🗑️ ꯄꯥꯔ꯭ꯇꯅꯔ ꯃꯨꯠꯊꯠꯂꯨ",
+ "Delete %s? This shop cannot be restored.": "%s ꯃꯨꯠꯊꯠꯀꯗ꯭ꯔꯥ? ꯁꯣꯞ ꯑꯁꯤ ꯑꯃꯨꯛ ꯍꯟꯅꯥ ꯍꯜꯂꯛꯄꯥ ꯌꯥꯔꯣꯏ꯫",
+ "Not deleted — you did not type DELETE.": "ꯃꯨꯠꯊꯠꯈꯤꯗꯦ — ꯅꯍꯥꯛꯅꯥ DELETE ꯏꯈꯤꯗꯦ꯫",
+ "This is a paid shop — type DELETE to confirm": "ꯃꯁꯤ ꯁꯦꯜ ꯄꯤꯔꯕꯥ ꯁꯣꯞꯅꯤ — ꯆꯨꯝꯅꯥ ꯂꯧꯅꯕꯥ DELETE ꯏꯔꯨ"
 }

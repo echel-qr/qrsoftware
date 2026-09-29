@@ -1,6 +1,6 @@
 // Boots the real server.js against an in-memory PGlite database, exactly like
 // server-start.test.js does, and hands back { base, headers, close } for route
-// tests. Superadmin is already logged in (headers carry the bearer token).
+// tests (plus db, to seed rows). Superadmin is already logged in (headers carry the bearer token).
 const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 const { createRequire } = require('node:module');
 const { PGlite } = require('@electric-sql/pglite');
@@ -17,6 +17,8 @@ async function bootBackend() {
   class Pool {
     on() {}
     query(sql, params) { return params ? db.query(sql, params) : db.exec(sql).then(r => r.at(-1)); }
+    // PGlite is one connection, so a checked-out client is that same connection.
+    connect() { return Promise.resolve({ query: (sql, params) => this.query(sql, params), release() {} }); }
     end() { return Promise.resolve(); }
   }
   const deployment = localRequire('./deployment');
@@ -39,6 +41,6 @@ async function bootBackend() {
   const base = 'http://127.0.0.1:' + server.address().port;
   const login = await fetch(base + '/api/superadmin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminId: env.SUPER_ADMIN_ID, password: env.SUPER_ADMIN_PASSWORD }) });
   const { token } = await login.json();
-  return { base, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, close };
+  return { base, db, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, close };
 }
 module.exports = { bootBackend };
