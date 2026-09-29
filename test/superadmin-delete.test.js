@@ -48,10 +48,10 @@ test('superadmin deletes any kind of shop and any white-label partner', { timeou
       assert.equal(await exists(id), false, id);
     }
 
-    // The owner's own shop is never deleted, even with the confirmation.
+    // No shop ID is special — SHOP_ECB1AB8A (protected by another project) goes too.
     r = await del('SHOP_ECB1AB8A', { confirm: 'DELETE' });
-    assert.equal(r.status, 403);
-    assert.ok(await exists('SHOP_ECB1AB8A'));
+    assert.equal(r.status, 200, await r.clone().text());
+    assert.equal(await exists('SHOP_ECB1AB8A'), false);
     assert.equal((await del('SHOP_NOPE0001', { confirm: 'DELETE' })).status, 404);
 
     // A white-label partner: needs the confirmation, then goes with all its shops.
@@ -68,7 +68,9 @@ test('superadmin deletes any kind of shop and any white-label partner', { timeou
     assert.equal((await delWl({ confirm: 'DELETE' })).status, 404);
 
     // Without the superadmin token nothing can be deleted.
-    r = await fetch(base + '/api/superadmin/shop/SHOP_ECB1AB8A', { method: 'DELETE' });
+    await shop('SHOP_LAST0001', {});
+    r = await fetch(base + '/api/superadmin/shop/SHOP_LAST0001', { method: 'DELETE' });
     assert.equal(r.status, 401);
+    assert.ok(await exists('SHOP_LAST0001'));
   } finally { await close(); }
 });

@@ -11041,13 +11041,11 @@ app.get('/api/superadmin/whitelabel-shops', verifySuperAdmin, async (req, res) =
 
 // ─── Superadmin: BULK CLEANUP ───
 // Remove all expired demo accounts in one click.
-// The protected shop (SHOP_ECB1AB8A) is never deleted.
 app.post('/api/superadmin/bulk/delete-expired-demos', verifySuperAdmin, async (req, res) => {
   try {
     const find = await pool.query(
       `SELECT id FROM shops
-       WHERE demo = true AND demo_expires_at IS NOT NULL AND demo_expires_at <= NOW()
-         AND id <> 'SHOP_ECB1AB8A'`);
+       WHERE demo = true AND demo_expires_at IS NOT NULL AND demo_expires_at <= NOW()`);
     const ids = find.rows.map(r => r.id);
     if (!ids.length) return res.json({ success: true, deleted: 0 });
     for (const tbl of ['print_jobs', 'reviews', 'withdrawals', 'agent_commissions', 'platform_payments']) {
@@ -11066,8 +11064,7 @@ app.post('/api/superadmin/bulk/delete-pending', verifySuperAdmin, async (req, re
     const find = await pool.query(
       `SELECT id FROM shops
        WHERE demo = false AND setup_paid = false
-         AND COALESCE(whitelabel_id,'') = ''
-         AND id <> 'SHOP_ECB1AB8A'`);
+         AND COALESCE(whitelabel_id,'') = ''`);
     const ids = find.rows.map(r => r.id);
     if (!ids.length) return res.json({ success: true, deleted: 0 });
     for (const tbl of ['print_jobs', 'reviews', 'withdrawals', 'agent_commissions', 'platform_payments']) {
@@ -11148,10 +11145,6 @@ app.put('/api/superadmin/shop/:shopId/printers', verifySuperAdmin, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// The owner's own first shop — it is never deleted, whatever the UI/API
-// sends. Hardcoded server-side so nobody can bypass it.
-const PROTECTED_SHOP_IDS = ['SHOP_ECB1AB8A'];
-
 /**
  * Remove shops and everything that belongs to them, inside the caller's
  * transaction (the caller runs BEGIN/COMMIT). Returns per-table row counts and
@@ -11203,14 +11196,10 @@ const describeShopKind = s =>
 
 // ─── Shop delete — the superadmin can delete ANY shop ───
 // Paid, demo, pending, expired, or registered under a white-label partner.
-// Only the owner's own first shop (PROTECTED_SHOP_IDS) is refused.
 // A paid shop needs { confirm: 'DELETE' } in the body, so a stray request
 // cannot wipe a paying customer.
 app.delete('/api/superadmin/shop/:shopId', verifySuperAdmin, async (req, res) => {
   const shopId = String(req.params.shopId || '');
-  if (PROTECTED_SHOP_IDS.includes(shopId)) {
-    return res.status(403).json({ error: 'This shop is protected — it cannot be deleted' });
-  }
   const client = await pool.connect();
   try {
     const chk = await client.query(
@@ -11254,13 +11243,9 @@ app.delete('/api/superadmin/whitelabel/:id', verifySuperAdmin, async (req, res) 
     if (!w.rows.length) return res.status(404).json({ error: 'White label not found' });
 
     await client.query('BEGIN');
-    const s = await client.query(
-      'SELECT id FROM shops WHERE whitelabel_id=$1 AND NOT (id = ANY($2)) FOR UPDATE',
-      [wlId, PROTECTED_SHOP_IDS]);
+    const s = await client.query('SELECT id FROM shops WHERE whitelabel_id=$1 FOR UPDATE', [wlId]);
     const ids = s.rows.map(r => r.id);
     const { counts, files } = await purgeShops(client, ids);
-    // A protected shop is never deleted — it is detached from the partner instead.
-    await client.query("UPDATE shops SET whitelabel_id='' WHERE whitelabel_id=$1", [wlId]);
     await client.query('DELETE FROM whitelabels WHERE id=$1', [wlId]);
     await client.query('COMMIT');
     afterShopsPurged(ids, files, `WHITE LABEL DELETED ${wlId}`);
